@@ -1,0 +1,90 @@
+{% extends "core/base.html" %}
+{% block content %}
+
+<div class="container py-5">
+
+    <div class="mb-4">
+        <h3 class="fw-bold">Editar iniciativa</h3>
+        <p class="text-muted mb-0">
+            Estado actual: 
+            <span class="badge 
+                {% if iniciativa.estado == iniciativa.Estado.BORRADOR %} bg-secondary
+                {% elif iniciativa.estado == iniciativa.Estado.ENVIADA %} bg-primary
+                {% elif iniciativa.estado == iniciativa.Estado.DEVUELTA %} bg-warning text-dark
+                {% else %} bg-success
+                {% endif %}
+            ">
+                {{ iniciativa.get_estado_display }}
+            </span>
+        </p>
+    </div>
+
+    <!-- 🔎 Mostrar observaciones si fue devuelta -->
+    {% if iniciativa.estado == iniciativa.Estado.DEVUELTA and iniciativa.observaciones %}
+        <div class="alert alert-warning shadow-sm">
+            <h6 class="fw-bold mb-2">Observaciones del revisor:</h6>
+            <p class="mb-0">{{ iniciativa.observaciones }}</p>
+        </div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="card shadow-sm border-0 p-4">
+
+            {% for field in form %}
+                {% if field.name == "descarga_horas" %}
+                    <div class="form-check mb-3">
+                        {{ field }}
+                        <label class="form-check-label">
+                            {{ field.label }}
+                        </label>
+                    </div>
+                {% else %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            {{ field.label }}
+                        </label>
+                        {{ field }}
+
+                        {% if field.errors %}
+                            <div class="text-danger small mt-1">
+                                {{ field.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            {% endfor %}
+
+            <div class="d-flex justify-content-between align-items-center mt-4">
+
+                <a href="{% url 'oct:mis_iniciativas' %}" 
+                   class="btn btn-outline-secondary">
+                    Cancelar
+                </a>
+
+                <div class="d-flex gap-2">
+
+                    <!-- Guardar (queda en borrador) -->
+                    <button type="submit" 
+                            class="btn btn-secondary">
+                        Guardar como borrador
+                    </button>
+
+                    <!-- Enviar -->
+                    <button type="submit" 
+                            name="enviar"
+                            class="btn btn-dark">
+                        Enviar iniciativa
+                    </button>
+
+                </div>
+            </div>
+
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}

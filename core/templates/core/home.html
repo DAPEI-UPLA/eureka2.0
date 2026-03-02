@@ -1,0 +1,62 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Panel Principal</h2>
+
+<div class="row g-4">
+
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <h5>Planificación</h5>
+                <p class="text-muted">Gestión de planes e indicadores</p>
+                <a href="{% url 'planificacion:home' %}" class="btn btn-outline-primary btn-sm">Ingresar</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <h5>Análisis</h5>
+                <p class="text-muted">Resultados y seguimiento</p>
+                <a href="#" class="btn btn-outline-primary btn-sm">Ingresar</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <h5>Proyectos</h5>
+                <p class="text-muted">Gestión de proyectos</p>
+                <a href="{% url 'proyectos:lista_proyectos' %}" class="btn btn-outline-primary btn-sm">Ingresar</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <h5>OCT</h5>
+                <p class="text-muted">Oficina de cooperación técnica</p>
+                <a href="{% url 'oct:home' %}" class="btn btn-outline-primary btn-sm">Ingresar</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <h5>Dashboards
+                </h5>
+                <p class="text-muted">Plan estrategico institucional</p>
+                <a href="https://dapei.upla.cl/Gestion_Estrategica/Dashboard/index.html" class="btn btn-outline-primary btn-sm">Ingresar</a>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

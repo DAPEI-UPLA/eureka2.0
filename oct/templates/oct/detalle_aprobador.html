@@ -1,0 +1,62 @@
+{% extends "core/base.html" %}
+{% block content %}
+
+<div class="container py-5">
+
+    <h3 class="fw-bold mb-4">Revisión de iniciativa</h3>
+
+    <div class="card shadow-sm border-0 p-4 mb-4">
+
+        <h5 class="fw-semibold">{{ iniciativa.nombre }}</h5>
+        <p class="text-muted small mb-3">
+            Responsable: {{ iniciativa.responsable }} |
+            Unidad: {{ iniciativa.unidad }}
+        </p>
+
+        <p><strong>Descripción:</strong><br>
+        {{ iniciativa.descripcion }}</p>
+
+        <p><strong>Función institucional:</strong>
+        {{ iniciativa.get_funcion_institucional_display }}</p>
+
+        <p><strong>Fechas:</strong>
+        {{ iniciativa.fecha_inicio }} - {{ iniciativa.fecha_termino }}</p>
+
+        <p><strong>Descarga de horas:</strong>
+        {% if iniciativa.descarga_horas %}Sí{% else %}No{% endif %}
+        </p>
+
+    </div>
+
+    <div class="card shadow-sm border-0 p-4">
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">
+                    Observaciones (solo si se devuelve)
+                </label>
+                <textarea name="observaciones" class="form-control" rows="3"></textarea>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+
+                <button type="submit" name="accion" value="devolver"
+                        class="btn btn-outline-warning">
+                    Devolver con observaciones
+                </button>
+
+                <button type="submit" name="accion" value="aprobar"
+                        class="btn btn-dark">
+                    Aprobar
+                </button>
+
+            </div>
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

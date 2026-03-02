@@ -1,0 +1,106 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+<style>
+    .dashboard {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    .dashboard h1 {
+        font-size: 2rem;
+        margin-bottom: 2rem;
+        color: #1f2937;
+    }
+
+    .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 2rem;
+    }
+
+    .card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 2rem;
+        text-decoration: none;
+        color: inherit;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+    }
+
+    .card-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .card h2 {
+        font-size: 1.4rem;
+        margin-bottom: 0.5rem;
+        color: #111827;
+    }
+
+    .card p {
+        color: #6b7280;
+        line-height: 1.5;
+    }
+
+    .card-footer {
+        margin-top: 1.5rem;
+        font-weight: 600;
+        color: #2563eb;
+    }
+
+    /* Colores sutiles por sección */
+    .card.indicadores {
+        border-left: 6px solid #2563eb;
+    }
+
+    .card.desafios {
+        border-left: 6px solid #16a34a;
+    }
+</style>
+
+<div class="dashboard">
+    <h1>Panel de Planificación</h1>
+
+    <div class="cards">
+        <a href="{% url 'planificacion:indicadores' %}" class="card indicadores">
+            <div>
+                <div class="card-icon">📊</div>
+                <h2>Indicadores</h2>
+                <p>
+                    Consulta, registra y realiza seguimiento de los indicadores
+                    institucionales.
+                </p>
+            </div>
+            <div class="card-footer">
+                Ir a indicadores →
+            </div>
+        </a>
+
+        <a href="{% url 'planificacion:desafios' %}" class="card desafios">
+            <div>
+                <div class="card-icon">🧩</div>
+                <h2>Desafíos institucionales</h2>
+                <p>
+                    Gestiona los desafíos estratégicos alineados al plan
+                    institucional.
+                </p>
+            </div>
+            <div class="card-footer">
+                Ir a desafíos →
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "core/base.html" %}
+{% block content %}
+
+<div class="container py-5">
+
+    <div class="mb-5">
+        <h2 class="fw-bold">Iniciativas</h2>
+        <p class="text-muted mb-0">
+            Gestión y seguimiento de iniciativas institucionales.
+        </p>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- Ver mis iniciativas -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm border-0 h-100 card-hover">
+                <div class="card-body p-4">
+                    <h5 class="fw-semibold">Ver mis iniciativas</h5>
+                    <p class="text-muted small">
+                        Consulta el estado y detalle de tus iniciativas.
+                    </p>
+                    <a href="{% url 'oct:mis_iniciativas' %}" class="stretched-link"></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Registrar iniciativa -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm border-0 h-100 card-hover">
+                <div class="card-body p-4">
+                    <h5 class="fw-semibold">Registrar iniciativa</h5>
+                    <p class="text-muted small">
+                        Ingresa una nueva iniciativa para revisión.
+                    </p>
+                    <a href="{% url 'oct:registrar_iniciativa' %}" class="stretched-link"></a>
+                </div>
+            </div>
+        </div>
+
+        {% if es_aprobador %}
+        <!-- Revisar iniciativas -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm border-0 h-100 card-hover">
+                <div class="card-body p-4">
+                    <h5 class="fw-semibold">Revisar iniciativas</h5>
+                    <p class="text-muted small">
+                        Revisa, aprueba o devuelve iniciativas enviadas.
+                    </p>
+                    <a href="{% url 'oct:panel_aprobacion' %}" class="stretched-link"></a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+</div>
+
+<style>
+.card-hover {
+    transition: all 0.2s ease-in-out;
+    border-radius: 12px;
+}
+.card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+</style>
+
+{% endblock %}

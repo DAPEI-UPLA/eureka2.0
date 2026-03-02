@@ -1,0 +1,116 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+
+<style>
+    .form-wrapper {
+        max-width: 700px;
+        margin: 50px auto;
+    }
+
+    .card-form {
+        background: #ffffff;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    }
+
+    .card-form h2 {
+        text-align: center;
+        margin-bottom: 25px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        margin-bottom: 6px;
+        display: block;
+        color: #34495e;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #dcdcdc;
+        transition: 0.2s ease;
+    }
+
+    .form-control:focus {
+        border-color: #2e86de;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(46, 134, 222, 0.1);
+    }
+
+    .btn-container {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 25px;
+    }
+
+    .btn-success {
+        background-color: #27ae60;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-success:hover {
+        background-color: #219150;
+    }
+
+    .btn-secondary {
+        background-color: #95a5a6;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .btn-secondary:hover {
+        background-color: #7f8c8d;
+    }
+</style>
+
+<div class="form-wrapper">
+    <div class="card-form">
+        <h2>Crear Nuevo Indicador</h2>
+
+        <form method="post">
+            {% csrf_token %}
+
+            {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">
+                        {{ field.label }}
+                    </label>
+                    {{ field }}
+                    {% if field.errors %}
+                        <small style="color: red;">{{ field.errors }}</small>
+                    {% endif %}
+                </div>
+            {% endfor %}
+
+            <div class="btn-container">
+                <a href="{% url 'planificacion:indicadores' %}" class="btn-secondary">
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-success">
+                    Guardar Indicador
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

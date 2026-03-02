@@ -1,0 +1,18 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+<h2>Eliminar Indicador</h2>
+
+<p>
+    ¿Estás seguro que deseas eliminar el indicador
+    <strong>{{ indicador.nombre }}</strong>?
+</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit">Sí, eliminar</button>
+    <a href="{% url 'planificacion:lista_indicadores' %}">
+        Cancelar
+    </a>
+</form>
+{% endblock %}

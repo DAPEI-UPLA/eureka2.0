@@ -1,0 +1,59 @@
+{% extends "core/base.html" %}
+{% block content %}
+
+<div class="container py-5">
+
+    <!-- Título -->
+    <div class="mb-5">
+        <h2 class="fw-bold">Oficina de Cooperación Técnica</h2>
+        <p class="text-muted mb-0">
+            Gestión de iniciativas y oportunidades de financiamiento.
+        </p>
+    </div>
+
+    <!-- Tarjetas -->
+    <div class="row g-4">
+
+        <!-- Buscador de Financiamiento -->
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100 card-hover">
+                <div class="card-body p-4">
+                    <h5 class="fw-semibold">Buscador de financiamiento</h5>
+                    <p class="text-muted small">
+                        Consulta y gestión de oportunidades de financiamiento
+                        nacionales e internacionales.
+                    </p>
+                    <a href="#" class="stretched-link text-decoration-none"></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Iniciativas -->
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100 card-hover">
+                <div class="card-body p-4">
+                    <h5 class="fw-semibold">Iniciativas</h5>
+                    <p class="text-muted small">
+                        Registro y seguimiento de iniciativas institucionales
+                        vinculadas a cooperación técnica.
+                    </p>
+                    <a href="{% url 'oct:iniciativas_home' %}" class="stretched-link"></a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+.card-hover {
+    transition: all 0.2s ease-in-out;
+    border-radius: 12px;
+}
+.card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+</style>
+
+{% endblock %}

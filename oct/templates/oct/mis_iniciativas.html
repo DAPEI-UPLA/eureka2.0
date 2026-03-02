@@ -1,0 +1,56 @@
+{% extends "core/base.html" %}
+{% block content %}
+
+<div class="container py-5">
+
+    <h3 class="fw-bold mb-4">Mis iniciativas</h3>
+
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Función</th>
+                        <th>Estado</th>
+                        <th>Inicio</th>
+                        <th>Término</th>
+                        <th> </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i in iniciativas %}
+                    <tr>
+                        <td>{{ i.nombre }}</td>
+                        <td>{{ i.get_funcion_institucional_display }}</td>
+                        <td>
+                            <span class="badge bg-secondary">
+                                {{ i.get_estado_display }}
+                            </span>
+                        </td>
+                        <td>{{ i.fecha_inicio }}</td>
+                        <td>{{ i.fecha_termino }}</td>
+                        <td>
+                            {% if i.estado == "BORRADOR" or i.estado == "ENVIADA" or i.estado == "DEVUELTA" %}
+                                <a href="{% url 'oct:editar_iniciativa' i.pk %}"
+                                class="btn btn-sm btn-outline-dark">
+                                    Editar
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            No tienes iniciativas registradas.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
