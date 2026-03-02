@@ -1,0 +1,30 @@
+<tr>
+
+    {% include "proyectos/partials/objetivo_texto.html" %}
+
+    <td>
+        {% for resultado in objetivo.resultados.all %}
+            <div class="small border rounded p-2 mb-1">
+                {{ resultado.descripcion }}
+            </div>
+        {% empty %}
+            <span class="text-muted small">Sin resultados</span>
+        {% endfor %}
+    </td>
+
+    <td>—</td>
+    <td>—</td>
+    <td>—</td>
+    <td>—</td>
+
+    <td>
+        <button
+            hx-get="{% url 'proyectos:crear_resultado' objetivo.pk %}"
+            hx-target="#resultados-{{ objetivo.pk }}"
+            hx-swap="beforeend"
+            class="btn btn-sm btn-outline-light">
+            + Agregar resultado
+        </button>
+    </td>
+
+</tr>

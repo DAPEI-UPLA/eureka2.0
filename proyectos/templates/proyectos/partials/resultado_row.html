@@ -1,0 +1,23 @@
+<tr id="resultado-{{ resultado.pk }}">
+
+    <td class="fw-semibold">
+        {{ resultado.descripcion }}
+    </td>
+
+    <td>
+        {% if resultado.responsable %}
+            {{ resultado.responsable.username }}
+        {% else %}
+            —
+        {% endif %}
+    </td>
+
+    <td>
+        {{ resultado.get_estado_display }}
+    </td>
+
+    <td>
+        {{ resultado.presupuesto_asignado }}
+    </td>
+
+</tr>

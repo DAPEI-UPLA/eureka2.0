@@ -1,0 +1,196 @@
+{% extends "core/base.html" %}
+
+{% block title %}Proyectos{% endblock %}
+
+{% block content %}
+
+
+<div class="container-fluid">
+
+    <!-- ENCABEZADO -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-0">📁 Proyectos</h3>
+            <small class="text-muted">
+                {% if es_jefe %}
+                    Visualizando todos los proyectos
+                {% else %}
+                    Visualizando tus proyectos asignados
+                {% endif %}
+            </small>
+        </div>
+
+        {% if es_jefe %}
+        <button class="btn btn-primary btn-sm"
+                data-bs-toggle="modal"
+                data-bs-target="#crearProyectoModal">
+            + Crear Proyecto
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- GRID DE PROYECTOS -->
+    <div class="row g-4">
+        {% load humanize %}
+
+        {% for proyecto in proyectos %}
+        <div class="col-md-6 col-lg-4">
+
+            <div class="card proyecto-card border-0 shadow-sm h-100 {{ proyecto.clase_borde }}">
+
+                <div class="card-body d-flex flex-column">
+
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge bg-light text-dark border">
+                            {{ proyecto.get_tipo_display }}
+                        </span>
+
+                        <span class="badge {{ proyecto.clase_badge_estado }}">
+
+                    </div>
+
+                    <h5 class="fw-bold mb-1">
+                        {{ proyecto.nombre }}
+                    </h5>
+
+                    <p class="text-muted small mb-3">
+                        Responsable: {{ proyecto.responsable|default:"No asignado" }}
+                    </p>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span>Cumplimiento</span>
+                            <span>{{ proyecto.cumplimiento }}%</span>
+                        </div>
+
+                        <div class="progress" style="height:6px;">
+                            <div class="progress-bar bg-success"
+                                style="width: {{ proyecto.cumplimiento }}%;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-light rounded p-3 mb-3">
+                        <div class="small text-muted">Presupuesto Total</div>
+                        <div class="fw-semibold">
+                            ${{ proyecto.presupuesto_total|floatformat:0|intcomma }} CLP
+                        </div>
+
+                        <div class="small text-muted mt-2">Disponible</div>
+                        <div class="fw-semibold text-success">
+                            ${{ proyecto.presupuesto_disponible|floatformat:0|intcomma }} CLP
+                        </div>
+                    </div>
+
+                    <div class="mt-auto d-flex justify-content-between align-items-center">
+                        <span class="badge bg-light text-dark">
+                            Prioridad: {{ proyecto.get_prioridad_display }}
+                        </span>
+
+                        <a href="{% url 'proyectos:detalle_proyecto' proyecto.pk %}" 
+                            class="btn btn-sm btn-outline-primary">
+                            Ver →
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+        {% endfor %}
+
+
+    </div>
+
+</div>
+
+<!-- ================= MODAL CREAR PROYECTO ================= -->
+{% if es_jefe %}
+<div class="modal fade" id="crearProyectoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+
+            <form method="POST">
+                {% csrf_token %}
+
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Nuevo Proyecto</h5>
+                    <button type="button"
+                            class="btn-close btn-close-white"
+                            data-bs-dismiss="modal">
+                    </button>
+                </div>
+
+                <div class="modal-body p-4">
+
+                    <div class="row g-4">
+
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Nombre del Proyecto</label>
+                            {{ form.nombre }}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Tipo</label>
+                            {{ form.tipo }}
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Descripción</label>
+                            {{ form.descripcion }}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Responsable</label>
+                            {{ form.responsable }}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Duración (meses)</label>
+                            {{ form.duracion_meses }}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Prioridad</label>
+                            {{ form.prioridad }}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Estado</label>
+                            {{ form.estado }}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Presupuesto Total (CLP)
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.presupuesto_total }}
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer px-4 pb-4 border-0">
+                    <button type="button"
+                            class="btn btn-light"
+                            data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                            class="btn btn-primary px-4">
+                        Crear Proyecto
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

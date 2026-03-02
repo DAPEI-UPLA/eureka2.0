@@ -1,0 +1,102 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+{% block content %}
+
+<div class="container-fluid">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0">{{ proyecto.nombre }}</h2>
+            <small class="text-muted">
+                Responsable: {{ proyecto.responsable }}
+            </small>
+        </div>
+
+        {% if es_encargado %}
+        <button class="btn btn-primary btn-sm"
+                hx-post="{% url 'proyectos:crear_objetivo' proyecto.pk %}"
+                hx-target="#contenedor-objetivos"
+                hx-swap="beforeend">
+            + Nuevo Objetivo
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- CONTENEDOR DE OBJETIVOS -->
+    <div id="contenedor-objetivos">
+
+        {% for objetivo in proyecto.objetivos.all %}
+
+        <div class="objetivo-grupo mb-4 rounded shadow-sm bg-white border">
+
+            <!-- HEADER SUAVE -->
+            <div class="objetivo-header d-flex justify-content-between align-items-center px-4 py-3"
+                onclick="toggleObjetivo({{ objetivo.pk }})"
+                style="cursor:pointer; background-color:#f8f9fa; border-bottom:1px solid #e9ecef;">
+
+                <div class="fw-semibold text-dark">
+                    ▼ {{ objetivo.descripcion }}
+                </div>
+
+                <div class="text-muted small">
+                    {{ objetivo.resultados.count }} tareas
+                </div>
+            </div>
+
+            <!-- CONTENIDO -->
+            <div id="grupo-{{ objetivo.pk }}">
+
+                <table class="table align-middle mb-0">
+                    <thead style="background-color:#fdfdfd;">
+                        <tr class="text-muted small">
+                            <th style="width:30%">Tarea</th>
+                            <th>Responsable</th>
+                            <th>Estado</th>
+                            <th>Presupuesto</th>
+                            <th>Cumplimiento</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="resultados-{{ objetivo.pk }}">
+                        {% for resultado in objetivo.resultados.all %}
+                            {% include "proyectos/partials/resultado_row.html" %}
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    No hay resultados aún
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <!-- BOTÓN AGREGAR -->
+                <div class="px-4 py-2 border-top bg-light">
+                    <button class="btn btn-sm btn-outline-secondary"
+                            hx-get="{% url 'proyectos:crear_resultado' objetivo.pk %}"
+                            hx-target="#resultados-{{ objetivo.pk }}"
+                            hx-swap="beforeend">
+                        + Agregar resultado
+                    </button>
+                </div>
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+
+</div>
+
+<script>
+function toggleObjetivo(id) {
+    const grupo = document.getElementById("grupo-" + id);
+    grupo.classList.toggle("d-none");
+}
+</script>
+
+{% endblock %}
