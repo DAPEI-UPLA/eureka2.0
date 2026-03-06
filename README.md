@@ -32,7 +32,7 @@ El sistema incluye:
 
 ## 1. Clonar repositorio
 ```
-git clone "url de github"
+git clone "https://github.com/DAPEI-UPLA/eureka2.0"
 cd "nombre del proyecto"
 ```
 
