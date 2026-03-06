@@ -1,0 +1,444 @@
+{% extends "core/base.html" %}
+{% load l10n %}
+{% block content %}
+
+{% localize off %}
+
+<div class="container-fluid">
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+<h2 class="fw-bold">
+Seguimiento: {{ programa.nombre }}
+</h2>
+
+<div class="d-flex gap-2 align-items-center">
+
+<!-- ================= AÑO ================= -->
+<form method="GET">
+
+<select name="anio"
+        class="form-select"
+        onchange="this.form.submit()">
+
+{% for a in anios %}
+
+<option value="{{ a }}"
+{% if a == anio %}selected{% endif %}>
+{{ a }}
+</option>
+
+{% endfor %}
+
+</select>
+
+{% if objetivo_abierto %}
+<input type="hidden" name="objetivo_abierto" value="{{ objetivo_abierto }}">
+{% endif %}
+
+</form>
+
+<a href="{% url 'planificacion:lista_programas' %}"
+class="btn btn-light">
+Volver
+</a>
+
+{% if es_planificacion %}
+
+<button class="btn btn-primary"
+        data-bs-toggle="modal"
+        data-bs-target="#modalObjetivo">
++ Objetivo
+</button>
+
+<button class="btn btn-success"
+        data-bs-toggle="modal"
+        data-bs-target="#modalIndicador">
++ Indicador
+</button>
+
+{% endif %}
+
+</div>
+</div>
+
+
+
+<!-- 🔵 MODAL OBJETIVO -->
+
+
+<div class="modal fade" id="modalObjetivo">
+<div class="modal-dialog">
+<div class="modal-content">
+
+<form method="POST">
+{% csrf_token %}
+
+<div class="modal-header">
+<h5>Agregar Objetivo</h5>
+<button type="button"
+class="btn-close"
+data-bs-dismiss="modal"></button>
+</div>
+
+<div class="modal-body">
+
+<select name="objetivo_id"
+class="form-select">
+
+{% for obj in objetivos_disponibles %}
+
+<option value="{{ obj.id }}">
+{{ obj.nombre }}
+</option>
+
+{% empty %}
+
+<option disabled>
+No hay objetivos disponibles
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+<div class="modal-footer">
+
+<button type="submit"
+name="accion"
+value="agregar_objetivo"
+class="btn btn-primary">
+Agregar
+</button>
+
+</div>
+
+</form>
+
+</div>
+</div>
+</div>
+
+
+
+<!-- 🔴 MODAL INDICADOR -->
+
+
+<div class="modal fade" id="modalIndicador">
+<div class="modal-dialog">
+<div class="modal-content">
+
+<form method="POST">
+{% csrf_token %}
+
+<div class="modal-header">
+
+<h5>Agregar Indicador</h5>
+
+<button type="button"
+class="btn-close"
+data-bs-dismiss="modal"></button>
+
+</div>
+
+<div class="modal-body">
+
+<select name="indicador_id"
+class="form-select">
+
+{% for indicador in indicadores_disponibles %}
+
+<option value="{{ indicador.id }}">
+{{ indicador.nombre }}
+</option>
+
+{% empty %}
+
+<option disabled>
+No hay indicadores disponibles
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+<div class="modal-footer">
+
+<button type="submit"
+name="accion"
+value="agregar_indicador"
+class="btn btn-success">
+Agregar
+</button>
+
+</div>
+
+</form>
+
+</div>
+</div>
+</div>
+
+
+
+<!-- 🔷 TABLA DE SEGUIMIENTO -->
+
+
+{% for bloque in estructura %}
+
+<div class="card shadow-sm border-0 mb-3">
+
+<!-- HEADER DEL OBJETIVO -->
+
+<div class="card-header bg-white">
+
+<div class="d-flex justify-content-between align-items-center">
+
+<button class="btn btn-link text-start fw-bold text-dark w-100"
+        data-bs-toggle="collapse"
+        data-bs-target="#objetivo{{ bloque.objetivo.id }}"
+        onclick="guardarObjetivo('{{ bloque.objetivo.id }}')"
+        style="text-decoration:none;">
+
+Objetivo: {{ bloque.objetivo.nombre }}
+
+</button>
+
+{% if es_planificacion %}
+
+<form method="POST" class="m-0 ms-2">
+
+{% csrf_token %}
+
+<button type="submit"
+name="accion"
+value="eliminar_objetivo"
+class="btn btn-sm btn-outline-danger">
+
+Eliminar
+
+</button>
+
+<input type="hidden"
+name="objetivo_id"
+value="{{ bloque.objetivo.id }}">
+
+</form>
+
+{% endif %}
+
+</div>
+
+</div>
+
+
+<!-- CONTENIDO DESPLEGABLE -->
+
+<div id="objetivo{{ bloque.objetivo.id }}"
+     class="collapse">
+
+<div class="card-body">
+
+<div class="table-responsive">
+
+<table class="table table-sm table-bordered align-middle">
+
+<thead class="table-light">
+
+<tr>
+
+<th>Indicador</th>
+<th>Meta</th>
+<th>Línea Base</th>
+<th>Valor {{ anio }}</th>
+<th>Estrategias</th>
+<th>Acciones</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for item in bloque.indicadores %}
+
+<tr>
+
+<td>
+<strong>
+{{ item.indicador.nombre }}
+</strong>
+</td>
+
+<td>
+{{ item.meta|default:"-" }}
+</td>
+
+<td>
+{{ item.linea_base|default:"-" }}
+</td>
+
+<td>
+
+{% if item.valor %}
+
+<span class="badge bg-primary">
+{{ item.valor }}
+</span>
+
+{% else %}
+
+<span class="text-muted">
+Sin datos
+</span>
+
+{% endif %}
+
+</td>
+
+<td>
+
+<ul class="small mb-0">
+
+{% for est in item.estrategias %}
+
+<li>
+{{ est.nombre }}
+</li>
+
+{% empty %}
+
+<li class="text-muted">
+Sin estrategias
+</li>
+
+{% endfor %}
+
+</ul>
+
+</td>
+
+<td>
+
+{% if es_planificacion %}
+
+<form method="POST">
+
+{% csrf_token %}
+
+<button type="submit"
+name="accion"
+value="eliminar_indicador"
+class="btn btn-sm btn-outline-danger">
+
+Eliminar
+
+</button>
+
+<input type="hidden"
+name="indicador_id"
+value="{{ item.indicador.id }}">
+
+</form>
+
+{% endif %}
+
+</td>
+
+</tr>
+
+{% empty %}
+
+<tr>
+
+<td colspan="6" class="text-center text-muted">
+No hay indicadores asociados a este objetivo
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+{% empty %}
+
+<div class="alert alert-light">
+
+Este programa aún no tiene objetivos asociados.
+
+</div>
+
+{% endfor %}
+
+</div>
+
+
+<script>
+
+function guardarObjetivo(id){
+
+const url = new URL(window.location.href)
+
+url.searchParams.set("objetivo_abierto", id)
+
+window.history.replaceState({}, "", url)
+
+}
+
+</script>
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function() {
+
+    const objetivos = document.querySelectorAll(".collapse");
+
+    const abierto = localStorage.getItem("objetivo_abierto");
+
+    if (abierto) {
+
+        const el = document.getElementById(abierto);
+
+        if (el) {
+            new bootstrap.Collapse(el, { toggle: true });
+        }
+
+    } else {
+
+        if (objetivos.length > 0) {
+            new bootstrap.Collapse(objetivos[0], { toggle: true });
+        }
+
+    }
+
+    objetivos.forEach(obj => {
+
+        obj.addEventListener("shown.bs.collapse", function () {
+            localStorage.setItem("objetivo_abierto", this.id);
+        });
+
+    });
+
+});
+
+</script>
+
+
+{% endlocalize %}
+
+{% endblock %}

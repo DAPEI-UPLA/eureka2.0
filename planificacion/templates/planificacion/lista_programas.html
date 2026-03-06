@@ -1,0 +1,110 @@
+{% extends "core/base.html" %}
+{% block content %}
+
+<div class="container-fluid">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold">Planes</h2>
+
+        {% if es_planificacion %}
+        <button class="btn btn-outline-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#crearProgramaModal">
+            + Nuevo Plan
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- TARJETAS -->
+    <div class="row">
+
+        {% for programa in programas %}
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+
+                <div class="card-body">
+
+                    <h5 class="fw-bold mb-2">
+                        {{ programa.nombre }}
+                    </h5>
+
+                    <p class="text-muted small mb-3">
+                        {{ programa.total_objetivos }} objetivos asociados
+                    </p>
+
+                    <hr>
+
+                    <ul class="small">
+                        {% for obj in programa.objetivos.all %}
+                            <li>{{ obj.nombre }}</li>
+                        {% empty %}
+                            <li class="text-muted">Sin objetivos asignados</li>
+                        {% endfor %}
+                    </ul>
+
+                </div>
+
+                <div class="card-footer bg-white border-0 text-end">
+                    <a href="{% url 'planificacion:seguimiento_programa' programa.id %}" class="btn btn-sm btn-outline-secondary">
+                        Visualizar
+                    </a>
+                </div>
+
+            </div>
+        </div>
+        {% endfor %}
+
+    </div>
+
+</div>
+
+{% if es_planificacion %}
+<div class="modal fade" id="crearProgramaModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Crear Plan</h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal">
+                </button>
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label class="form-label">Nombre</label>
+                        {{ form.nombre }}
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-light"
+                            data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary">
+                        Crear Plan
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endif %}
+
+
+{% endblock %}

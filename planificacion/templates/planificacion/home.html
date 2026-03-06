@@ -61,6 +61,7 @@
     }
 
     /* Colores sutiles por sección */
+
     .card.indicadores {
         border-left: 6px solid #2563eb;
     }
@@ -68,30 +69,26 @@
     .card.desafios {
         border-left: 6px solid #16a34a;
     }
+
+    .card.objetivos {
+        border-left: 6px solid #7c3aed;
+    }
+
+    .card.estrategias {
+        border-left: 6px solid #ea580c;
+    }
 </style>
 
 <div class="dashboard">
     <h1>Panel de Planificación</h1>
 
     <div class="cards">
-        <a href="{% url 'planificacion:indicadores' %}" class="card indicadores">
-            <div>
-                <div class="card-icon">📊</div>
-                <h2>Indicadores</h2>
-                <p>
-                    Consulta, registra y realiza seguimiento de los indicadores
-                    institucionales.
-                </p>
-            </div>
-            <div class="card-footer">
-                Ir a indicadores →
-            </div>
-        </a>
 
-        <a href="{% url 'planificacion:desafios' %}" class="card desafios">
+        <!-- Planes -->
+        <a href="{% url 'planificacion:lista_programas' %}" class="card desafios">
             <div>
                 <div class="card-icon">🧩</div>
-                <h2>Desafíos institucionales</h2>
+                <h2>Planes institucionales</h2>
                 <p>
                     Gestiona los desafíos estratégicos alineados al plan
                     institucional.
@@ -101,6 +98,53 @@
                 Ir a desafíos →
             </div>
         </a>
+
+
+        <!-- Objetivos -->
+        <a href="{% url 'planificacion:lista_objetivos' %}" class="card objetivos">
+            <div>
+                <div class="card-icon">🎯</div>
+                <h2>Objetivos</h2>
+                <p>
+                    Administra objetivos estratégicos y específicos
+                    vinculados a los programas institucionales.
+                </p>
+            </div>
+            <div class="card-footer">
+                Ir a objetivos →
+            </div>
+        </a>
+        
+        <!-- Indicadores -->
+        <a href="{% url 'planificacion:indicadores' %}" class="card indicadores">
+            <div>
+                <div class="card-icon">📊</div>
+                <h2>Indicadores</h2>
+                <p>
+                    Consulta y registra indicadores institucionales 
+                </p>
+            </div>
+            <div class="card-footer">
+                Ir a indicadores →
+            </div>
+        </a>
+
+        <!-- Estrategias -->
+        <a href="{% url 'planificacion:estrategias' %}" class="card estrategias">
+            <div>
+                <div class="card-icon">🧠</div>
+                <h2>Estrategias</h2>
+                <p>
+                    Diseña estrategias que permitan cumplir
+                    los objetivos definidos en los planes.
+                </p>
+            </div>
+            <div class="card-footer">
+                Ir a estrategias →
+            </div>
+        </a>
+
     </div>
 </div>
+
 {% endblock %}

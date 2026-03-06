@@ -1,0 +1,223 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+{% block content %}
+
+<style>
+.card-objetivo {
+    transition: all 0.2s ease-in-out;
+    border: 1px solid #e9ecef;
+}
+.card-objetivo:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+.badge-programa {
+    background-color: #f1f3f5;
+    color: #495057;
+    font-weight: 500;
+}
+.form-select, .form-control {
+    border-radius: 0.75rem;
+}
+</style>
+
+<div class="container-fluid">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-semibold mb-0">Objetivos</h2>
+
+        {% if es_planificacion %}
+        <button class="btn btn-primary btn-sm px-4 shadow-sm"
+                data-bs-toggle="modal"
+                data-bs-target="#modalObjetivo">
+            Nuevo Objetivo
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- ===================== -->
+    <!-- ESTRATÉGICOS -->
+    <!-- ===================== -->
+    <div class="mb-5">
+        <h5 class="fw-semibold mb-3 text-primary">
+            Objetivos Estratégicos
+        </h5>
+
+        <div class="row g-4">
+            {% for objetivo in estrategicos %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card card-objetivo rounded-4 h-100 border-0 shadow-sm">
+                    <div class="card-body">
+
+                        <h6 class="fw-semibold mb-2">
+                            {{ objetivo.nombre }}
+                        </h6>
+
+                        <p class="text-muted small mb-3">
+                            {{ objetivo.descripcion|truncatewords:20 }}
+                        </p>
+
+                        <div class="mb-3">
+                            {% for programa in objetivo.programas.all %}
+                                <span class="badge rounded-pill badge-programa me-1 mb-1">
+                                    {{ programa.nombre }}
+                                </span>
+                            {% empty %}
+                                <span class="text-muted small">
+                                    Sin asignar a programas
+                                </span>
+                            {% endfor %}
+                        </div>
+
+                        <div class="text-muted small">
+                            {{ objetivo.fecha_creacion|naturaltime }}
+                            · {{ objetivo.creado_por }}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-muted">
+                No hay objetivos estratégicos registrados.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ===================== -->
+    <!-- ESPECÍFICOS -->
+    <!-- ===================== -->
+    <div>
+        <h5 class="fw-semibold mb-3 text-success">
+            Objetivos Específicos
+        </h5>
+
+        <div class="row g-4">
+            {% for objetivo in especificos %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card card-objetivo rounded-4 h-100 border-0 shadow-sm">
+                    <div class="card-body">
+
+                        <h6 class="fw-semibold mb-2">
+                            {{ objetivo.nombre }}
+                        </h6>
+
+                        <p class="text-muted small mb-3">
+                            {{ objetivo.descripcion|truncatewords:20 }}
+                        </p>
+
+                        <div class="mb-3">
+                            {% for programa in objetivo.programas.all %}
+                                <span class="badge rounded-pill badge-programa me-1 mb-1">
+                                    {{ programa.nombre }}
+                                </span>
+                            {% empty %}
+                                <span class="text-muted small">
+                                    Sin asignar a programas
+                                </span>
+                            {% endfor %}
+                        </div>
+
+                        <div class="text-muted small">
+                            {{ objetivo.fecha_creacion|naturaltime }}
+                            · {{ objetivo.creado_por }}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-muted">
+                No hay objetivos específicos registrados.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+
+{% if es_planificacion %}
+<!-- ================================= -->
+<!-- MODAL CREAR OBJETIVO -->
+<!-- ================================= -->
+<div class="modal fade" id="modalObjetivo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+
+            <div class="modal-header border-0 pb-0 px-4 pt-4">
+                <div>
+                    <h5 class="modal-title fw-semibold mb-1">
+                        Nuevo Objetivo
+                    </h5>
+                    <small class="text-muted">
+                        Registra un objetivo estratégico o específico.
+                    </small>
+                </div>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal">
+                </button>
+            </div>
+
+            <hr class="mt-3 mb-0">
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="modal-body pt-4 px-4">
+
+                    <div class="row g-4">
+
+                        <!-- Nombre -->
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">
+                                Nombre del objetivo
+                            </label>
+                            {{ form.nombre }}
+                        </div>
+
+                        <!-- Tipo -->
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">
+                                Tipo de objetivo
+                            </label>
+                            {{ form.tipo }}
+                        </div>
+
+
+                        <!-- Descripción -->
+                        <div class="col-md-12">
+                            <label class="form-label small text-muted">
+                                Descripción
+                            </label>
+                            {{ form.descripcion }}
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer border-0 pt-0 pb-4 px-4">
+                    <button type="button"
+                            class="btn btn-light btn-sm px-4"
+                            data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary btn-sm px-4 shadow-sm">
+                        Guardar objetivo
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
