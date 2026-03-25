@@ -38,6 +38,19 @@
             </div>
         </div>
 
+        <!-- Formular iniciativa -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm border-0 h-100 card-hover">
+                <div class="card-body p-4">
+                    <h5 class="fw-semibold">Formular iniciativa</h5>
+                    <p class="text-muted small">
+                        Completa la formulación de iniciativas aprobadas por la OCT.
+                    </p>
+                    <a href="{% url 'oct:formular_iniciativas' %}" class="stretched-link"></a>
+                </div>
+            </div>
+        </div>
+
         {% if es_aprobador %}
         <!-- Revisar iniciativas -->
         <div class="col-md-6 col-lg-4">
@@ -48,6 +61,21 @@
                         Revisa, aprueba o devuelve iniciativas enviadas.
                     </p>
                     <a href="{% url 'oct:panel_aprobacion' %}" class="stretched-link"></a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if es_aprobador %}
+        <!-- Revisar formulaciones -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm border-0 h-100 card-hover">
+                <div class="card-body p-4">
+                    <h5 class="fw-semibold">Revisar formulaciones</h5>
+                    <p class="text-muted small">
+                        Revisa, aprueba o devuelve formulaciones enviadas.
+                    </p>
+                    <a href="{% url 'oct:revisar_formulaciones' %}" class="stretched-link"></a>
                 </div>
             </div>
         </div>

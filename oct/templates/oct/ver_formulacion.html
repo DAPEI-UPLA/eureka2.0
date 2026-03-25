@@ -1,0 +1,186 @@
+{% extends "core/base.html" %}
+{% block content %}
+
+<div class="container py-5">
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+<h3 class="fw-bold">Detalle de iniciativa</h3>
+
+<a href="javascript:history.back()" class="btn btn-outline-dark">
+Volver
+</a>
+</div>
+
+
+<div class="row g-4">
+
+<!-- INFORMACIÓN INICIATIVA -->
+<div class="col-lg-6">
+
+<div class="card shadow-sm border-0 h-100">
+
+<div class="card-header bg-light fw-semibold">
+Información de la iniciativa
+</div>
+
+<div class="card-body">
+
+<div class="mb-3">
+<label class="text-muted small">Nombre</label>
+<div class="fw-semibold">
+{{ iniciativa.nombre }}
+</div>
+</div>
+
+<div class="mb-3">
+<label class="text-muted small">Unidad</label>
+<div>
+{{ iniciativa.unidad }}
+</div>
+</div>
+
+<div class="mb-3">
+<label class="text-muted small">Responsable</label>
+<div>
+{{ iniciativa.responsable }}
+</div>
+</div>
+
+<div class="mb-3">
+<label class="text-muted small">Función institucional</label>
+<div>
+{{ iniciativa.get_funcion_institucional_display }}
+</div>
+</div>
+
+<div class="mb-3">
+<label class="text-muted small">Descripción</label>
+<div>
+{{ iniciativa.descripcion }}
+</div>
+</div>
+
+<div class="mb-3">
+<label class="text-muted small">Estado iniciativa</label>
+<div>
+
+<span class="badge bg-dark">
+{{ iniciativa.get_estado_display }}
+</span>
+
+</div>
+</div>
+
+</div>
+</div>
+</div>
+
+
+<!-- INFORMACIÓN FORMULACIÓN -->
+<div class="col-lg-6">
+
+<div class="card shadow-sm border-0 h-100">
+
+<div class="card-header bg-light fw-semibold">
+Formulación
+</div>
+
+<div class="card-body">
+
+{% if formulacion %}
+
+<div class="mb-3">
+<label class="text-muted small">Fondo o licitación</label>
+<div class="fw-semibold">
+{{ formulacion.nombre_fondo }}
+</div>
+</div>
+
+
+<div class="mb-3">
+<label class="text-muted small">Convocatoria</label>
+<div>
+
+{% if formulacion.link_convocatoria %}
+<a href="{{ formulacion.link_convocatoria }}" target="_blank">
+Ver convocatoria
+</a>
+{% else %}
+<span class="text-muted">No informado</span>
+{% endif %}
+
+</div>
+</div>
+
+
+<div class="mb-3">
+<label class="text-muted small">Estado formulación</label>
+<div>
+
+{% if formulacion.estado == "BOR" %}
+<span class="badge bg-secondary">
+Borrador
+</span>
+
+{% elif formulacion.estado == "ENV" %}
+<span class="badge bg-primary">
+En revisión
+</span>
+
+{% elif formulacion.estado == "DEV" %}
+<span class="badge bg-warning text-dark">
+Devuelta
+</span>
+
+{% elif formulacion.estado == "APR" %}
+<span class="badge bg-success">
+Aprobada
+</span>
+{% endif %}
+
+</div>
+</div>
+
+
+<div class="mb-3">
+<label class="text-muted small">Observaciones</label>
+<div>
+
+{% if formulacion.observaciones %}
+{{ formulacion.observaciones }}
+{% else %}
+<span class="text-muted">Sin observaciones</span>
+{% endif %}
+
+</div>
+</div>
+
+{% else %}
+
+<div class="text-muted">
+Esta iniciativa aún no tiene formulación registrada.
+</div>
+
+{% endif %}
+
+</div>
+</div>
+</div>
+
+</div>
+
+</div>
+
+<style>
+
+    .card{
+    border-radius:12px;
+    }
+
+    .card-header{
+    border-bottom:1px solid #eee;
+    }
+
+</style>
+
+{% endblock %}

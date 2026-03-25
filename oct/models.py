@@ -67,3 +67,64 @@ class DocumentoIniciativa(models.Model):
 
     def __str__(self):
         return f"Documento - {self.iniciativa.nombre}"
+    
+    
+class Formulacion(models.Model):
+
+    class Estado(models.TextChoices):
+        BORRADOR = "BOR", "Borrador"
+        ENVIADA = "ENV", "Enviada a revisión"
+        DEVUELTA = "DEV", "Devuelta con observaciones"
+        APROBADA = "APR", "Aprobada"
+
+    iniciativa = models.OneToOneField(
+        "Iniciativa",
+        on_delete=models.CASCADE,
+        related_name="formulacion"
+    )
+
+    nombre_fondo = models.CharField(
+        max_length=200
+    )
+
+    link_convocatoria = models.URLField(
+        blank=True,
+        null=True
+    )
+
+    estado = models.CharField(
+        max_length=3,
+        choices=Estado.choices,
+        default=Estado.BORRADOR
+    )
+
+    observaciones = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+
+
+
+    
+class DocumentoFormulacion(models.Model):
+
+    formulacion = models.ForeignKey(
+        Formulacion,
+        on_delete=models.CASCADE,
+        related_name="documentos"
+    )
+
+    archivo = models.FileField(
+        upload_to="formulaciones/"
+    )
+
+    fecha_subida = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    def __str__(self):
+        return f"Documento {self.formulacion.iniciativa.nombre}"
+    

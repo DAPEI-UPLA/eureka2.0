@@ -4,8 +4,8 @@ from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
 from django.contrib import messages
-from .forms import IniciativaForm
-from .models import Iniciativa
+from .forms import IniciativaForm, FormulacionForm
+from .models import Iniciativa, Formulacion
 
 
 
@@ -29,7 +29,7 @@ def registrar_iniciativa(request):
             iniciativa.responsable = request.user
             iniciativa.save()
 
-            # Si el usuario presionó botón "Enviar"
+           
             if "enviar" in request.POST:
                 iniciativa.estado = Iniciativa.Estado.ENVIADA
                 iniciativa.save()
@@ -149,3 +149,195 @@ def editar_iniciativa(request, pk):
         "form": form,
         "iniciativa": iniciativa
     })
+
+# Aquí comienza el apartado de formulación de iniciativas
+
+@login_required
+def formular_iniciativa(request, pk):
+
+    iniciativa = get_object_or_404(
+        Iniciativa,
+        pk=pk,
+        responsable=request.user,
+        estado=Iniciativa.Estado.APROBADA
+    )
+
+    if request.method == "POST":
+        form = FormulacionForm(request.POST)
+
+        if form.is_valid():
+            formulacion = form.save(commit=False)
+            formulacion.iniciativa = iniciativa
+            formulacion.save()
+
+            return redirect("oct:formular_iniciativas")
+
+    else:
+        form = FormulacionForm()
+
+    return render(request, "oct/formular_iniciativa.html", {
+        "form": form,
+        "iniciativa": iniciativa
+    })
+
+
+@login_required
+def formular_iniciativas(request):
+
+    iniciativas = Iniciativa.objects.filter(
+        responsable=request.user,
+        estado=Iniciativa.Estado.APROBADA
+    ).select_related()
+
+    form = FormulacionForm()
+
+    return render(request, "oct/formular_iniciativas.html", {
+        "iniciativas": iniciativas,
+        "form": form
+    })
+
+
+@login_required
+def guardar_formulacion(request, pk):
+
+    iniciativa = get_object_or_404(
+        Iniciativa,
+        pk=pk,
+        responsable=request.user,
+        estado=Iniciativa.Estado.APROBADA
+    )
+
+    if request.method == "POST":
+
+        form = FormulacionForm(request.POST)
+
+        if form.is_valid():
+
+            formulacion = form.save(commit=False)
+            formulacion.iniciativa = iniciativa
+            formulacion.save()
+
+            return redirect("oct:formular_iniciativas")
+
+    return redirect("oct:formular_iniciativas")
+
+
+def ver_formulacion(request, iniciativa_id):
+
+    iniciativa = get_object_or_404(Iniciativa, id=iniciativa_id)
+
+    formulacion = getattr(iniciativa, "formulacion", None)
+
+    context = {
+        "iniciativa": iniciativa,
+        "formulacion": formulacion
+    }
+
+    return render(request, "oct/ver_formulacion.html", context)
+
+@login_required
+def editar_formulacion(request, pk):
+
+    iniciativa = get_object_or_404(
+        Iniciativa,
+        pk=pk,
+        responsable=request.user
+    )
+
+    formulacion = get_object_or_404(
+        Formulacion,
+        iniciativa=iniciativa
+    )
+
+    if request.method == "POST":
+
+        form = FormulacionForm(request.POST, instance=formulacion)
+
+        if form.is_valid():
+
+            formulacion = form.save()
+
+            if "enviar" in request.POST:
+                formulacion.estado = Formulacion.Estado.ENVIADA
+                formulacion.save()
+
+            return redirect("oct:formular_iniciativas")
+
+    else:
+        form = FormulacionForm(instance=formulacion)
+
+    return render(request, "oct/editar_formulacion.html", {
+        "form": form,
+        "iniciativa": iniciativa
+    })
+
+@login_required
+def enviar_formulacion(request, pk):
+
+    iniciativa = get_object_or_404(Iniciativa, pk=pk)
+    formulacion = get_object_or_404(Formulacion, iniciativa=iniciativa)
+
+    if request.method == "POST":
+
+        formulacion.estado = "ENV"
+        formulacion.save()
+
+    return redirect("oct:formular_iniciativas")
+
+
+
+
+
+@login_required
+def revisar_formulaciones(request):
+
+    es_aprobador = request.user.groups.filter(
+        name="Aprobadores de Iniciativas"
+    ).exists()
+
+    if not es_aprobador:
+        return redirect("home")
+
+    formulaciones = Formulacion.objects.select_related(
+        "iniciativa"
+    ).filter(
+        estado="ENV"
+    )
+
+    context = {
+        "formulaciones": formulaciones
+    }
+
+    return render(
+        request,
+        "oct/revisar_formulaciones.html",
+        context
+    )
+
+
+
+@login_required
+def aprobar_formulacion(request, pk):
+
+    formulacion = get_object_or_404(Formulacion, pk=pk)
+
+    formulacion.estado = "APR"
+    formulacion.save()
+
+    return redirect("oct:revisar_formulaciones")
+
+
+@login_required
+def devolver_formulacion(request, pk):
+
+    formulacion = get_object_or_404(Formulacion, pk=pk)
+
+    if request.method == "POST":
+
+        observaciones = request.POST.get("observaciones")
+
+        formulacion.estado = "DEV"
+        formulacion.observaciones = observaciones
+        formulacion.save()
+
+    return redirect("oct:revisar_formulaciones")

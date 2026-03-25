@@ -1,5 +1,5 @@
 from django import forms
-from .models import Iniciativa
+from .models import Iniciativa, Formulacion
 
 
 class IniciativaForm(forms.ModelForm):
@@ -43,3 +43,13 @@ class IniciativaForm(forms.ModelForm):
                 "class": "form-check-input"
             }),
         }
+
+
+class FormulacionForm(forms.ModelForm):
+
+    class Meta:
+        model = Formulacion
+        fields = [
+            "nombre_fondo",
+            "link_convocatoria",
+        ]

@@ -1,0 +1,443 @@
+{% extends "core/base.html" %}
+{% block content %}
+
+<div class="container py-5">
+
+<h3 class="fw-bold mb-4">Formular iniciativas</h3>
+
+<div class="card shadow-sm border-0">
+
+<div class="table-responsive">
+
+<table class="table table-hover align-middle mb-0">
+
+<thead class="table-light">
+<tr>
+<th>Nombre</th>
+<th>Unidad</th>
+<th>Estado</th>
+<th></th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for i in iniciativas %}
+
+<tr>
+
+<td>{{ i.nombre }}</td>
+
+<td>{{ i.unidad }}</td>
+
+<td>
+
+{% if i.formulacion %}
+
+<span class="badge bg-secondary">
+{{ i.formulacion.get_estado_display }}
+</span>
+
+{% else %}
+
+<span class="badge bg-light text-dark border">
+Sin formular
+</span>
+
+{% endif %}
+
+</td>
+
+<td class="text-end">
+
+{% if i.formulacion %}
+
+<a href="{% url 'oct:ver_formulacion' i.id %}"
+class="btn btn-sm btn-outline-dark">
+Ver </a>
+
+<button
+class="btn btn-sm btn-dark"
+data-bs-toggle="modal"
+data-bs-target="#editarModal"
+data-id="{{ i.id }}"
+data-nombre="{{ i.nombre }}"
+data-fondo="{{ i.formulacion.nombre_fondo }}"
+data-link="{{ i.formulacion.link_convocatoria }}"
+
+>
+
+Editar </button>
+
+{% if i.formulacion.estado == "BOR" %}
+
+<button
+class="btn btn-sm btn-primary"
+data-bs-toggle="modal"
+data-bs-target="#enviarModal"
+data-id="{{ i.id }}"
+data-nombre="{{ i.nombre }}"
+
+>
+
+Enviar </button>
+
+{% endif %}
+
+{% else %}
+
+<button
+class="btn btn-sm btn-dark"
+data-bs-toggle="modal"
+data-bs-target="#formularModal"
+data-id="{{ i.id }}"
+data-nombre="{{ i.nombre }}"
+
+>
+
+Formular </button>
+
+{% endif %}
+
+</td>
+
+</tr>
+
+{% empty %}
+
+<tr>
+<td colspan="4" class="text-center text-muted py-4">
+No tienes iniciativas aprobadas para formular
+</td>
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+</div>
+
+</div>
+
+<!-- MODAL FORMULAR -->
+
+<div class="modal fade" id="formularModal" tabindex="-1">
+<div class="modal-dialog modal-lg modal-dialog-centered">
+<div class="modal-content shadow">
+
+<div class="modal-header border-0 pb-0">
+
+<div>
+<h5 class="modal-title fw-bold">
+Formular iniciativa
+</h5>
+
+<p class="text-muted small mb-0">
+Iniciativa seleccionada:
+<strong id="nombreIniciativa"></strong>
+</p>
+</div>
+
+<button class="btn-close" data-bs-dismiss="modal"></button>
+
+</div>
+
+<form method="post" id="formFormulacion">
+
+{% csrf_token %}
+
+<div class="modal-body pt-4">
+
+<div class="row g-3">
+
+<div class="col-12">
+
+<label class="form-label fw-semibold">
+Nombre del fondo o licitación
+</label>
+
+<input
+type="text"
+name="nombre_fondo"
+class="form-control"
+placeholder="Ej: Fondo de Innovación Regional"
+required
+
+>
+
+</div>
+
+<div class="col-12">
+
+<label class="form-label fw-semibold">
+Link de la convocatoria
+</label>
+
+<input
+type="url"
+name="link_convocatoria"
+class="form-control"
+placeholder="https://..."
+
+>
+
+<div class="form-text">
+Enlace oficial de la convocatoria o bases.
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="modal-footer border-0 pt-0">
+
+<button
+type="button"
+class="btn btn-outline-secondary"
+data-bs-dismiss="modal">
+Cancelar </button>
+
+<button
+type="submit"
+class="btn btn-dark px-4">
+Guardar formulación </button>
+
+</div>
+
+</form>
+
+</div>
+</div>
+</div>
+
+<!-- MODAL EDITAR -->
+
+<div class="modal fade" id="editarModal" tabindex="-1">
+<div class="modal-dialog modal-lg modal-dialog-centered">
+<div class="modal-content shadow">
+
+<div class="modal-header border-0 pb-0">
+
+<div>
+<h5 class="modal-title fw-bold">
+Editar formulación
+</h5>
+
+<p class="text-muted small mb-0">
+Iniciativa seleccionada:
+<strong id="editarNombre"></strong>
+</p>
+</div>
+
+<button class="btn-close" data-bs-dismiss="modal"></button>
+
+</div>
+
+<form method="post" id="editarFormulacion">
+
+{% csrf_token %}
+
+<div class="modal-body pt-4">
+
+<div class="row g-3">
+
+<div class="col-12">
+
+<label class="form-label fw-semibold">
+Nombre del fondo o licitación
+</label>
+
+<input
+type="text"
+name="nombre_fondo"
+id="editarFondo"
+class="form-control"
+required
+
+>
+
+</div>
+
+<div class="col-12">
+
+<label class="form-label fw-semibold">
+Link de la convocatoria
+</label>
+
+<input
+type="url"
+name="link_convocatoria"
+id="editarLink"
+class="form-control"
+
+>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="modal-footer border-0 pt-0">
+
+<button
+type="button"
+class="btn btn-outline-secondary"
+data-bs-dismiss="modal">
+Cancelar </button>
+
+<button
+type="submit"
+class="btn btn-dark px-4">
+Guardar cambios </button>
+
+</div>
+
+</form>
+
+</div>
+</div>
+</div>
+
+<!-- MODAL ENVIAR A REVISION -->
+
+<div class="modal fade" id="enviarModal" tabindex="-1">
+<div class="modal-dialog modal-dialog-centered">
+<div class="modal-content shadow">
+
+<div class="modal-header border-0">
+
+<h5 class="modal-title fw-bold">
+Enviar a revisión
+</h5>
+
+<button class="btn-close" data-bs-dismiss="modal"></button>
+
+</div>
+
+<form method="post" id="enviarFormulacion">
+
+{% csrf_token %}
+
+<div class="modal-body">
+
+<p class="mb-2">
+¿Estás seguro que deseas enviar esta formulación a revisión?
+</p>
+
+<p class="text-muted small mb-0">
+Iniciativa:
+<strong id="enviarNombre"></strong>
+</p>
+
+</div>
+
+<div class="modal-footer border-0">
+
+<button
+type="button"
+class="btn btn-outline-secondary"
+data-bs-dismiss="modal">
+Cancelar </button>
+
+<button
+type="submit"
+class="btn btn-primary">
+Sí, enviar </button>
+
+</div>
+
+</form>
+
+</div>
+</div>
+</div>
+
+<script>
+
+const modal = document.getElementById('formularModal')
+
+modal.addEventListener('show.bs.modal', function (event) {
+
+const button = event.relatedTarget
+
+const id = button.getAttribute('data-id')
+const nombre = button.getAttribute('data-nombre')
+
+document.getElementById("nombreIniciativa").innerText = nombre
+
+document.getElementById("formFormulacion").action =
+`/oct/iniciativas/formular/${id}/guardar/`
+
+})
+
+
+const editarModal = document.getElementById('editarModal')
+
+editarModal.addEventListener('show.bs.modal', function (event) {
+
+const button = event.relatedTarget
+
+const id = button.getAttribute('data-id')
+const nombre = button.getAttribute('data-nombre')
+const fondo = button.getAttribute('data-fondo')
+const link = button.getAttribute('data-link')
+
+document.getElementById("editarNombre").innerText = nombre
+document.getElementById("editarFondo").value = fondo
+document.getElementById("editarLink").value = link
+
+document.getElementById("editarFormulacion").action =
+`/oct/iniciativas/formulacion/${id}/editar/`
+
+})
+
+
+const enviarModal = document.getElementById('enviarModal')
+
+enviarModal.addEventListener('show.bs.modal', function (event) {
+
+const button = event.relatedTarget
+
+const id = button.getAttribute('data-id')
+const nombre = button.getAttribute('data-nombre')
+
+document.getElementById("enviarNombre").innerText = nombre
+
+document.getElementById("enviarFormulacion").action =
+`/oct/iniciativas/formulacion/${id}/enviar/`
+
+})
+
+</script>
+
+<style>
+
+.modal-content{
+border-radius:12px;
+}
+
+.form-control{
+border-radius:8px;
+}
+
+.modal-header{
+padding:1.5rem 1.5rem 0.5rem 1.5rem;
+}
+
+.modal-body{
+padding:1.5rem;
+}
+
+.modal-footer{
+padding:1rem 1.5rem 1.5rem 1.5rem;
+}
+
+</style>
+
+{% endblock %}
