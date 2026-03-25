@@ -1,11 +1,11 @@
-<td>
+<div>
     <input type="text"
            name="descripcion"
            value="{{ objetivo.descripcion }}"
            class="form-control"
            hx-post="{% url 'proyectos:guardar_objetivo' objetivo.pk %}"
-           hx-trigger="blur"
-           hx-target="closest td"
+           hx-trigger="blur, keyup[key=='Enter']"
+           hx-target="closest div"
            hx-swap="outerHTML"
            autofocus>
-</td>
+</div>

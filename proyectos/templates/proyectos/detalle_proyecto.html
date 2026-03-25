@@ -12,9 +12,9 @@
                 Responsable: {{ proyecto.responsable }}
             </small>
         </div>
-
+        
         {% if es_encargado %}
-        <button class="btn btn-primary btn-sm"
+        <button class="btn btn-primary btn-sm shadow-sm"
                 hx-post="{% url 'proyectos:crear_objetivo' proyecto.pk %}"
                 hx-target="#contenedor-objetivos"
                 hx-swap="beforeend">
@@ -23,20 +23,26 @@
         {% endif %}
     </div>
 
-    <!-- CONTENEDOR DE OBJETIVOS -->
+    <!-- CONTENEDOR -->
     <div id="contenedor-objetivos">
 
         {% for objetivo in proyecto.objetivos.all %}
 
-        <div class="objetivo-grupo mb-4 rounded shadow-sm bg-white border">
+        <div class="objetivo-grupo mb-4 rounded-3 shadow-sm border bg-white">
 
-            <!-- HEADER SUAVE -->
-            <div class="objetivo-header d-flex justify-content-between align-items-center px-4 py-3"
-                onclick="toggleObjetivo({{ objetivo.pk }})"
-                style="cursor:pointer; background-color:#f8f9fa; border-bottom:1px solid #e9ecef;">
+            <!-- HEADER OBJETIVO -->
+            <div class="d-flex justify-content-between align-items-center px-4 py-3"
+                 onclick="toggleObjetivo({{ objetivo.pk }})"
+                 style="cursor:pointer; background:#f8f9fa;">
 
-                <div class="fw-semibold text-dark">
-                    ▼ {{ objetivo.descripcion }}
+                <div class="fw-semibold text-dark"
+                     hx-get="{% url 'proyectos:editar_objetivo_form' objetivo.pk %}"
+                     hx-trigger="dblclick"
+                     hx-target="this"
+                     hx-swap="outerHTML">
+
+                    <span id="icono-{{ objetivo.pk }}">▼</span>
+                    {{ objetivo.descripcion }}
                 </div>
 
                 <div class="text-muted small">
@@ -48,13 +54,17 @@
             <div id="grupo-{{ objetivo.pk }}">
 
                 <table class="table align-middle mb-0">
-                    <thead style="background-color:#fdfdfd;">
-                        <tr class="text-muted small">
-                            <th style="width:30%">Tarea</th>
-                            <th>Responsable</th>
-                            <th>Estado</th>
-                            <th>Presupuesto</th>
-                            <th>Cumplimiento</th>
+                    <thead class="table-light small text-muted">
+                        <tr>
+                            <th class="text-start">Resultado</th>
+                            <th class="text-start">Responsable</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-end">Presupuesto</th>
+                            <th class="text-end">Ejecutado</th>
+                            <th class="text-end">Comprometido</th>
+                            <th class="text-end">Saldo</th>
+                            <th class="text-center">Avance</th>
+                            <th></th>
                         </tr>
                     </thead>
 
@@ -62,8 +72,8 @@
                         {% for resultado in objetivo.resultados.all %}
                             {% include "proyectos/partials/resultado_row.html" %}
                         {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-4">
+                            <tr class="text-center text-muted">
+                                <td colspan="9" class="py-4">
                                     No hay resultados aún
                                 </td>
                             </tr>
@@ -71,15 +81,16 @@
                     </tbody>
                 </table>
 
-                <!-- BOTÓN AGREGAR -->
+                {% if es_encargado %}
                 <div class="px-4 py-2 border-top bg-light">
                     <button class="btn btn-sm btn-outline-secondary"
-                            hx-get="{% url 'proyectos:crear_resultado' objetivo.pk %}"
+                            hx-post="{% url 'proyectos:crear_resultado' objetivo.pk %}"
                             hx-target="#resultados-{{ objetivo.pk }}"
                             hx-swap="beforeend">
                         + Agregar resultado
                     </button>
                 </div>
+                {% endif %}
 
             </div>
 
@@ -89,13 +100,53 @@
 
     </div>
 
-
 </div>
+
+<!-- MODAL PRESUPUESTO -->
+<div class="modal fade" id="modalPresupuesto" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Detalle de Presupuesto</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body" id="modal-body">
+        Cargando...
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<style>
+.hover-row:hover {
+    background-color: #f5f7fb;
+}
+
+.htmx-added {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px);}
+    to { opacity: 1; transform: translateY(0);}
+}
+</style>
 
 <script>
 function toggleObjetivo(id) {
     const grupo = document.getElementById("grupo-" + id);
+    const icono = document.getElementById("icono-" + id);
+
     grupo.classList.toggle("d-none");
+
+    if (grupo.classList.contains("d-none")) {
+        icono.innerText = "▶";
+    } else {
+        icono.innerText = "▼";
+    }
 }
 </script>
 

@@ -1,0 +1,13 @@
+<tr id="resultado-{{ resultado.pk }}">
+    <td colspan="9">
+        <input type="text"
+               name="descripcion"
+               value="{{ resultado.descripcion }}"
+               class="form-control"
+               hx-post="{% url 'proyectos:guardar_resultado' resultado.pk %}"
+               hx-trigger="blur, keyup[key=='Enter']"
+               hx-target="#resultado-{{ resultado.pk }}"
+               hx-swap="outerHTML"
+               autofocus>
+    </td>
+</tr>

@@ -1,23 +1,95 @@
-<tr id="resultado-{{ resultado.pk }}">
+{% load humanize %}
+<tr id="resultado-{{ resultado.pk }}" class="hover-row">
 
-    <td class="fw-semibold">
+    <!-- DESCRIPCIÓN -->
+    <td class="fw-semibold text-start"
+        hx-get="{% url 'proyectos:editar_resultado_form' resultado.pk %}"
+        hx-trigger="dblclick"
+        hx-target="this"
+        hx-swap="outerHTML"
+        style="cursor:pointer;">
         {{ resultado.descripcion }}
     </td>
 
-    <td>
-        {% if resultado.responsable %}
-            {{ resultado.responsable.username }}
-        {% else %}
-            —
-        {% endif %}
+    <!-- RESPONSABLE -->
+    <td class="text-start">
+        {{ resultado.responsable.username|default:"—" }}
     </td>
 
-    <td>
-        {{ resultado.get_estado_display }}
+    <!-- ESTADO -->
+    <td class="text-center">
+        <span class="badge
+            {% if resultado.estado == 'PENDIENTE' %}bg-secondary
+            {% elif resultado.estado == 'EN_PROCESO' %}bg-warning
+            {% else %}bg-success
+            {% endif %}">
+            {{ resultado.estado }}
+        </span>
     </td>
 
-    <td>
-        {{ resultado.presupuesto_asignado }}
+    <!-- PRESUPUESTO (CLICK) -->
+    <td class="fw-bold text-primary text-end"
+        style="cursor:pointer;"
+        hx-get="{% url 'proyectos:detalle_presupuesto_resultado' resultado.pk %}"
+        hx-target="#modal-body"
+        data-bs-toggle="modal"
+        data-bs-target="#modalPresupuesto">
+        ${{ resultado.presupuesto_asignado|floatformat:0|intcomma }}
+    </td>
+
+    <!-- EJECUTADO -->
+    <td class="text-end">
+        $0
+    </td>
+
+    <!-- COMPROMETIDO -->
+    <td class="text-end">
+        $0
+    </td>
+
+    <!-- SALDO -->
+    <td class="text-end fw-semibold text-success">
+        ${{ resultado.presupuesto_asignado|floatformat:0|intcomma }}
+    </td>
+
+    <!-- CUMPLIMIENTO -->
+    <td class="text-center">
+        <div class="d-flex align-items-center justify-content-center gap-2">
+
+            <input type="number"
+                name="cumplimiento"
+                value="{{ resultado.cumplimiento }}"
+                min="0"
+                max="100"
+                class="form-control form-control-sm text-center"
+                style="width:70px;"
+                hx-post="{% url 'proyectos:guardar_resultado' resultado.pk %}"
+                hx-trigger="change"
+                hx-target="#resultado-{{ resultado.pk }}"
+                hx-swap="outerHTML">
+
+            <div class="progress" style="height: 18px; width:120px;">
+                <div class="progress-bar
+                    {% if resultado.cumplimiento < 30 %}bg-danger
+                    {% elif resultado.cumplimiento < 70 %}bg-warning
+                    {% else %}bg-success
+                    {% endif %}"
+                    style="width: {{ resultado.cumplimiento }}%">
+                </div>
+            </div>
+
+        </div>
+    </td>
+
+    <!-- ELIMINAR -->
+    <td class="text-center">
+        <button class="btn btn-sm btn-outline-danger"
+                hx-delete="{% url 'proyectos:eliminar_resultado' resultado.pk %}"
+                hx-target="#resultado-{{ resultado.pk }}"
+                hx-swap="outerHTML"
+                hx-confirm="¿Eliminar este resultado?">
+            ✕
+        </button>
     </td>
 
 </tr>
