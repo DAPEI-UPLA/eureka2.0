@@ -8,9 +8,9 @@ from .models import Proyecto, ObjetivoEspecifico, Resultado
 from .forms import ProyectoForm
 
 
-# =========================
+
 # HELPERS / PERMISOS
-# =========================
+
 
 def es_jefe(user):
     return user.groups.filter(name='JefeProyectos').exists()
@@ -24,9 +24,8 @@ def usuario_es_responsable(user, proyecto):
     return user == proyecto.responsable
 
 
-# =========================
 # PROYECTOS
-# =========================
+
 
 @login_required
 def mis_proyectos(request):
@@ -91,9 +90,9 @@ def detalle_proyecto(request, pk):
     return render(request, "proyectos/detalle_proyecto.html", contexto)
 
 
-# =========================
+
 # OBJETIVOS (INLINE / HTMX)
-# =========================
+
 
 @login_required
 def crear_objetivo(request, pk):
@@ -152,9 +151,9 @@ def guardar_objetivo(request, pk):
     )
 
 
-# =========================
+
 # RESULTADOS (INLINE / HTMX)
-# =========================
+
 
 @login_required
 def crear_resultado(request, pk):
@@ -166,14 +165,14 @@ def crear_resultado(request, pk):
     try:
         resultado = Resultado.objects.create(
             objetivo=objetivo,
-            descripcion="",  # 👈 vacío para edición inmediata
+            descripcion="Nuevo Objetivo",  #Opción de cambiar, pero no afecta ya que es editable.
             cumplimiento=0,
             presupuesto_asignado=0
         )
     except ValidationError as e:
         return HttpResponse(str(e), status=400)
 
-    # 👇 Retorna directamente el input editable
+
     return render(
         request,
         "proyectos/partials/resultado_input.html",
@@ -271,10 +270,8 @@ def eliminar_resultado(request, pk):
 
 
 
+# TABLERO 
 
-# =========================
-# TABLERO (BASE TIPO MONDAY)
-# =========================
 
 @login_required
 def tablero_proyecto(request, pk):
