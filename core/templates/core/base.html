@@ -10,48 +10,87 @@
     <style>
         body {
             overflow-x: hidden;
+            background-color: #f4f4f4;
+            color: #565656;
         }
 
+        /* ===== SIDEBAR ===== */
         .sidebar {
-            width: 250px;
+            width: 260px;
             min-height: 100vh;
-            background-color: #212529;
+            background-color: #2f3a45; /* Gris institucional neutro */
             transition: margin-left 0.3s ease;
+            padding-top: 20px;
         }
 
         .sidebar.hidden {
-            margin-left: -250px;
+            margin-left: -260px;
         }
 
-        .sidebar a {
+        .sidebar-title {
+            font-weight: 700;
             color: #ffffff;
-            text-decoration: none;
+            letter-spacing: 1px;
         }
 
-        .sidebar a:hover {
-            background-color: #343a40;
+        /* Links */
+        .sidebar .nav-link {
+            color: #dcdcdc;
+            border-radius: 8px;
+            padding: 10px 14px;
+            transition: all 0.2s ease;
+            font-weight: 500;
         }
 
+        .sidebar .nav-link:hover {
+            background-color: rgba(0, 159, 227, 0.15);
+            color: #ffffff;
+        }
+
+        .sidebar .nav-link.active {
+            background-color: #009fe3; /* Azul UPLA como acento */
+            color: #ffffff;
+        }
+
+        /* ===== TOPBAR ===== */
+        .topbar {
+            height: 60px;
+            background-color: #ffffff;
+            border-bottom: 1px solid #e5e5e5;
+        }
+
+        .btn-outline-secondary {
+            border-color: #009fe3;
+            color: #009fe3;
+        }
+
+        .btn-outline-secondary:hover {
+            background-color: #009fe3;
+            color: #ffffff;
+        }
+
+        .btn-outline-danger {
+            border-radius: 50px;
+        }
+
+        /* ===== CONTENT ===== */
         .content {
             width: 100%;
-            padding: 20px;
+            padding: 30px;
         }
 
-        .topbar {
-            height: 56px;
-            background-color: #ffffff;
-            border-bottom: 1px solid #dee2e6;
-        }
+        /* ===== TARJETAS PROYECTOS (mejoradas) ===== */
         .proyecto-card {
-            border-radius: 14px;
+            border-radius: 16px;
             overflow: hidden;
             position: relative;
             transition: all 0.25s ease;
+            border: none;
         }
 
         .proyecto-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.08);
+            box-shadow: 0 15px 30px rgba(0, 159, 227, 0.12);
         }
 
         .proyecto-card::before {
@@ -60,14 +99,13 @@
             left: 0;
             top: 0;
             height: 100%;
-            width: 8px;
+            width: 6px;
         }
 
         .borde-planificado::before { background: #6c757d; }
-        .borde-ejecucion::before   { background: #0d6efd; }
+        .borde-ejecucion::before   { background: #009fe3; }
         .borde-finalizado::before  { background: #198754; }
         .borde-suspendido::before  { background: #dc3545; }
-
 
     </style>
 </head>
@@ -80,31 +118,97 @@
         <h5 class="text-white mb-4">Menú</h5>
 
         <ul class="nav nav-pills flex-column gap-2">
+
+            <!-- INICIO -->
             <li class="nav-item">
-                <a class="nav-link text-white" href="{% url 'home' %}">
+                <a class="nav-link" href="{% url 'home' %}">
                     🏠 Inicio
                 </a>
             </li>
+
+            <!-- PLANIFICACIÓN -->
             <li class="nav-item">
-                <a class="nav-link text-white" href="{% url 'planificacion:home' %}">
-                    📅 Planificación
+                <a class="nav-link d-flex justify-content-between align-items-center"
+                data-bs-toggle="collapse"
+                href="#menuPlanificacion"
+                role="button">
+                    📊 Planificación
+                    <span>▾</span>
                 </a>
+
+                <div class="collapse ms-3" id="menuPlanificacion">
+                    <ul class="nav flex-column mt-2">
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'planificacion:home' %}">
+                                Indicadores
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="#">
+                                Programas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="#">
+                                Objetivos
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </li>
+
+            <!-- PROYECTOS -->
             <li class="nav-item">
-                <a class="nav-link text-white" href="#">
-                    📊 Análisis
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link text-white" href="#">
+                <a class="nav-link d-flex justify-content-between align-items-center"
+                data-bs-toggle="collapse"
+                href="#menuProyectos"
+                role="button">
                     📁 Proyectos
+                    <span>▾</span>
                 </a>
+
+                <div class="collapse ms-3" id="menuProyectos">
+                    <ul class="nav flex-column mt-2">
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'proyectos:lista_proyectos' %}">
+                                Lista de proyectos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="#">
+                                Crear proyecto
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </li>
+
+            <!-- OCT -->
             <li class="nav-item">
-                <a class="nav-link text-white" href="#">
-                    🔁 OCT
+                <a class="nav-link d-flex justify-content-between align-items-center"
+                data-bs-toggle="collapse"
+                href="#menuOCT"
+                role="button">
+                    🤝 OCT
+                    <span>▾</span>
                 </a>
+
+                <div class="collapse ms-3" id="menuOCT">
+                    <ul class="nav flex-column mt-2">
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'oct:home' %}">
+                                Iniciativas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="#">
+                                
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </li>
+
         </ul>
     </div>
 

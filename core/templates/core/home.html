@@ -3,60 +3,137 @@
 {% block title %}Inicio{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Panel Principal</h2>
+
+<style>
+    body {
+        background-color: #f4f4f4;
+    }
+
+    .dashboard-title-main {
+        font-weight: 700;
+        color: #565656;
+    }
+
+    .dashboard-card {
+        border: none;
+        border-radius: 16px;
+        background: #ffffff;
+        transition: all 0.25s ease;
+    }
+
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 159, 227, 0.15);
+    }
+
+    .dashboard-icon {
+        font-size: 38px;
+        margin-bottom: 15px;
+        color: #009fe3;
+    }
+
+    .dashboard-title {
+        font-weight: 600;
+        color: #565656;
+        margin-bottom: 5px;
+    }
+
+    .dashboard-text {
+        font-size: 0.9rem;
+        color: #777;
+        margin-bottom: 20px;
+    }
+
+    .dashboard-btn {
+        border-radius: 40px;
+        padding: 6px 20px;
+        font-size: 0.85rem;
+        border: 1px solid #009fe3;
+        color: #009fe3;
+        transition: all 0.2s ease;
+    }
+
+    .dashboard-btn:hover {
+        background-color: #009fe3;
+        color: #ffffff;
+        border-color: #009fe3;
+    }
+</style>
+
+<h2 class="mb-4 dashboard-title-main">Panel Principal</h2>
 
 <div class="row g-4">
 
+    <!-- PLANIFICACIÓN -->
     <div class="col-md-3">
-        <div class="card shadow-sm h-100">
-            <div class="card-body text-center">
-                <h5>Planificación</h5>
-                <p class="text-muted">Gestión de planes e indicadores</p>
-                <a href="{% url 'planificacion:home' %}" class="btn btn-outline-primary btn-sm">Ingresar</a>
+        <div class="card dashboard-card shadow-sm h-100">
+            <div class="card-body text-center p-4">
+                <div class="dashboard-icon">📊</div>
+                <h5 class="dashboard-title">Planificación</h5>
+                <p class="dashboard-text">Gestión de planes e indicadores</p>
+                <a href="{% url 'planificacion:home' %}" class="btn dashboard-btn">
+                    Ingresar
+                </a>
             </div>
         </div>
     </div>
 
+    <!-- ANÁLISIS -->
     <div class="col-md-3">
-        <div class="card shadow-sm h-100">
-            <div class="card-body text-center">
-                <h5>Análisis</h5>
-                <p class="text-muted">Resultados y seguimiento</p>
-                <a href="#" class="btn btn-outline-primary btn-sm">Ingresar</a>
+        <div class="card dashboard-card shadow-sm h-100">
+            <div class="card-body text-center p-4">
+                <div class="dashboard-icon">📈</div>
+                <h5 class="dashboard-title">Análisis</h5>
+                <p class="dashboard-text">Resultados y seguimiento</p>
+                <a href="#" class="btn dashboard-btn">
+                    Ingresar
+                </a>
             </div>
         </div>
     </div>
 
+    <!-- PROYECTOS -->
     <div class="col-md-3">
-        <div class="card shadow-sm h-100">
-            <div class="card-body text-center">
-                <h5>Proyectos</h5>
-                <p class="text-muted">Gestión de proyectos</p>
-                <a href="{% url 'proyectos:lista_proyectos' %}" class="btn btn-outline-primary btn-sm">Ingresar</a>
+        <div class="card dashboard-card shadow-sm h-100">
+            <div class="card-body text-center p-4">
+                <div class="dashboard-icon">📁</div>
+                <h5 class="dashboard-title">Proyectos</h5>
+                <p class="dashboard-text">Gestión de proyectos</p>
+                <a href="{% url 'proyectos:lista_proyectos' %}" class="btn dashboard-btn">
+                    Ingresar
+                </a>
             </div>
         </div>
     </div>
 
+    <!-- OCT -->
     <div class="col-md-3">
-        <div class="card shadow-sm h-100">
-            <div class="card-body text-center">
-                <h5>OCT</h5>
-                <p class="text-muted">Oficina de cooperación técnica</p>
-                <a href="{% url 'oct:home' %}" class="btn btn-outline-primary btn-sm">Ingresar</a>
+        <div class="card dashboard-card shadow-sm h-100">
+            <div class="card-body text-center p-4">
+                <div class="dashboard-icon">🤝</div>
+                <h5 class="dashboard-title">OCT</h5>
+                <p class="dashboard-text">Oficina de cooperación técnica</p>
+                <a href="{% url 'oct:home' %}" class="btn dashboard-btn">
+                    Ingresar
+                </a>
             </div>
         </div>
     </div>
 
+    <!-- DASHBOARDS -->
     <div class="col-md-3">
-        <div class="card shadow-sm h-100">
-            <div class="card-body text-center">
-                <h5>Dashboards
-                </h5>
-                <p class="text-muted">Plan estrategico institucional</p>
-                <a href="https://dapei.upla.cl/Gestion_Estrategica/Dashboard/index.html" class="btn btn-outline-primary btn-sm">Ingresar</a>
+        <div class="card dashboard-card shadow-sm h-100">
+            <div class="card-body text-center p-4">
+                <div class="dashboard-icon">📌</div>
+                <h5 class="dashboard-title">Dashboards</h5>
+                <p class="dashboard-text">Plan estratégico institucional</p>
+                <a href="https://dapei.upla.cl/Gestion_Estrategica/Dashboard/index.html" class="btn dashboard-btn">
+                    Ingresar
+                </a>
             </div>
         </div>
     </div>
 
 </div>
+
 {% endblock %}
