@@ -1,22 +1,26 @@
 {% load humanize %}
+
+<!-- FILA RESULTADO -->
 <tr id="resultado-{{ resultado.pk }}" class="hover-row">
 
-    <!-- DESCRIPCIÓN -->
+    <!-- DESCRIPCIÓN + TOGGLE -->
     <td class="fw-semibold text-start"
+        style="cursor:pointer;"
+        onclick="toggleActividades({{ resultado.pk }})"
         hx-get="{% url 'proyectos:editar_resultado_form' resultado.pk %}"
         hx-trigger="dblclick"
         hx-target="this"
-        hx-swap="outerHTML"
-        style="cursor:pointer;">
+        hx-swap="outerHTML">
+
+        <span id="icono-res-{{ resultado.pk }}">▶</span>
         {{ resultado.descripcion }}
     </td>
 
-    <!-- RESPONSABLE -->
+    <!-- RESTO IGUAL -->
     <td class="text-start">
         {{ resultado.responsable.username|default:"—" }}
     </td>
 
-    <!-- ESTADO -->
     <td class="text-center">
         <span class="badge
             {% if resultado.estado == 'PENDIENTE' %}bg-secondary
@@ -27,7 +31,6 @@
         </span>
     </td>
 
-    <!-- PRESUPUESTO (CLICK) -->
     <td class="fw-bold text-primary text-end"
         style="cursor:pointer;"
         hx-get="{% url 'proyectos:detalle_presupuesto_resultado' resultado.pk %}"
@@ -37,22 +40,19 @@
         ${{ resultado.presupuesto_asignado|floatformat:0|intcomma }}
     </td>
 
-    <!-- EJECUTADO -->
     <td class="text-end">
-        $0
+        ${{ resultado.ejecutado|floatformat:0|intcomma }}
     </td>
 
-    <!-- COMPROMETIDO -->
     <td class="text-end">
-        $0
+        ${{ resultado.comprometido|floatformat:0|intcomma }}
     </td>
 
-    <!-- SALDO -->
-    <td class="text-end fw-semibold text-success">
-        ${{ resultado.presupuesto_asignado|floatformat:0|intcomma }}
+    <td class="text-end fw-semibold
+        {% if resultado.saldo < 0 %}text-danger{% else %}text-success{% endif %}">
+        ${{ resultado.saldo|floatformat:0|intcomma }}
     </td>
 
-    <!-- CUMPLIMIENTO -->
     <td class="text-center">
         <div class="d-flex align-items-center justify-content-center gap-2">
 
@@ -81,6 +81,18 @@
         </div>
     </td>
 
+    <!-- BOTÓN ACTIVIDAD -->
+    <td class="text-center">
+        <button class="btn btn-sm btn-outline-success"
+                hx-get="{% url 'proyectos:crear_actividad_form' resultado.pk %}"
+                hx-target="#modal-body"
+                data-bs-toggle="modal"
+                data-bs-target="#modalPresupuesto"
+                title="Agregar actividad">
+            +
+        </button>
+    </td>
+
     <!-- ELIMINAR -->
     <td class="text-center">
         <button class="btn btn-sm btn-outline-danger"
@@ -92,4 +104,32 @@
         </button>
     </td>
 
+</tr>
+
+
+<!-- 🔽 FILA ACTIVIDADES -->
+<tr id="actividades-row-{{ resultado.pk }}" class="d-none bg-light">
+    <td colspan="10" class="px-4 py-3">
+
+        <!-- CONTENEDOR -->
+        <div id="actividades-{{ resultado.pk }}"
+             hx-get="{% url 'proyectos:listar_actividades' resultado.pk %}"
+             hx-trigger="revealed">
+
+            <div class="text-muted small">Cargando actividades...</div>
+
+        </div>
+
+        <!-- BOTÓN AGREGAR -->
+        <div class="mt-2">
+            <button class="btn btn-sm btn-outline-secondary"
+                    hx-get="{% url 'proyectos:crear_actividad_form' resultado.pk %}"
+                    hx-target="#modal-body"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalPresupuesto">
+                + Agregar actividad
+            </button>
+        </div>
+
+    </td>
 </tr>

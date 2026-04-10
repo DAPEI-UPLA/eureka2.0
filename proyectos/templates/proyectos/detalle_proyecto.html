@@ -14,6 +14,15 @@
         </div>
         
         {% if es_encargado %}
+
+        <button class="btn btn-outline-success btn-sm shadow-sm"
+                hx-get="{% url 'proyectos:crear_plan_gasto_form' proyecto.pk %}"
+                hx-target="#modal-body"
+                data-bs-toggle="modal"
+                data-bs-target="#modalPresupuesto">
+            + Agregar Plan de gasto
+        </button>
+
         <button class="btn btn-primary btn-sm shadow-sm"
                 hx-post="{% url 'proyectos:crear_objetivo' proyecto.pk %}"
                 hx-target="#contenedor-objetivos"
@@ -68,16 +77,23 @@
                         </tr>
                     </thead>
 
-                    <tbody id="resultados-{{ objetivo.pk }}">
+                    <!-- 🔥 AQUÍ ESTÁ LA MEJORA -->
+                    <tbody id="resultados-{{ objetivo.pk }}"
+                           hx-on::after-swap="
+                               const empty = document.getElementById('empty-{{ objetivo.pk }}');
+                               if (empty) empty.remove();
+                           ">
+
                         {% for resultado in objetivo.resultados.all %}
                             {% include "proyectos/partials/resultado_row.html" %}
                         {% empty %}
-                            <tr class="text-center text-muted">
+                            <tr id="empty-{{ objetivo.pk }}" class="text-center text-muted">
                                 <td colspan="9" class="py-4">
                                     No hay resultados aún
                                 </td>
                             </tr>
                         {% endfor %}
+
                     </tbody>
                 </table>
 
@@ -136,18 +152,33 @@
 </style>
 
 <script>
-function toggleObjetivo(id) {
-    const grupo = document.getElementById("grupo-" + id);
-    const icono = document.getElementById("icono-" + id);
+    function toggleObjetivo(id) {
+        const grupo = document.getElementById("grupo-" + id);
+        const icono = document.getElementById("icono-" + id);
 
-    grupo.classList.toggle("d-none");
+        grupo.classList.toggle("d-none");
 
-    if (grupo.classList.contains("d-none")) {
-        icono.innerText = "▶";
-    } else {
-        icono.innerText = "▼";
+        if (grupo.classList.contains("d-none")) {
+            icono.innerText = "▶";
+        } else {
+            icono.innerText = "▼";
+        }
     }
-}
+</script>
+
+<script>
+    function toggleActividades(id) {
+        const row = document.getElementById("actividades-row-" + id);
+        const icono = document.getElementById("icono-res-" + id);
+
+        row.classList.toggle("d-none");
+
+        if (row.classList.contains("d-none")) {
+            icono.innerText = "▶";
+        } else {
+            icono.innerText = "▼";
+        }
+    }
 </script>
 
 {% endblock %}

@@ -1,0 +1,26 @@
+<form hx-post="{% url 'proyectos:crear_actividad' resultado.pk %}"
+      hx-target="#actividades-{{ resultado.pk }}"
+      hx-swap="beforeend">
+
+    <div class="mb-2">
+        <label>Nombre</label>
+        <input type="text" name="nombre" class="form-control" required>
+    </div>
+
+    <div class="mb-2">
+        <label>Presupuesto</label>
+        <input type="number" name="presupuesto" class="form-control" required>
+    </div>
+
+    <div class="mb-2">
+        <label>Fecha límite</label>
+        <input type="date" name="fecha_limite" class="form-control">
+    </div>
+
+    <div class="text-end">
+        <button class="btn btn-success btn-sm">
+            Guardar
+        </button>
+    </div>
+
+</form>

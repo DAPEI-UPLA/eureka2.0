@@ -1,0 +1,24 @@
+<h4>Nuevo Gasto</h4>
+
+<form method="POST">
+    {% csrf_token %}
+
+    <input type="text" name="nombre" placeholder="Nombre" class="form-control mb-2">
+
+    <textarea name="descripcion" placeholder="Descripción" class="form-control mb-2"></textarea>
+
+    <input type="number" name="monto" class="form-control mb-2">
+
+    <select name="tipo_gasto" class="form-select mb-2">
+        <option value="COR">Corriente</option>
+        <option value="CAP">Capital</option>
+    </select>
+
+    <select name="estado" class="form-select mb-2">
+        <option value="COM">Comprometido</option>
+        <option value="EJE">Ejecutado</option>
+    </select>
+
+    <button class="btn btn-success">Guardar</button>
+
+</form>

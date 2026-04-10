@@ -1,8 +1,17 @@
+{% load humanize %}
 <div>
 
     <h6 class="fw-bold mb-3">
         {{ resultado.descripcion }}
     </h6>
+    <hr>
+
+    <button class="btn btn-primary btn-sm"
+            hx-get="{% url 'proyectos:form_asignar_presupuesto' resultado.pk %}"
+            hx-target="#modal-body"
+            hx-swap="innerHTML">
+        + Asignar presupuesto
+    </button>
 
     <div class="mb-3">
         <strong>Presupuesto asignado:</strong>

@@ -1,0 +1,44 @@
+{% load humanize %}
+
+<h5 class="mb-3">Nuevo Gasto</h5>
+
+<form hx-post="{% url 'proyectos:guardar_gasto' resultado.pk %}"
+      hx-target="#modal-body"
+      hx-swap="innerHTML">
+
+    <div class="mb-2">
+        <label>Nombre</label>
+        <input type="text" name="nombre" class="form-control" required>
+    </div>
+
+    <div class="mb-2">
+        <label>Descripción</label>
+        <textarea name="descripcion" class="form-control"></textarea>
+    </div>
+
+    <div class="mb-2">
+        <label>Monto</label>
+        <input type="number" name="monto" class="form-control" required>
+    </div>
+
+    <div class="mb-2">
+        <label>Tipo</label>
+        <select name="tipo_gasto" class="form-select">
+            <option value="COR">Corriente</option>
+            <option value="CAP">Capital</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label>Estado</label>
+        <select name="estado" class="form-select">
+            <option value="COM">Comprometido</option>
+            <option value="EJE">Ejecutado</option>
+        </select>
+    </div>
+
+    <button class="btn btn-success w-100">
+        Guardar
+    </button>
+
+</form>

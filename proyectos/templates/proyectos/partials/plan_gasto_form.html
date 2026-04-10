@@ -1,0 +1,54 @@
+<form hx-post="{% url 'proyectos:crear_plan_gasto' proyecto.pk %}"
+      hx-target="#modal-body"
+      hx-swap="innerHTML">
+
+    <!-- AÑO -->
+    <div class="mb-2">
+        <label>Año</label>
+        <input type="number" name="anio" class="form-control" required>
+    </div>
+
+    <!-- OBJETIVO -->
+    <div class="mb-2">
+        <label>Objetivo</label>
+        <select name="objetivo" class="form-control" required
+                hx-get="{% url 'proyectos:cargar_resultados' %}"
+                hx-target="#resultado-select"
+                hx-trigger="change">
+
+            <option value="">Seleccione</option>
+            {% for o in objetivos %}
+                <option value="{{ o.id }}">{{ o.descripcion }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- RESULTADO -->
+    <div class="mb-2">
+        <label>Resultado</label>
+        <select name="resultado" id="resultado-select" class="form-control" required>
+            <option value="">Seleccione objetivo primero</option>
+        </select>
+    </div>
+
+    <!-- TIPO GASTO -->
+    <div class="mb-2">
+        <label>Tipo gasto</label>
+        <select name="tipo_gasto" class="form-control">
+            {% for t in tipos_gasto %}
+                <option value="{{ t.id }}">{{ t.nombre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- MONTO -->
+    <div class="mb-2">
+        <label>Monto</label>
+        <input type="number" name="monto" class="form-control" required>
+    </div>
+
+    <div class="text-end mt-3">
+        <button class="btn btn-success">Guardar</button>
+    </div>
+
+</form>

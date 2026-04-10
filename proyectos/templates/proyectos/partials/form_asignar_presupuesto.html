@@ -1,0 +1,61 @@
+{% load humanize %}
+
+<h6 class="fw-bold mb-3">
+    Asignar presupuesto
+</h6>
+
+<!-- INFO ACTUAL -->
+<div class="mb-3 small text-muted">
+
+    <div>
+        <strong>Disponible proyecto:</strong>
+        ${{ resultado.objetivo.proyecto.presupuesto_disponible|floatformat:0|intcomma }}
+    </div>
+
+    <div>
+        <strong>Total asignado:</strong>
+        ${{ resultado.presupuesto_asignado|floatformat:0|intcomma }}
+    </div>
+
+    <div class="text-info">
+        Corriente: ${{ resultado.presupuesto_corriente|floatformat:0|intcomma }}
+    </div>
+
+    <div class="text-dark">
+        Capital: ${{ resultado.presupuesto_capital|floatformat:0|intcomma }}
+    </div>
+
+</div>
+
+<form hx-post="{% url 'proyectos:guardar_presupuesto' resultado.pk %}"
+      hx-target="#modal-body"
+      hx-swap="innerHTML">
+
+    <!-- MONTO -->
+    <div class="mb-3">
+        <label class="form-label">Monto</label>
+        <input type="number"
+               name="monto"
+               class="form-control"
+               min="1"
+               step="1"
+               placeholder="Ej: 100000"
+               required>
+    </div>
+
+    <!-- TIPO -->
+    <div class="mb-3">
+        <label class="form-label">Tipo de gasto</label>
+        <select name="tipo_gasto" class="form-select" required>
+            <option value="">Seleccione...</option>
+            <option value="COR">Corriente</option>
+            <option value="CAP">Capital</option>
+        </select>
+    </div>
+
+    <!-- BOTÓN -->
+    <button class="btn btn-success w-100">
+        Guardar
+    </button>
+
+</form>
