@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1500" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#444"/>
+    </marker>
+    <style>
+      .home   { fill:#fde68a; stroke:#b45309; }
+      .cat    { fill:#bfdbfe; stroke:#1d4ed8; }
+      .crud   { fill:#e0e7ff; stroke:#4338ca; }
+      .prog   { fill:#bbf7d0; stroke:#15803d; }
+      .seg    { fill:#fecaca; stroke:#b91c1c; }
+      .est    { fill:#fef08a; stroke:#a16207; }
+      .closed { fill:#d1d5db; stroke:#374151; }
+      .dec    { fill:#fed7aa; stroke:#c2410c; }
+      .api    { fill:#e9d5ff; stroke:#7e22ce; }
+      .label  { font-size:13px; fill:#111; text-anchor:middle; }
+      .title  { font-size:24px; font-weight:bold; fill:#111; text-anchor:middle; }
+      .sub    { font-size:14px; fill:#374151; text-anchor:middle; }
+      .legtxt { font-size:12px; fill:#111; }
+      .edge   { stroke:#444; stroke-width:1.5; fill:none; }
+      .edge-d { stroke:#888; stroke-width:1.3; stroke-dasharray:5,4; fill:none; }
+      rect, polygon, ellipse { stroke-width:2; }
+    </style>
+  </defs>
+
+  <!-- TITLE -->
+  <text x="700" y="40" class="title">Diagrama de flujo — App "planificacion"</text>
+  <text x="700" y="62" class="sub">Sistema de gestión de Planes Estratégicos / PD con seguimiento de indicadores</text>
+
+  <!-- HOME -->
+  <ellipse cx="700" cy="115" rx="120" ry="32" class="home"/>
+  <text x="700" y="112" class="label" font-weight="bold">🏠 planificacion_home</text>
+  <text x="700" y="128" class="label" font-size="11">página principal</text>
+
+  <!-- BUSCAR -->
+  <rect x="1180" y="90" width="170" height="50" rx="8" class="cat"/>
+  <text x="1265" y="112" class="label" font-weight="bold">🔍 Búsqueda global</text>
+  <text x="1265" y="128" class="label" font-size="11">/buscar/</text>
+
+  <!-- CATEGORÍAS -->
+  <rect x="60"  y="200" width="200" height="55" rx="8" class="cat"/>
+  <text x="160" y="222" class="label" font-weight="bold">📊 Indicadores</text>
+  <text x="160" y="240" class="label" font-size="11">/indicadores/</text>
+
+  <rect x="300" y="200" width="200" height="55" rx="8" class="cat"/>
+  <text x="400" y="222" class="label" font-weight="bold">🎯 Objetivos</text>
+  <text x="400" y="240" class="label" font-size="11">/objetivos/</text>
+
+  <rect x="540" y="200" width="200" height="55" rx="8" class="cat"/>
+  <text x="640" y="222" class="label" font-weight="bold">🧭 Estrategias</text>
+  <text x="640" y="240" class="label" font-size="11">/estrategias/</text>
+
+  <rect x="900" y="200" width="260" height="55" rx="8" class="prog"/>
+  <text x="1030" y="222" class="label" font-weight="bold">📋 Programas / PD</text>
+  <text x="1030" y="240" class="label" font-size="11">PEI · PD_UNI · PD_FUN</text>
+
+  <!-- CRUD CATEGORÍAS -->
+  <rect x="60"  y="300" width="200" height="55" rx="8" class="crud"/>
+  <text x="160" y="322" class="label">Listar / Editar</text>
+  <text x="160" y="340" class="label">Eliminar Indicador</text>
+
+  <rect x="300" y="300" width="200" height="55" rx="8" class="crud"/>
+  <text x="400" y="322" class="label">Listar / Editar</text>
+  <text x="400" y="340" class="label">Eliminar Objetivo</text>
+
+  <rect x="540" y="300" width="200" height="55" rx="8" class="crud"/>
+  <text x="640" y="322" class="label">Listar / Editar</text>
+  <text x="640" y="340" class="label">Eliminar Estrategia</text>
+
+  <!-- PROGRAMAS rama -->
+  <rect x="780"  y="300" width="170" height="55" rx="8" class="prog"/>
+  <text x="865" y="322" class="label">lista_programas</text>
+  <text x="865" y="340" class="label" font-size="11">/ por tipo</text>
+
+  <rect x="970" y="300" width="135" height="55" rx="8" class="prog"/>
+  <text x="1037" y="322" class="label">➕ crear</text>
+  <text x="1037" y="340" class="label" font-size="11">estado=BORRADOR</text>
+
+  <rect x="1120" y="300" width="115" height="55" rx="8" class="prog"/>
+  <text x="1177" y="322" class="label">✏️ editar</text>
+  <text x="1177" y="340" class="label" font-size="11">programa</text>
+
+  <rect x="1250" y="300" width="115" height="55" rx="8" class="prog"/>
+  <text x="1307" y="322" class="label">📈 comparar</text>
+  <text x="1307" y="340" class="label" font-size="11">/comparar/</text>
+
+  <!-- ARMADO -->
+  <polygon points="1037,400 1180,440 1037,480 894,440" class="dec"/>
+  <text x="1037" y="436" class="label" font-weight="bold">Armado del programa</text>
+  <text x="1037" y="454" class="label" font-size="11">objetivos + indicadores</text>
+
+  <rect x="780"  y="525" width="220" height="55" rx="8" class="prog"/>
+  <text x="890" y="547" class="label" font-weight="bold">agregar / quitar Objetivo</text>
+  <text x="890" y="565" class="label" font-size="11">M2M Programa↔Objetivo</text>
+
+  <rect x="1080" y="525" width="240" height="55" rx="8" class="prog"/>
+  <text x="1200" y="547" class="label" font-weight="bold">agregar / quitar Indicador</text>
+  <text x="1200" y="565" class="label" font-size="11">crea ProgramaIndicador</text>
+
+  <!-- Validación -->
+  <rect x="1080" y="615" width="290" height="50" rx="8" class="est"/>
+  <text x="1225" y="637" class="label" font-style="italic">Validación: el objetivo del indicador</text>
+  <text x="1225" y="655" class="label" font-style="italic">debe estar asociado al programa</text>
+
+  <!-- ESTADO -->
+  <polygon points="1037,710 1180,750 1037,790 894,750" class="dec"/>
+  <text x="1037" y="746" class="label" font-weight="bold">cambiar_estado</text>
+  <text x="1037" y="762" class="label" font-size="11">BORRADOR ↔ VIGENTE</text>
+
+  <rect x="850"  y="830" width="170" height="50" rx="8" class="prog"/>
+  <text x="935" y="858" class="label" font-weight="bold">🟢 VIGENTE</text>
+
+  <rect x="1080" y="830" width="170" height="50" rx="8" class="closed"/>
+  <text x="1165" y="858" class="label" font-weight="bold">⚪ BORRADOR</text>
+
+  <!-- SEGUIMIENTO -->
+  <rect x="820"  y="930" width="240" height="60" rx="8" class="seg"/>
+  <text x="940" y="954" class="label" font-weight="bold">📊 seguimiento_programa</text>
+  <text x="940" y="974" class="label" font-size="11">vista principal del seguimiento</text>
+
+  <rect x="60"   y="1040" width="220" height="60" rx="8" class="seg"/>
+  <text x="170" y="1064" class="label" font-weight="bold">guardar_meta</text>
+  <text x="170" y="1082" class="label" font-size="11">MetaIndicador por año</text>
+  <text x="170" y="1098" class="label" font-size="11">(VALOR / S/M / N/A)</text>
+
+  <rect x="310"  y="1040" width="220" height="60" rx="8" class="seg"/>
+  <text x="420" y="1064" class="label" font-weight="bold">registrar_valor</text>
+  <text x="420" y="1082" class="label" font-size="11">SeguimientoIndicador</text>
+  <text x="420" y="1098" class="label" font-size="11">año + S1/S2</text>
+
+  <rect x="560"  y="1040" width="220" height="60" rx="8" class="seg"/>
+  <text x="670" y="1064" class="label" font-weight="bold">guardar_meta_y_valor</text>
+  <text x="670" y="1082" class="label" font-size="11">combinado</text>
+
+  <!-- EXCEL -->
+  <rect x="810"  y="1040" width="220" height="60" rx="8" class="est"/>
+  <text x="920" y="1064" class="label" font-weight="bold">📑 Excel</text>
+  <text x="920" y="1082" class="label" font-size="11">plantilla · importar</text>
+  <text x="920" y="1098" class="label" font-size="11">exportar</text>
+
+  <!-- VISUALIZACIÓN -->
+  <rect x="1060" y="1040" width="150" height="60" rx="8" class="api"/>
+  <text x="1135" y="1064" class="label" font-weight="bold">🔥 heatmap</text>
+  <text x="1135" y="1082" class="label" font-size="11">umbrales 70/90 %</text>
+
+  <rect x="1230" y="1040" width="150" height="60" rx="8" class="api"/>
+  <text x="1305" y="1064" class="label" font-weight="bold">🌐 público</text>
+  <text x="1305" y="1082" class="label" font-size="11">vista sin login</text>
+
+  <rect x="1230" y="1115" width="150" height="50" rx="8" class="api"/>
+  <text x="1305" y="1137" class="label" font-weight="bold">/api/series/</text>
+  <text x="1305" y="1153" class="label" font-size="11">JSON gráficos</text>
+
+  <!-- CIERRE -->
+  <polygon points="940,1180 1080,1220 940,1260 800,1220" class="dec"/>
+  <text x="940" y="1216" class="label" font-weight="bold">¿Cerrar año?</text>
+  <text x="940" y="1232" class="label" font-size="11">cerrar_anio / reabrir_anio</text>
+
+  <rect x="820"  y="1310" width="240" height="70" rx="8" class="closed"/>
+  <text x="940" y="1335" class="label" font-weight="bold">🔒 CERRADO</text>
+  <text x="940" y="1353" class="label" font-size="11">CierreAnual + estado=CERRADO</text>
+  <text x="940" y="1370" class="label" font-size="11">no editable (reabrir → VIGENTE)</text>
+
+  <!-- ELIMINAR (soft) -->
+  <rect x="1140" y="1310" width="220" height="70" rx="8" class="closed"/>
+  <text x="1250" y="1335" class="label" font-weight="bold">🗑 eliminar_programa</text>
+  <text x="1250" y="1353" class="label" font-size="11">soft-delete (eliminado=True)</text>
+  <text x="1250" y="1370" class="label" font-size="11">ActivosManager los excluye</text>
+
+  <!-- EDGES -->
+  <!-- Home → categorías -->
+  <path class="edge" d="M620,135 C400,160 250,180 160,200" marker-end="url(#arrow)"/>
+  <path class="edge" d="M660,140 C540,170 460,180 400,200" marker-end="url(#arrow)"/>
+  <path class="edge" d="M720,140 C700,170 660,180 640,200" marker-end="url(#arrow)"/>
+  <path class="edge" d="M790,130 C880,170 970,180 1030,200" marker-end="url(#arrow)"/>
+  <path class="edge" d="M820,115 L1180,115" marker-end="url(#arrow)"/>
+
+  <!-- Cats → CRUDs -->
+  <path class="edge" d="M160,255 L160,300" marker-end="url(#arrow)"/>
+  <path class="edge" d="M400,255 L400,300" marker-end="url(#arrow)"/>
+  <path class="edge" d="M640,255 L640,300" marker-end="url(#arrow)"/>
+
+  <!-- Programas hub → ramas -->
+  <path class="edge" d="M970,255 C920,275 880,290 865,300" marker-end="url(#arrow)"/>
+  <path class="edge" d="M1020,255 L1037,300" marker-end="url(#arrow)"/>
+  <path class="edge" d="M1080,255 C1130,275 1160,290 1177,300" marker-end="url(#arrow)"/>
+  <path class="edge" d="M1130,255 C1230,275 1280,290 1307,300" marker-end="url(#arrow)"/>
+
+  <!-- crear/editar/lista → armado -->
+  <path class="edge" d="M865,355 C900,380 980,410 970,400" marker-end="url(#arrow)"/>
+  <path class="edge" d="M1037,355 L1037,400" marker-end="url(#arrow)"/>
+  <path class="edge" d="M1177,355 C1150,380 1110,400 1115,410" marker-end="url(#arrow)"/>
+
+  <!-- armado → add obj/ind -->
+  <path class="edge" d="M970,470 C940,500 910,520 890,525" marker-end="url(#arrow)"/>
+  <path class="edge" d="M1100,470 C1140,500 1180,520 1200,525" marker-end="url(#arrow)"/>
+
+  <!-- valida -->
+  <path class="edge-d" d="M1200,580 L1225,615" marker-end="url(#arrow)"/>
+
+  <!-- armado → cambiar_estado -->
+  <path class="edge" d="M1037,480 L1037,710" marker-end="url(#arrow)"/>
+
+  <!-- estado → vigente / borrador -->
+  <path class="edge" d="M970,775 C950,810 940,820 935,830" marker-end="url(#arrow)"/>
+  <path class="edge" d="M1100,775 C1140,810 1160,820 1165,830" marker-end="url(#arrow)"/>
+
+  <!-- vigente → seguimiento -->
+  <path class="edge" d="M935,880 L940,930" marker-end="url(#arrow)"/>
+
+  <!-- seguimiento → meta/valor/combo/excel/heatmap/publico/api -->
+  <path class="edge" d="M820,970 C500,1000 250,1020 170,1040" marker-end="url(#arrow)"/>
+  <path class="edge" d="M880,985 C700,1010 500,1025 420,1040" marker-end="url(#arrow)"/>
+  <path class="edge" d="M900,990 C780,1010 700,1025 670,1040" marker-end="url(#arrow)"/>
+  <path class="edge" d="M940,990 L920,1040" marker-end="url(#arrow)"/>
+  <path class="edge" d="M1010,985 C1080,1005 1120,1025 1135,1040" marker-end="url(#arrow)"/>
+  <path class="edge" d="M1050,975 C1180,1005 1270,1025 1305,1040" marker-end="url(#arrow)"/>
+  <path class="edge" d="M1060,985 C1200,1060 1280,1100 1305,1115" marker-end="url(#arrow)"/>
+
+  <!-- seguimiento → cierre -->
+  <path class="edge" d="M940,990 L940,1180" marker-end="url(#arrow)"/>
+
+  <!-- cierre → cerrado / reabrir -->
+  <path class="edge" d="M940,1260 L940,1310" marker-end="url(#arrow)"/>
+  <path class="edge-d" d="M820,1310 C700,1200 760,1000 870,960" marker-end="url(#arrow)"/>
+
+  <!-- programas → eliminar -->
+  <path class="edge" d="M865,355 C950,1100 1100,1260 1180,1310" marker-end="url(#arrow)"/>
+
+  <!-- LEYENDA -->
+  <rect x="40" y="1410" width="1320" height="70" rx="8" fill="#f9fafb" stroke="#d1d5db"/>
+  <text x="55" y="1432" class="legtxt" font-weight="bold">Leyenda:</text>
+
+  <rect x="125" y="1420" width="18" height="14" class="home"/><text x="148" y="1432" class="legtxt">Home</text>
+  <rect x="200" y="1420" width="18" height="14" class="cat"/> <text x="223" y="1432" class="legtxt">Catálogo</text>
+  <rect x="295" y="1420" width="18" height="14" class="crud"/><text x="318" y="1432" class="legtxt">CRUD</text>
+  <rect x="370" y="1420" width="18" height="14" class="prog"/><text x="393" y="1432" class="legtxt">Programa / armado</text>
+  <rect x="510" y="1420" width="18" height="14" class="seg"/> <text x="533" y="1432" class="legtxt">Seguimiento</text>
+  <rect x="625" y="1420" width="18" height="14" class="est"/> <text x="648" y="1432" class="legtxt">Excel / validación</text>
+  <rect x="765" y="1420" width="18" height="14" class="api"/> <text x="788" y="1432" class="legtxt">Visualización / API</text>
+  <rect x="900" y="1420" width="18" height="14" class="closed"/><text x="923" y="1432" class="legtxt">Cerrado / eliminado</text>
+  <polygon points="1050,1418 1062,1428 1050,1438 1038,1428" class="dec"/><text x="1075" y="1432" class="legtxt">Decisión</text>
+
+  <text x="55"  y="1462" class="legtxt">→ flujo principal     ⤑ relación / validación (línea discontinua)</text>
+  <text x="900" y="1462" class="legtxt" font-style="italic">Modelo: Programa · Objetivo · Indicador · ProgramaIndicador · MetaIndicador · SeguimientoIndicador · CierreAnual · Estrategia</text>
+</svg>

@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1300" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="one"  viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1f2937" stroke-width="1.6"/>
+      <line x1="3" y1="0" x2="3" y2="10" stroke="#1f2937" stroke-width="1.6"/>
+    </marker>
+    <marker id="many" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M0,1 L11,6 L0,11 M0,6 L11,6" fill="none" stroke="#1f2937" stroke-width="1.6"/>
+    </marker>
+    <style>
+      .title  { font-size:24px; font-weight:bold; fill:#111; text-anchor:middle; }
+      .sub    { font-size:14px; fill:#374151; text-anchor:middle; }
+      .thead  { font-size:14px; font-weight:bold; fill:#fff; text-anchor:middle; }
+      .ttype  { font-size:10px; font-style:italic; fill:#e5e7eb; text-anchor:middle; }
+      .col    { font-size:12px; fill:#111; }
+      .pk     { font-weight:bold; fill:#0c4a6e; }
+      .fk     { font-style:italic; fill:#7c2d12; }
+      .uq     { fill:#3f6212; }
+      .meta   { font-size:11px; fill:#6b7280; }
+      .edge   { stroke:#1f2937; stroke-width:1.6; fill:none; }
+      .m2m    { stroke:#7e22ce; stroke-width:1.8; fill:none; stroke-dasharray:6,4; }
+      .legtxt { font-size:12px; fill:#111; }
+      .lbl    { font-size:11px; fill:#374151; }
+      rect.tb { stroke-width:1.6; }
+    </style>
+  </defs>
+
+  <!-- TITLE -->
+  <text x="800" y="35" class="title">Modelo de base de datos — App "planificacion"</text>
+  <text x="800" y="58" class="sub">Diagrama Entidad-Relación · Notación crow's foot · PK en negrita · FK en cursiva · UQ en verde</text>
+
+  <!-- ============================================ -->
+  <!-- USER (auth) -->
+  <g>
+    <rect class="tb" x="40" y="100" width="220" height="80" rx="6" fill="#f3f4f6" stroke="#6b7280"/>
+    <rect x="40" y="100" width="220" height="28" rx="6" fill="#6b7280"/>
+    <text x="150" y="118" class="thead">User (django auth)</text>
+    <text x="150" y="130" class="ttype">[referencia externa]</text>
+    <text x="50" y="150" class="col"><tspan class="pk">id (PK)</tspan></text>
+    <text x="50" y="168" class="col">username, ...</text>
+  </g>
+
+  <!-- TipoIndicador -->
+  <g>
+    <rect class="tb" x="40" y="220" width="220" height="100" rx="6" fill="#fef3c7" stroke="#a16207"/>
+    <rect x="40" y="220" width="220" height="28" rx="6" fill="#a16207"/>
+    <text x="150" y="238" class="thead">TipoIndicador</text>
+    <text x="150" y="250" class="ttype">catálogo (no usado por FK)</text>
+    <text x="50" y="270" class="col"><tspan class="pk">id (PK)</tspan></text>
+    <text x="50" y="288" class="col">nombre · <tspan class="uq">UNIQUE</tspan></text>
+    <text x="50" y="306" class="col">descripcion</text>
+  </g>
+
+  <!-- ============================================ -->
+  <!-- PROGRAMA -->
+  <g>
+    <rect class="tb" x="600" y="100" width="280" height="240" rx="6" fill="#bbf7d0" stroke="#15803d"/>
+    <rect x="600" y="100" width="280" height="28" rx="6" fill="#15803d"/>
+    <text x="740" y="118" class="thead">Programa</text>
+    <text x="740" y="130" class="ttype">PEI · PD Unidades · PD Funciones</text>
+    <text x="610" y="150" class="col"><tspan class="pk">id (PK)</tspan></text>
+    <text x="610" y="168" class="col">nombre  varchar(100)</text>
+    <text x="610" y="186" class="col">tipo  enum {PEI, PD_UNI, PD_FUN}</text>
+    <text x="610" y="204" class="col">estado  enum {BORRADOR, VIGENTE, CERRADO}</text>
+    <text x="610" y="222" class="col">fecha_creacion  datetime</text>
+    <text x="610" y="240" class="col"><tspan class="fk">creado_por_id → User</tspan> (PROTECT)</text>
+    <text x="610" y="258" class="col">eliminado  bool (soft-delete)</text>
+    <text x="610" y="282" class="meta">UNIQUE(nombre, tipo) WHERE eliminado=false</text>
+    <text x="610" y="298" class="meta">manager: objects (activos), todos (full)</text>
+    <text x="610" y="316" class="meta">M2M ↔ Objetivo (programa_objetivos)</text>
+  </g>
+
+  <!-- OBJETIVO -->
+  <g>
+    <rect class="tb" x="1230" y="100" width="320" height="200" rx="6" fill="#bfdbfe" stroke="#1d4ed8"/>
+    <rect x="1230" y="100" width="320" height="28" rx="6" fill="#1d4ed8"/>
+    <text x="1390" y="118" class="thead">Objetivo</text>
+    <text x="1390" y="130" class="ttype">objetivo estratégico / específico</text>
+    <text x="1240" y="150" class="col"><tspan class="pk">id (PK)</tspan></text>
+    <text x="1240" y="168" class="col">nombre  varchar(500)</text>
+    <text x="1240" y="186" class="col">descripcion  text(500)</text>
+    <text x="1240" y="204" class="col">tipo  enum {ESTRATEGICO, ESPECIFICO}</text>
+    <text x="1240" y="222" class="col">fecha_creacion  datetime</text>
+    <text x="1240" y="240" class="col"><tspan class="fk">creado_por_id → User</tspan> (SET_NULL)</text>
+    <text x="1240" y="258" class="col">eliminado  bool</text>
+    <text x="1240" y="280" class="meta">manager: objects / todos · ordering ‑fecha</text>
+  </g>
+
+  <!-- M2M tabla intermedia Programa-Objetivo -->
+  <g>
+    <rect class="tb" x="970" y="160" width="170" height="90" rx="6" fill="#ddd6fe" stroke="#7e22ce" stroke-dasharray="5,4"/>
+    <rect x="970" y="160" width="170" height="24" rx="6" fill="#7e22ce"/>
+    <text x="1055" y="177" class="thead">programa_objetivos</text>
+    <text x="980" y="200" class="col">(tabla M2M auto)</text>
+    <text x="980" y="218" class="col"><tspan class="fk">programa_id</tspan></text>
+    <text x="980" y="236" class="col"><tspan class="fk">objetivo_id</tspan></text>
+  </g>
+
+  <!-- INDICADOR -->
+  <g>
+    <rect class="tb" x="1230" y="370" width="340" height="320" rx="6" fill="#fde68a" stroke="#b45309"/>
+    <rect x="1230" y="370" width="340" height="28" rx="6" fill="#b45309"/>
+    <text x="1400" y="388" class="thead">Indicador</text>
+    <text x="1400" y="400" class="ttype">métrica vinculada a un Objetivo</text>
+    <text x="1240" y="420" class="col"><tspan class="pk">id (PK)</tspan></text>
+    <text x="1240" y="438" class="col"><tspan class="fk">objetivo_id → Objetivo</tspan> (CASCADE)</text>
+    <text x="1240" y="456" class="col">nombre  varchar(200)</text>
+    <text x="1240" y="474" class="col">descripcion  text</text>
+    <text x="1240" y="492" class="col">formula  text</text>
+    <text x="1240" y="510" class="col">unidad_medida  enum {CAR, POR, UNI}</text>
+    <text x="1240" y="528" class="col">frecuencia  enum {SEMESTRAL, ANUAL}</text>
+    <text x="1240" y="546" class="col">linea_base  bool</text>
+    <text x="1240" y="564" class="col">calculo_invertido  bool</text>
+    <text x="1240" y="582" class="col">acumulativo  bool</text>
+    <text x="1240" y="600" class="col">umbral_aceptable  smallint  (def 70)</text>
+    <text x="1240" y="618" class="col">umbral_optimo     smallint  (def 90)</text>
+    <text x="1240" y="636" class="col">fecha_creacion  datetime</text>
+    <text x="1240" y="654" class="col"><tspan class="fk">creado_por_id → User</tspan> (SET_NULL)</text>
+  </g>
+
+  <!-- ESTRATEGIA -->
+  <g>
+    <rect class="tb" x="40" y="1000" width="300" height="180" rx="6" fill="#fecaca" stroke="#b91c1c"/>
+    <rect x="40" y="1000" width="300" height="28" rx="6" fill="#b91c1c"/>
+    <text x="190" y="1018" class="thead">Estrategia</text>
+    <text x="190" y="1030" class="ttype">corto / mediano / largo plazo</text>
+    <text x="50" y="1050" class="col"><tspan class="pk">id (PK)</tspan></text>
+    <text x="50" y="1068" class="col">nombre  varchar(200)</text>
+    <text x="50" y="1086" class="col">descripcion  text</text>
+    <text x="50" y="1104" class="col">plazo  enum {CORTO, MEDIANO, LARGO}</text>
+    <text x="50" y="1122" class="col">fecha_creacion  datetime</text>
+    <text x="50" y="1140" class="col"><tspan class="fk">creado_por_id → User</tspan> (SET_NULL)</text>
+    <text x="50" y="1162" class="meta">M2M ↔ Indicador (estrategia_indicadores)</text>
+  </g>
+
+  <!-- M2M Estrategia-Indicador -->
+  <g>
+    <rect class="tb" x="540" y="1030" width="190" height="90" rx="6" fill="#ddd6fe" stroke="#7e22ce" stroke-dasharray="5,4"/>
+    <rect x="540" y="1030" width="190" height="24" rx="6" fill="#7e22ce"/>
+    <text x="635" y="1047" class="thead">estrategia_indicadores</text>
+    <text x="550" y="1070" class="col">(tabla M2M auto)</text>
+    <text x="550" y="1088" class="col"><tspan class="fk">estrategia_id</tspan></text>
+    <text x="550" y="1106" class="col"><tspan class="fk">indicador_id</tspan></text>
+  </g>
+
+  <!-- ============================================ -->
+  <!-- PROGRAMA INDICADOR (asociación rica) -->
+  <g>
+    <rect class="tb" x="600" y="450" width="320" height="220" rx="6" fill="#e9d5ff" stroke="#6d28d9"/>
+    <rect x="600" y="450" width="320" height="28" rx="6" fill="#6d28d9"/>
+    <text x="760" y="468" class="thead">ProgramaIndicador</text>
+    <text x="760" y="480" class="ttype">asocia Programa ↔ Indicador con meta</text>
+    <text x="610" y="500" class="col"><tspan class="pk">id (PK)</tspan></text>
+    <text x="610" y="518" class="col"><tspan class="fk">programa_id → Programa</tspan> (CASCADE)</text>
+    <text x="610" y="536" class="col"><tspan class="fk">indicador_id → Indicador</tspan> (CASCADE)</text>
+    <text x="610" y="554" class="col">meta  decimal(10,2)  (legacy)</text>
+    <text x="610" y="572" class="col">anio_meta  int</text>
+    <text x="610" y="590" class="col">linea_base_valor  decimal(10,2)</text>
+    <text x="610" y="608" class="col">peso  decimal(5,2)  default 1.00</text>
+    <text x="610" y="632" class="meta"><tspan class="uq">UNIQUE(programa_id, indicador_id)</tspan></text>
+    <text x="610" y="650" class="meta">clean(): valida que objetivo del</text>
+    <text x="610" y="664" class="meta">indicador esté asociado al programa</text>
+  </g>
+
+  <!-- META INDICADOR -->
+  <g>
+    <rect class="tb" x="380" y="780" width="280" height="170" rx="6" fill="#fed7aa" stroke="#c2410c"/>
+    <rect x="380" y="780" width="280" height="28" rx="6" fill="#c2410c"/>
+    <text x="520" y="798" class="thead">MetaIndicador</text>
+    <text x="520" y="810" class="ttype">meta del indicador por año</text>
+    <text x="390" y="830" class="col"><tspan class="pk">id (PK)</tspan></text>
+    <text x="390" y="848" class="col"><tspan class="fk">programa_indicador_id</tspan> (CASCADE)</text>
+    <text x="390" y="866" class="col">anio  int</text>
+    <text x="390" y="884" class="col">valor  decimal(12,2)</text>
+    <text x="390" y="902" class="col">estado  enum {VALOR, SM, NA}</text>
+    <text x="390" y="924" class="meta"><tspan class="uq">UNIQUE(programa_indicador, anio)</tspan></text>
+    <text x="390" y="940" class="meta">index(anio)</text>
+  </g>
+
+  <!-- SEGUIMIENTO -->
+  <g>
+    <rect class="tb" x="700" y="780" width="320" height="220" rx="6" fill="#fee2e2" stroke="#991b1b"/>
+    <rect x="700" y="780" width="320" height="28" rx="6" fill="#991b1b"/>
+    <text x="860" y="798" class="thead">SeguimientoIndicador</text>
+    <text x="860" y="810" class="ttype">medición semestral del indicador</text>
+    <text x="710" y="830" class="col"><tspan class="pk">id (PK)</tspan></text>
+    <text x="710" y="848" class="col"><tspan class="fk">programa_indicador_id</tspan> (CASCADE)</text>
+    <text x="710" y="866" class="col">anio  int</text>
+    <text x="710" y="884" class="col">semestre  smallint {1, 2}</text>
+    <text x="710" y="902" class="col">valor  decimal(12,2)</text>
+    <text x="710" y="920" class="col">estado  enum {VALOR, SM, NA}</text>
+    <text x="710" y="938" class="col">comentario  text</text>
+    <text x="710" y="956" class="col">evidencia  file (planificacion/evidencias/)</text>
+    <text x="710" y="974" class="col"><tspan class="fk">creado_por_id → User</tspan> (SET_NULL)</text>
+    <text x="710" y="992" class="meta"><tspan class="uq">UNIQUE(programa_indicador, anio, semestre)</tspan></text>
+  </g>
+
+  <!-- CIERRE ANUAL -->
+  <g>
+    <rect class="tb" x="1080" y="780" width="300" height="170" rx="6" fill="#d1d5db" stroke="#374151"/>
+    <rect x="1080" y="780" width="300" height="28" rx="6" fill="#374151"/>
+    <text x="1230" y="798" class="thead">CierreAnual</text>
+    <text x="1230" y="810" class="ttype">congela el año del programa</text>
+    <text x="1090" y="830" class="col"><tspan class="pk">id (PK)</tspan></text>
+    <text x="1090" y="848" class="col"><tspan class="fk">programa_id → Programa</tspan> (CASCADE)</text>
+    <text x="1090" y="866" class="col">anio  int</text>
+    <text x="1090" y="884" class="col"><tspan class="fk">cerrado_por_id → User</tspan> (SET_NULL)</text>
+    <text x="1090" y="902" class="col">fecha_cierre  datetime</text>
+    <text x="1090" y="920" class="col">comentario  text</text>
+    <text x="1090" y="942" class="meta"><tspan class="uq">UNIQUE(programa, anio)</tspan></text>
+  </g>
+
+  <!-- ====================== EDGES ====================== -->
+
+  <!-- Programa M2M Objetivo (vía tabla intermedia) -->
+  <path class="m2m" d="M880,200 L970,200" marker-start="url(#one)" marker-end="url(#many)"/>
+  <path class="m2m" d="M1140,200 L1230,200" marker-start="url(#many)" marker-end="url(#one)"/>
+  <text x="945"  y="192" class="lbl">programas</text>
+  <text x="1155" y="192" class="lbl">objetivos</text>
+
+  <!-- Objetivo 1—N Indicador -->
+  <path class="edge" d="M1390,300 L1390,370" marker-start="url(#one)" marker-end="url(#many)"/>
+  <text x="1400" y="338" class="lbl">objetivo (CASCADE)</text>
+
+  <!-- Programa 1—N ProgramaIndicador -->
+  <path class="edge" d="M740,340 L740,450" marker-start="url(#one)" marker-end="url(#many)"/>
+  <text x="752" y="395" class="lbl">programa (CASCADE)</text>
+
+  <!-- Indicador 1—N ProgramaIndicador -->
+  <path class="edge" d="M1230,560 L920,560" marker-start="url(#one)" marker-end="url(#many)"/>
+  <text x="980" y="552" class="lbl">indicador (CASCADE)</text>
+
+  <!-- ProgramaIndicador 1—N MetaIndicador -->
+  <path class="edge" d="M700,670 L520,780" marker-start="url(#one)" marker-end="url(#many)"/>
+  <text x="555" y="730" class="lbl">metas_anuales</text>
+
+  <!-- ProgramaIndicador 1—N SeguimientoIndicador -->
+  <path class="edge" d="M820,670 L860,780" marker-start="url(#one)" marker-end="url(#many)"/>
+  <text x="855" y="730" class="lbl">seguimientos</text>
+
+  <!-- Programa 1—N CierreAnual -->
+  <path class="edge" d="M880,260 C1100,260 1230,500 1230,780" marker-start="url(#one)" marker-end="url(#many)"/>
+  <text x="1180" y="500" class="lbl">cierres (CASCADE)</text>
+
+  <!-- User → FKs (líneas suaves) -->
+  <path class="edge" d="M260,140 C400,140 480,140 600,170" marker-start="url(#one)" marker-end="url(#many)"/>
+  <text x="370" y="135" class="lbl">creado_por (Programa)</text>
+
+  <path class="edge" d="M260,150 C700,140 1100,140 1240,238" marker-start="url(#one)" marker-end="url(#many)"/>
+  <text x="900" y="135" class="lbl">creado_por (Objetivo)</text>
+
+  <path class="edge" d="M260,170 C800,400 1100,500 1240,652" marker-start="url(#one)" marker-end="url(#many)"/>
+  <text x="900" y="430" class="lbl">creado_por (Indicador)</text>
+
+  <path class="edge" d="M150,180 L150,1000 L40,1140" marker-start="url(#one)" marker-end="url(#many)"/>
+  <text x="55" y="950" class="lbl">creado_por (Estrategia)</text>
+
+  <path class="edge" d="M260,160 C500,500 600,750 715,975" marker-start="url(#one)" marker-end="url(#many)"/>
+  <text x="305" y="700" class="lbl">creado_por (Seguimiento)</text>
+
+  <path class="edge" d="M260,165 C900,300 1100,500 1180,810" marker-start="url(#one)" marker-end="url(#many)"/>
+  <text x="1015" y="305" class="lbl">cerrado_por (Cierre)</text>
+
+  <!-- Estrategia M2M Indicador -->
+  <path class="m2m" d="M340,1075 L540,1075" marker-start="url(#one)" marker-end="url(#many)"/>
+  <path class="m2m" d="M730,1060 C950,1060 1200,900 1380,690" marker-start="url(#many)" marker-end="url(#one)"/>
+  <text x="430" y="1067" class="lbl">indicadores</text>
+  <text x="1100" y="900" class="lbl">estrategias</text>
+
+  <!-- ====================== LEYENDA ====================== -->
+  <rect x="40" y="1210" width="1520" height="70" rx="8" fill="#f9fafb" stroke="#d1d5db"/>
+  <text x="55" y="1232" class="legtxt" font-weight="bold">Notación / leyenda:</text>
+
+  <line x1="190" y1="1228" x2="240" y2="1228" stroke="#1f2937" stroke-width="1.6" marker-start="url(#one)" marker-end="url(#many)"/>
+  <text x="250" y="1232" class="legtxt">Relación 1—N (FK directa)</text>
+
+  <line x1="430" y1="1228" x2="480" y2="1228" stroke="#7e22ce" stroke-width="1.8" stroke-dasharray="6,4" marker-start="url(#one)" marker-end="url(#many)"/>
+  <text x="490" y="1232" class="legtxt">Relación M—N (M2M con tabla intermedia)</text>
+
+  <text x="755" y="1232" class="legtxt"><tspan class="pk">PK</tspan> · <tspan class="fk">FK</tspan> · <tspan class="uq">UNIQUE / CONSTRAINT</tspan></text>
+
+  <text x="55"  y="1262" class="legtxt"><tspan font-weight="bold">on_delete:</tspan> CASCADE elimina hijos · PROTECT bloquea borrado · SET_NULL pone NULL al borrar el User</text>
+  <text x="900" y="1262" class="legtxt"><tspan font-weight="bold">Soft-delete:</tspan> Programa y Objetivo usan campo "eliminado" + ActivosManager (oculta los marcados)</text>
+</svg>
