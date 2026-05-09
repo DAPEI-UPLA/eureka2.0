@@ -1,150 +1,108 @@
 {% extends "core/base.html" %}
-
 {% block content %}
+
 <style>
-    .dashboard {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 2rem 1rem;
-    }
+    .plan-dashboard { max-width: 1200px; margin: 0 auto; padding: 1rem 0; }
+    .plan-dashboard h1 { font-size: 1.75rem; color: #1f2937; margin-bottom: 0.25rem; }
+    .plan-dashboard .lead { color: #6b7280; margin-bottom: 2rem; }
 
-    .dashboard h1 {
-        font-size: 2rem;
-        margin-bottom: 2rem;
-        color: #1f2937;
-    }
+    .plan-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 2.5rem; }
 
-    .cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 2rem;
+    .plan-card {
+        background: #fff; border-radius: 14px; padding: 1.5rem 1.5rem 1.25rem;
+        text-decoration: none; color: inherit;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+        transition: transform .18s ease, box-shadow .18s ease;
+        display: flex; flex-direction: column; justify-content: space-between;
+        border-left: 6px solid var(--accent, #2563eb);
+        min-height: 180px;
     }
+    .plan-card:hover { transform: translateY(-4px); box-shadow: 0 14px 32px rgba(0,0,0,0.10); }
+    .plan-card .head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .75rem; }
+    .plan-card .icon { font-size: 1.6rem; }
+    .plan-card .count { font-size: 1.6rem; font-weight: 700; color: var(--accent); line-height: 1; }
+    .plan-card .count small { display:block; font-size: .7rem; color: #9ca3af; font-weight: 500; }
+    .plan-card h2 { font-size: 1.05rem; margin: 0 0 .35rem; color: #111827; }
+    .plan-card p { color: #6b7280; font-size: .85rem; margin: 0; line-height: 1.4; }
+    .plan-card .cta { margin-top: 1rem; font-size: .8rem; font-weight: 600; color: var(--accent); }
 
-    .card {
-        background: #ffffff;
-        border-radius: 16px;
-        padding: 2rem;
-        text-decoration: none;
-        color: inherit;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-    }
-
-    .card:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
-    }
-
-    .card-icon {
-        font-size: 2.5rem;
-        margin-bottom: 1rem;
-    }
-
-    .card h2 {
-        font-size: 1.4rem;
-        margin-bottom: 0.5rem;
-        color: #111827;
-    }
-
-    .card p {
-        color: #6b7280;
-        line-height: 1.5;
-    }
-
-    .card-footer {
-        margin-top: 1.5rem;
-        font-weight: 600;
-        color: #2563eb;
-    }
-
-    /* Colores sutiles por sección */
-
-    .card.indicadores {
-        border-left: 6px solid #2563eb;
-    }
-
-    .card.desafios {
-        border-left: 6px solid #16a34a;
-    }
-
-    .card.objetivos {
-        border-left: 6px solid #7c3aed;
-    }
-
-    .card.estrategias {
-        border-left: 6px solid #ea580c;
-    }
+    .quick-section h5 { color: #6b7280; font-weight: 600; font-size: .85rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .9rem; }
+    .quick-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .quick-card { background: #fff; border: 1px solid #eef0f3; border-radius: 12px; padding: 1.1rem 1.2rem; text-decoration: none; color: inherit; transition: border-color .15s; display:flex; align-items:center; gap: .9rem; }
+    .quick-card:hover { border-color: #cbd5e1; }
+    .quick-card .ico { font-size: 1.4rem; }
+    .quick-card .body { flex:1; }
+    .quick-card h6 { margin: 0; font-size: .95rem; color: #111827; font-weight: 600; }
+    .quick-card span { color: #6b7280; font-size: .8rem; }
+    .quick-card .num { font-weight: 700; color: #111827; font-size: 1.1rem; }
 </style>
 
-<div class="dashboard">
-    <h1>Panel de Planificación</h1>
+<div class="plan-dashboard">
 
-    <div class="cards">
+    <h1 class="fw-bold">Panel de Planificación</h1>
+    <p class="lead">Selecciona el tipo de plan para gestionarlo, o accede a sus elementos.</p>
 
-        <!-- Planes -->
-        <a href="{% url 'planificacion:lista_programas' %}" class="card desafios">
+    <form method="GET" action="{% url 'planificacion:busqueda_global' %}" class="mb-4 d-flex gap-2 align-items-center" style="max-width: 700px;">
+        <input name="q" class="form-control" placeholder="Buscar en planes, objetivos, indicadores, estrategias..." autocomplete="off">
+        <button class="btn btn-primary">Buscar</button>
+        <a href="{% url 'planificacion:comparar' %}" class="btn btn-outline-secondary">Comparar planes</a>
+    </form>
+
+    <div class="plan-cards">
+        {% for t in tipos %}
+        <a href="{% url 'planificacion:lista_programas_tipo' t.codigo %}"
+           class="plan-card"
+           style="--accent: {{ t.color }};">
             <div>
-                <div class="card-icon">🧩</div>
-                <h2>Planes institucionales</h2>
-                <p>
-                    Gestiona los desafíos estratégicos alineados al plan
-                    institucional.
-                </p>
+                <div class="head">
+                    <span class="icon">{{ t.icono }}</span>
+                    <div class="count text-end">
+                        {{ t.total }}
+                        <small>{% if t.total == 1 %}plan{% else %}planes{% endif %}</small>
+                    </div>
+                </div>
+                <h2>{{ t.label }}</h2>
+                <p>{{ t.descripcion }}</p>
             </div>
-            <div class="card-footer">
-                Ir a desafíos →
-            </div>
+            <div class="cta">Ver planes →</div>
         </a>
-
-
-        <!-- Objetivos -->
-        <a href="{% url 'planificacion:lista_objetivos' %}" class="card objetivos">
-            <div>
-                <div class="card-icon">🎯</div>
-                <h2>Objetivos</h2>
-                <p>
-                    Administra objetivos estratégicos y específicos
-                    vinculados a los programas institucionales.
-                </p>
-            </div>
-            <div class="card-footer">
-                Ir a objetivos →
-            </div>
-        </a>
-        
-        <!-- Indicadores -->
-        <a href="{% url 'planificacion:indicadores' %}" class="card indicadores">
-            <div>
-                <div class="card-icon">📊</div>
-                <h2>Indicadores</h2>
-                <p>
-                    Consulta y registra indicadores institucionales 
-                </p>
-            </div>
-            <div class="card-footer">
-                Ir a indicadores →
-            </div>
-        </a>
-
-        <!-- Estrategias -->
-        <a href="{% url 'planificacion:estrategias' %}" class="card estrategias">
-            <div>
-                <div class="card-icon">🧠</div>
-                <h2>Estrategias</h2>
-                <p>
-                    Diseña estrategias que permitan cumplir
-                    los objetivos definidos en los planes.
-                </p>
-            </div>
-            <div class="card-footer">
-                Ir a estrategias →
-            </div>
-        </a>
-
+        {% endfor %}
     </div>
+
+    <div class="quick-section">
+        <h5>Elementos del sistema</h5>
+        <div class="quick-cards">
+
+            <a href="{% url 'planificacion:lista_objetivos' %}" class="quick-card">
+                <span class="ico">🎯</span>
+                <div class="body">
+                    <h6>Objetivos</h6>
+                    <span>Estratégicos y específicos</span>
+                </div>
+                <div class="num">{{ totales.objetivos }}</div>
+            </a>
+
+            <a href="{% url 'planificacion:indicadores' %}" class="quick-card">
+                <span class="ico">📊</span>
+                <div class="body">
+                    <h6>Indicadores</h6>
+                    <span>Definición y configuración</span>
+                </div>
+                <div class="num">{{ totales.indicadores }}</div>
+            </a>
+
+            <a href="{% url 'planificacion:estrategias' %}" class="quick-card">
+                <span class="ico">🧠</span>
+                <div class="body">
+                    <h6>Estrategias</h6>
+                    <span>Corto, mediano, largo plazo</span>
+                </div>
+                <div class="num">{{ totales.estrategias }}</div>
+            </a>
+
+        </div>
+    </div>
+
 </div>
 
 {% endblock %}

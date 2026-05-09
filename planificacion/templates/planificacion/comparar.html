@@ -1,0 +1,277 @@
+{% extends "core/base.html" %}
+{% load planificacion_extras l10n %}
+{% block content %}
+{% localize off %}
+
+<style>
+.comp-col { background: #fff; border-radius: 12px; padding: 1.1rem; box-shadow: 0 4px 14px rgba(0,0,0,0.04); }
+.comp-col h5 { margin-bottom: .25rem; }
+.comp-col .avance { font-size: 1.6rem; font-weight: 700; }
+.crumbs a { color: #6b7280; text-decoration: none; }
+.bar-progress { height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+.bar-progress > span { display:block; height:100%; }
+.bg-rojo { background:#ef4444; } .bg-amarillo { background:#f59e0b; } .bg-verde { background:#16a34a; } .bg-neutro { background:#9ca3af; }
+
+.selector-planes {
+    background: #fff;
+    border-radius: 14px;
+    padding: 1.2rem 1.4rem;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+}
+.tipo-grupo + .tipo-grupo { margin-top: .9rem; }
+.tipo-grupo .tipo-titulo {
+    font-size: .72rem; font-weight: 700; letter-spacing: .05em;
+    text-transform: uppercase; color: #6b7280; margin-bottom: .35rem;
+}
+.plan-chip {
+    display: inline-flex; align-items: center; gap: .45rem;
+    padding: .4rem .9rem; border-radius: 999px;
+    border: 1.5px solid #e5e7eb; background: #fff;
+    cursor: pointer; user-select: none;
+    font-size: .88rem; color: #1f2937;
+    transition: all .15s ease;
+    margin: 0;
+}
+.plan-chip:hover { border-color: #93c5fd; background: #eff6ff; }
+.plan-chip input { display: none; }
+.plan-chip .chip-check {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 1.5px solid #cbd5e1; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .7rem; line-height: 1; color: #fff;
+    transition: all .15s ease;
+}
+.plan-chip.is-selected {
+    background: #2563eb; color: #fff; border-color: #2563eb;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.25);
+}
+.plan-chip.is-selected .chip-check {
+    background: #fff; border-color: #fff; color: #2563eb;
+}
+.plan-chip.is-selected .chip-check::before { content: "✓"; }
+.plan-chip.is-disabled {
+    opacity: .45; cursor: not-allowed;
+    pointer-events: none;
+}
+.contador-pill {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .15rem .65rem; border-radius: 999px;
+    background: #eff6ff; color: #1d4ed8;
+    font-size: .78rem; font-weight: 600;
+}
+.contador-pill.full { background: #fef3c7; color: #92400e; }
+</style>
+
+<div class="container-fluid">
+
+    <a href="{% url 'planificacion:home' %}" class="btn-volver mb-2"><span class="arrow">←</span> Volver</a>
+    <div class="crumbs small mb-2">
+        <a href="{% url 'planificacion:home' %}">Planificación</a>
+        <span class="mx-1 text-muted">/</span>
+        <span class="text-dark">Comparar planes</span>
+    </div>
+
+    <h2 class="fw-bold mb-3">Comparar planes</h2>
+
+    <form method="GET" class="mb-4" id="form-comparar">
+
+        <div class="selector-planes mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label small text-muted mb-0">
+                    Selecciona los planes a comparar
+                </label>
+                <span class="contador-pill" id="contador-planes">
+                    <span id="contador-num">{{ seleccionados|length }}</span> / 3
+                </span>
+            </div>
+
+            {% regroup todos by get_tipo_display as planes_por_tipo %}
+            {% for grupo in planes_por_tipo %}
+                <div class="tipo-grupo">
+                    <div class="tipo-titulo">{{ grupo.grouper }}</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for p in grupo.list %}
+                            <label class="plan-chip {% if p in seleccionados %}is-selected{% endif %}">
+                                <input type="checkbox" name="p" value="{{ p.id }}"
+                                       {% if p in seleccionados %}checked{% endif %}>
+                                <span class="chip-check"></span>
+                                <span>{{ p.nombre }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% empty %}
+                <p class="text-muted small mb-0">No hay planes registrados.</p>
+            {% endfor %}
+        </div>
+
+        <div class="d-flex gap-2 align-items-end flex-wrap">
+            <div>
+                <label class="form-label small text-muted">Año</label>
+                <select name="anio" class="form-select">
+                    {% for a in anios %}
+                        <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label small text-muted">Semestre</label>
+                <select name="semestre" class="form-select">
+                    <option value="1" {% if semestre == 1 %}selected{% endif %}>S1</option>
+                    <option value="2" {% if semestre == 2 %}selected{% endif %}>S2</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" id="btn-comparar"
+                    {% if not seleccionados %}disabled{% endif %}>
+                Comparar
+            </button>
+        </div>
+    </form>
+
+    <script>
+    (function () {
+        const MAX = 3;
+        const form = document.getElementById('form-comparar');
+        if (!form) return;
+        const chips = form.querySelectorAll('.plan-chip');
+        const contador = document.getElementById('contador-num');
+        const pill = document.getElementById('contador-planes');
+        const btn = document.getElementById('btn-comparar');
+
+        function refrescar() {
+            const seleccionadas = form.querySelectorAll('.plan-chip input:checked');
+            const n = seleccionadas.length;
+            contador.textContent = n;
+            pill.classList.toggle('full', n >= MAX);
+            btn.disabled = (n === 0);
+
+            chips.forEach(chip => {
+                const input = chip.querySelector('input');
+                const sel = input.checked;
+                chip.classList.toggle('is-selected', sel);
+                chip.classList.toggle('is-disabled', !sel && n >= MAX);
+            });
+        }
+
+        chips.forEach(chip => {
+            const input = chip.querySelector('input');
+            chip.addEventListener('click', function (e) {
+                if (e.target.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    if (chip.classList.contains('is-disabled')) return;
+                    input.checked = !input.checked;
+                }
+                refrescar();
+            });
+        });
+
+        refrescar();
+    })();
+    </script>
+
+    {% if columnas %}
+    <div class="d-flex justify-content-end mb-3">
+        <div class="btn-group" role="group" aria-label="Modo de comparación" id="modo-comparar">
+            <button type="button" class="btn btn-outline-primary active" data-modo="objetivo">
+                Por objetivo
+            </button>
+            <button type="button" class="btn btn-outline-primary" data-modo="indicador">
+                Por indicador
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        {% for col in columnas %}
+        <div class="col-md-{% if columnas|length == 1 %}12{% elif columnas|length == 2 %}6{% else %}4{% endif %}">
+            <div class="comp-col">
+                <h5>{{ col.programa.nombre }}</h5>
+                <small class="text-muted">{{ col.programa.get_tipo_display }}</small>
+                <div class="my-3">
+                    <div class="avance text-{{ col.avance|color_for }}">
+                        {% if col.avance is not None %}{{ col.avance|floatformat:0 }}%{% else %}—{% endif %}
+                    </div>
+                    <small class="text-muted">Avance global {{ anio }}/S{{ semestre }}</small>
+                </div>
+
+                <div class="vista-objetivo">
+                    <h6 class="text-uppercase small text-muted mt-3">Por objetivo</h6>
+                    {% for b in col.estructura %}
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between small">
+                                <span>{{ b.objetivo.nombre|truncatechars:40 }}</span>
+                                <span>{% if b.avance is not None %}{{ b.avance|floatformat:0 }}%{% else %}—{% endif %}</span>
+                            </div>
+                            <div class="bar-progress">
+                                <span class="bg-{{ b.color_obj }}" style="width: {{ b.avance|avance_clamp }}%;"></span>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted small">Sin objetivos.</p>
+                    {% endfor %}
+                </div>
+
+                <div class="vista-indicador d-none">
+                    <h6 class="text-uppercase small text-muted mt-3">Por indicador</h6>
+                    {% for b in col.estructura %}
+                        {% for ind in b.indicadores %}
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between small">
+                                    <span title="{{ ind.indicador.nombre }}">{{ ind.indicador.nombre|truncatechars:40 }}</span>
+                                    <span>
+                                        {% if ind.estado_medicion == "SM" %}S/M
+                                        {% elif ind.estado_medicion == "NA" %}N/A
+                                        {% elif ind.avance is not None %}{{ ind.avance|floatformat:0 }}%
+                                        {% else %}—{% endif %}
+                                    </span>
+                                </div>
+                                <div class="bar-progress">
+                                    {% if ind.avance is not None %}
+                                        <span class="bg-{{ ind.color }}" style="width: {{ ind.avance|avance_clamp }}%;"></span>
+                                    {% else %}
+                                        <span class="bg-neutro" style="width: 6%;"></span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% empty %}
+                            <p class="text-muted small mb-2">Sin indicadores en {{ b.objetivo.nombre|truncatechars:30 }}.</p>
+                        {% endfor %}
+                    {% empty %}
+                        <p class="text-muted small">Sin indicadores.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+    (function () {
+        const grupo = document.getElementById('modo-comparar');
+        if (!grupo) return;
+        grupo.addEventListener('click', function (e) {
+            const btn = e.target.closest('button[data-modo]');
+            if (!btn) return;
+            const modo = btn.dataset.modo;
+            grupo.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+            document.querySelectorAll('.vista-objetivo').forEach(el => el.classList.toggle('d-none', modo !== 'objetivo'));
+            document.querySelectorAll('.vista-indicador').forEach(el => el.classList.toggle('d-none', modo !== 'indicador'));
+            try { sessionStorage.setItem('comparar_modo', modo); } catch (err) {}
+        });
+        try {
+            const saved = sessionStorage.getItem('comparar_modo');
+            if (saved === 'indicador') {
+                const btn = grupo.querySelector('button[data-modo="indicador"]');
+                if (btn) btn.click();
+            }
+        } catch (err) {}
+    })();
+    </script>
+    {% else %}
+    <div class="alert alert-light">Selecciona uno o más planes para comparar.</div>
+    {% endif %}
+
+</div>
+
+{% endlocalize %}
+{% endblock %}

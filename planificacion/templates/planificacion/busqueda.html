@@ -1,0 +1,84 @@
+{% extends "core/base.html" %}
+{% block content %}
+
+<div class="container py-3">
+
+    <a href="{% url 'planificacion:home' %}" class="btn-volver mb-2"><span class="arrow">←</span> Volver</a>
+    <div class="small mb-2">
+        <a href="{% url 'planificacion:home' %}" class="text-muted text-decoration-none">Planificación</a>
+        <span class="mx-1 text-muted">/</span>
+        <span class="text-dark">Búsqueda</span>
+    </div>
+
+    <h2 class="fw-bold mb-3">Búsqueda global</h2>
+
+    <form method="GET" class="mb-4">
+        <input name="q" value="{{ q }}" class="form-control form-control-lg"
+               placeholder="Buscar en planes, objetivos, indicadores y estrategias..."
+               autofocus>
+    </form>
+
+    {% if q %}
+        <p class="text-muted small">{{ total }} resultado{{ total|pluralize }} para "<strong>{{ q }}</strong>"</p>
+
+        {% if resultados.programas %}
+        <h5 class="mt-4 mb-2">Planes</h5>
+        <div class="list-group">
+            {% for p in resultados.programas %}
+            <a class="list-group-item list-group-item-action"
+               href="{% url 'planificacion:seguimiento_programa' p.pk %}">
+                <strong>{{ p.nombre }}</strong>
+                <span class="badge bg-light text-dark ms-2">{{ p.get_tipo_display }}</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if resultados.objetivos %}
+        <h5 class="mt-4 mb-2">Objetivos</h5>
+        <div class="list-group">
+            {% for o in resultados.objetivos %}
+            <a class="list-group-item list-group-item-action"
+               href="{% url 'planificacion:lista_objetivos' %}">
+                <strong>{{ o.nombre }}</strong>
+                <small class="text-muted d-block">{{ o.descripcion|truncatechars:120 }}</small>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if resultados.indicadores %}
+        <h5 class="mt-4 mb-2">Indicadores</h5>
+        <div class="list-group">
+            {% for i in resultados.indicadores %}
+            <a class="list-group-item list-group-item-action"
+               href="{% url 'planificacion:indicadores' %}">
+                <strong>{{ i.nombre }}</strong>
+                <small class="text-muted d-block">{{ i.descripcion|truncatechars:120 }}</small>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if resultados.estrategias %}
+        <h5 class="mt-4 mb-2">Estrategias</h5>
+        <div class="list-group">
+            {% for e in resultados.estrategias %}
+            <a class="list-group-item list-group-item-action"
+               href="{% url 'planificacion:estrategias' %}">
+                <strong>{{ e.nombre }}</strong>
+                <small class="text-muted d-block">{{ e.descripcion|truncatechars:120 }}</small>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if total == 0 %}
+            <div class="alert alert-light">Sin resultados.</div>
+        {% endif %}
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

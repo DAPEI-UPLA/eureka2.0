@@ -23,26 +23,49 @@
 
 <div class="container-fluid">
 
+    <!-- Breadcrumb -->
+    <a href="{% url 'planificacion:home' %}" class="btn-volver mb-2"><span class="arrow">←</span> Volver</a>
+    <div class="small mb-2">
+        <a href="{% url 'planificacion:home' %}" class="text-muted text-decoration-none">Planificación</a>
+        <span class="mx-1 text-muted">/</span>
+        <span class="text-dark">Estrategias</span>
+    </div>
+
     <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-semibold mb-0">Estrategias</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="fw-semibold mb-0">Estrategias</h2>
+            <small class="text-muted">{{ estrategias|length }} registrada{{ estrategias|length|pluralize }}</small>
+        </div>
 
         {% if es_planificacion %}
-        <div class="text-end mb-4">
-            <button class="btn btn-primary px-4 py-2 shadow-sm"
-                    data-bs-toggle="modal"
-                    data-bs-target="#crearEstrategiaModal">
-                <i class="bi bi-plus-circle me-2"></i> Nueva Estrategia
-            </button>
-        </div>
+        <button class="btn btn-primary px-4 py-2 shadow-sm"
+                data-bs-toggle="modal"
+                data-bs-target="#crearEstrategiaModal">
+            <i class="bi bi-plus-circle me-2"></i> Nueva Estrategia
+        </button>
         {% endif %}
 
     </div>
 
-    <div class="row g-4">
+    <!-- Filtros -->
+    <div class="d-flex gap-2 mb-3 flex-wrap">
+        <input id="est-search" type="search" class="form-control form-control-sm"
+               placeholder="Buscar..." style="max-width: 320px;">
+        <select id="est-plazo" class="form-select form-select-sm" style="max-width: 180px;">
+            <option value="">Todos los plazos</option>
+            <option value="CORTO">Corto plazo</option>
+            <option value="MEDIANO">Mediano plazo</option>
+            <option value="LARGO">Largo plazo</option>
+        </select>
+    </div>
+
+    <div class="row g-4" id="est-grid">
 
         {% for estrategia in estrategias %}
-        <div class="col-md-6 col-lg-4">
+        <div class="col-md-6 col-lg-4 est-item"
+             data-search="{{ estrategia.nombre|lower }} {{ estrategia.descripcion|lower }}"
+             data-plazo="{{ estrategia.plazo }}">
 
             <div class="card card-estrategia rounded-4 h-100 border-0 shadow-sm">
                 <div class="card-body d-flex flex-column">
@@ -60,6 +83,20 @@
                     <p class="text-muted small flex-grow-1">
                         {{ estrategia.descripcion|truncatewords:20 }}
                     </p>
+
+                    {% if estrategia.indicadores.all %}
+                        <div class="mb-2 d-flex flex-wrap gap-1">
+                            {% for ind in estrategia.indicadores.all %}
+                                <span class="badge bg-light text-dark border" title="{{ ind.nombre }}">
+                                    {{ ind.nombre|truncatechars:35 }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="mb-2">
+                            <span class="badge bg-secondary-subtle text-secondary">Sin indicadores asociados</span>
+                        </div>
+                    {% endif %}
 
                     <div class="text-muted small mb-3">
                         {{ estrategia.fecha_creacion|naturaltime }}
@@ -168,10 +205,10 @@
                                 Cancelar
                             </button>
 
-                            <a href="{% url 'planificacion:eliminar_estrategia' estrategia.id %}"
-                               class="btn btn-danger">
-                                Sí, eliminar
-                            </a>
+                            <form method="post" action="{% url 'planificacion:eliminar_estrategia' estrategia.id %}" class="m-0">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+                            </form>
                         </div>
                     </div>
 
@@ -208,6 +245,7 @@
 
             <form method="post">
                 {% csrf_token %}
+                <input type="hidden" name="manage_indicadores" value="1">
                 <div class="modal-body p-4">
 
                     <div class="mb-3">
@@ -221,14 +259,33 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">
-                            Indicador (Opcional)
+                        <label class="form-label fw-semibold">Plazo</label>
+                        {{ form.plazo }}
+                    </div>
+
+                    <hr class="my-3">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold d-block">
+                            ¿A cuántos indicadores quieres asociar?
                         </label>
-                        {{ form.indicador }}
+                        <input type="number" id="crear-num-ind" min="0" max="30" value="0"
+                               class="form-control" style="max-width: 140px;">
                         <small class="text-muted">
-                            Puedes asociarlo más adelante.
+                            Una estrategia puede asociarse a varios indicadores.
                         </small>
                     </div>
+
+                    <div id="crear-selects-ind" class="d-flex flex-column gap-2"></div>
+
+                    <template id="crear-tpl-ind">
+                        <select name="indicadores" class="form-select">
+                            <option value="">— Seleccionar indicador —</option>
+                            {% for ind in indicadores_disponibles %}
+                                <option value="{{ ind.id }}">{{ ind.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </template>
 
                 </div>
 
@@ -249,5 +306,41 @@
     </div>
 </div>
 {% endif %}
+
+<script>
+(function () {
+    const search = document.getElementById('est-search');
+    const plazoSel = document.getElementById('est-plazo');
+    const items = document.querySelectorAll('.est-item');
+    function apply() {
+        const q = (search.value || '').trim().toLowerCase();
+        const p = plazoSel.value;
+        items.forEach(el => {
+            const matchQ = !q || el.dataset.search.includes(q);
+            const matchP = !p || el.dataset.plazo === p;
+            el.style.display = (matchQ && matchP) ? '' : 'none';
+        });
+    }
+    search.addEventListener('input', apply);
+    plazoSel.addEventListener('change', apply);
+})();
+
+(function () {
+    const numInput = document.getElementById('crear-num-ind');
+    const cont = document.getElementById('crear-selects-ind');
+    const tpl = document.getElementById('crear-tpl-ind');
+    if (!numInput || !cont || !tpl) return;
+
+    function render() {
+        const n = Math.max(0, parseInt(numInput.value || '0', 10));
+        cont.innerHTML = '';
+        for (let i = 0; i < n; i++) {
+            cont.appendChild(tpl.content.cloneNode(true));
+        }
+    }
+    numInput.addEventListener('input', render);
+    render();
+})();
+</script>
 
 {% endblock %}

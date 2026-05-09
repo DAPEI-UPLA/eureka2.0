@@ -1,0 +1,167 @@
+{% load planificacion_extras humanize l10n %}
+{% localize off %}
+
+<div class="indicador-row" id="ind-row-{{ pi.id }}">
+
+    <div>
+        <div class="nombre">
+            <span class="toggle-mediciones text-muted me-1"
+                  style="cursor:pointer; user-select:none;"
+                  onclick="document.getElementById('mediciones-{{ pi.id }}').classList.toggle('d-none'); this.innerText = this.innerText.trim() === '▶' ? '▼' : '▶';">▶</span>
+            {{ indicador.nombre }}
+        </div>
+        <small class="text-muted">
+            {{ indicador.get_unidad_medida_display }}
+            · {{ indicador.get_frecuencia_display }}
+            {% if indicador.calculo_invertido %} · invertido{% endif %}
+            {% if indicador.acumulativo %} · acumulativo{% endif %}
+        </small>
+    </div>
+
+    <div class="num text-end fw-semibold">
+        {% if estado_meta == "SM" %}
+            <span class="badge bg-secondary-subtle text-secondary">S/M</span>
+        {% elif estado_meta == "NA" %}
+            <span class="badge bg-light text-muted">N/A</span>
+        {% elif meta_display is not None %}
+            {{ meta_display|format_unidad:indicador.unidad_medida }}
+        {% else %}
+            <span class="badge bg-warning-subtle text-warning-emphasis"
+                  title="Define una meta para calcular el avance">Sin meta</span>
+        {% endif %}
+    </div>
+
+    <div>
+        {% if estado_medicion == "SM" %}
+            <span class="badge bg-secondary-subtle text-secondary">S/M</span>
+        {% elif estado_medicion == "NA" %}
+            <span class="badge bg-light text-muted">N/A</span>
+        {% elif valor is not None %}
+            <span class="num fw-semibold fs-5">{{ valor_display|format_unidad:indicador.unidad_medida }}</span>
+        {% else %}
+            <span class="text-muted small">Sin medición</span>
+        {% endif %}
+    </div>
+
+    <div>
+        {% if estado_medicion == "VALOR" and valor is not None %}
+            <div class="small text-muted mb-1">
+                {% if avance is not None %}{{ avance|floatformat:0 }}%{% else %}—{% endif %}
+            </div>
+            <div class="bar-progress track-{{ color }}">
+                {% if avance is not None %}
+                    <span class="bar-{{ color }}" style="width: {{ avance|avance_clamp }}%;"></span>
+                {% else %}
+                    <span class="bar-neutro" style="width: 6%;" title="Sin meta definida"></span>
+                {% endif %}
+            </div>
+        {% else %}
+            <span class="text-muted small">—</span>
+        {% endif %}
+    </div>
+
+    <div class="text-center">
+        <canvas class="mini-chart"
+                data-pi="{{ pi.id }}"
+                data-color="{{ color_hex }}"
+                width="100" height="32"></canvas>
+    </div>
+
+    <div class="d-flex justify-content-end gap-1">
+        {% if es_planificacion %}
+        <button type="button" class="btn btn-sm btn-outline-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#modalValor{{ pi.id }}"
+                title="Editar valor / meta">✎</button>
+
+        <form method="POST" action="{% url 'planificacion:quitar_indicador' programa.pk %}"
+              class="m-0 confirm-form" data-msg="¿Quitar indicador del plan?">
+            {% csrf_token %}
+            <input type="hidden" name="indicador_id" value="{{ indicador.id }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger" title="Quitar">✕</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- FILA EXPANDIBLE: mediciones del indicador (estilo proyectos -> actividades) -->
+<div id="mediciones-{{ pi.id }}" class="d-none mediciones-block">
+    <div class="mediciones-inner">
+        <table class="table table-sm mb-0 small">
+            <thead class="table-light">
+                <tr>
+                    <th>Período</th>
+                    <th class="text-end">Medición</th>
+                    <th>Comentario</th>
+                    <th>Evidencia</th>
+                    <th>Registrado por</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in seguimientos %}
+                <tr>
+                    <td>{{ s.anio }}/S{{ s.semestre }}</td>
+                    <td class="text-end fw-semibold">
+                        {% if s.estado == "SM" %}
+                            <span class="badge bg-secondary-subtle text-secondary">S/M</span>
+                        {% elif s.estado == "NA" %}
+                            <span class="badge bg-light text-muted">N/A</span>
+                        {% else %}
+                            {{ s.valor|format_unidad:indicador.unidad_medida }}
+                        {% endif %}
+                    </td>
+                    <td>{{ s.comentario|truncatechars:50|default:"—" }}</td>
+                    <td>{% if s.evidencia %}<a href="{{ s.evidencia.url }}" target="_blank">📎 ver</a>{% else %}—{% endif %}</td>
+                    <td>{{ s.creado_por.username|default:"—" }}</td>
+                    <td>
+                        {% if es_planificacion %}
+                        <button type="button" class="btn btn-sm btn-link p-0"
+                                data-bs-toggle="modal" data-bs-target="#modalValor{{ pi.id }}"
+                                title="Editar">✎</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted">Sin mediciones registradas.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if es_planificacion %}
+        <div class="px-2 py-2 border-top">
+            <button class="btn btn-sm btn-outline-success"
+                    data-bs-toggle="modal" data-bs-target="#modalValor{{ pi.id }}">
+                + Agregar medición
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+(function () {
+    const c = document.querySelector('canvas.mini-chart[data-pi="{{ pi.id }}"]');
+    if (!c || !window.Chart) return;
+    const labels = [{% for s in seguimientos %}"{{ s.anio }}/S{{ s.semestre }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const data = [{% for s in seguimientos %}{% if s.estado == "VALOR" and s.valor is not None %}{{ s.valor }}{% else %}null{% endif %}{% if not forloop.last %},{% endif %}{% endfor %}];
+    if (!labels.length) return;
+    new Chart(c, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data, fill: false, borderWidth: 2, spanGaps: true,
+                borderColor: c.dataset.color, pointRadius: 0, tension: 0.25
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false }, tooltip: { enabled: true } },
+            scales: { x: { display: false }, y: { display: false } },
+            maintainAspectRatio: false, responsive: false
+        }
+    });
+})();
+</script>
+
+{% endlocalize %}

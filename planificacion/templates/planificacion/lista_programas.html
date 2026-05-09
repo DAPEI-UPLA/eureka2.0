@@ -1,56 +1,124 @@
 {% extends "core/base.html" %}
 {% block content %}
 
+<style>
+.programa-card { transition: transform .15s ease, box-shadow .15s ease; border-left: 5px solid var(--accent, #2563eb); }
+.programa-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,.07); }
+.programa-card .stat { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+.programa-card .stat small { display:block; font-size: .7rem; color: #9ca3af; font-weight: 500; text-transform: uppercase; letter-spacing: .03em; }
+.tipo-PEI { --accent: #2563eb; }
+.tipo-PD_UNI { --accent: #7c3aed; }
+.tipo-PD_FUN { --accent: #16a34a; }
+.tipo-badge { font-size: .7rem; font-weight: 600; padding: .25rem .55rem; border-radius: 999px; background: var(--accent-soft, #e0e7ff); color: var(--accent); }
+.programa-card.tipo-PEI .tipo-badge { background: #dbeafe; }
+.programa-card.tipo-PD_UNI .tipo-badge { background: #ede9fe; }
+.programa-card.tipo-PD_FUN .tipo-badge { background: #dcfce7; }
+.crumbs a { color: #6b7280; text-decoration: none; }
+.crumbs a:hover { color: #111827; }
+</style>
+
 <div class="container-fluid">
+
+    <!-- BREADCRUMB -->
+    <a href="{% url 'planificacion:home' %}" class="btn-volver mb-2"><span class="arrow">←</span> Volver</a>
+    <div class="crumbs small mb-2">
+        <a href="{% url 'planificacion:home' %}">Planificación</a>
+        <span class="mx-1 text-muted">/</span>
+        <span class="text-dark">{{ tipo_label }}</span>
+    </div>
 
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold">Planes</h2>
+        <div>
+            <h2 class="fw-bold mb-0">{{ tipo_label }}</h2>
+            <small class="text-muted">
+                {{ programas|length }} plan{{ programas|length|pluralize:"es" }} registrad{{ programas|length|pluralize:"o,os" }}
+            </small>
+        </div>
 
         {% if es_planificacion %}
-        <button class="btn btn-outline-primary"
+        <button class="btn btn-primary shadow-sm"
                 data-bs-toggle="modal"
                 data-bs-target="#crearProgramaModal">
-            + Nuevo Plan
+            + Nuevo plan
         </button>
         {% endif %}
     </div>
 
-    <!-- TARJETAS -->
-    <div class="row">
+    <!-- BUSCADOR -->
+    <div class="mb-3" style="max-width: 360px;">
+        <input id="programa-search"
+               type="search"
+               class="form-control form-control-sm"
+               placeholder="Buscar plan..." autocomplete="off">
+    </div>
 
+    <!-- TARJETAS -->
+    <div class="row g-3" id="programa-grid">
         {% for programa in programas %}
-        <div class="col-md-4 mb-4">
-            <div class="card shadow-sm border-0 h-100">
+        <div class="col-md-6 col-lg-4 programa-item"
+             data-search="{{ programa.nombre|lower }}">
+
+            <div class="card programa-card border-0 shadow-sm h-100 tipo-{{ programa.tipo }}">
 
                 <div class="card-body">
 
-                    <h5 class="fw-bold mb-2">
-                        {{ programa.nombre }}
-                    </h5>
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="tipo-badge">{{ programa.get_tipo_display }}</span>
 
-                    <p class="text-muted small mb-3">
-                        {{ programa.total_objetivos }} objetivos asociados
-                    </p>
+                        {% if es_planificacion %}
+                        <form method="post"
+                              action="{% url 'planificacion:eliminar_programa' programa.pk %}"
+                              class="m-0"
+                              onsubmit="return confirm('¿Eliminar este plan? También se quitarán sus asociaciones.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Eliminar">
+                                ✕
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
 
-                    <hr>
+                    <h5 class="fw-bold mb-3">{{ programa.nombre }}</h5>
 
-                    <ul class="small">
-                        {% for obj in programa.objetivos.all %}
-                            <li>{{ obj.nombre }}</li>
+                    <div class="d-flex gap-4 mb-3">
+                        <div class="stat">
+                            {{ programa.total_objetivos_db|default:0 }}
+                            <small>Objetivos</small>
+                        </div>
+                        <div class="stat">
+                            {{ programa.total_indicadores|default:0 }}
+                            <small>Indicadores</small>
+                        </div>
+                    </div>
+
+                    <div class="small text-muted">
+                        {% for obj in programa.objetivos.all|slice:":3" %}
+                            <div>• {{ obj.nombre|truncatechars:60 }}</div>
                         {% empty %}
-                            <li class="text-muted">Sin objetivos asignados</li>
+                            <em>Sin objetivos asignados</em>
                         {% endfor %}
-                    </ul>
+                        {% if programa.total_objetivos_db > 3 %}
+                            <div class="text-muted">+ {{ programa.total_objetivos_db|add:"-3" }} más</div>
+                        {% endif %}
+                    </div>
 
                 </div>
 
-                <div class="card-footer bg-white border-0 text-end">
-                    <a href="{% url 'planificacion:seguimiento_programa' programa.id %}" class="btn btn-sm btn-outline-secondary">
-                        Visualizar
+                <div class="card-footer bg-white border-0 d-flex justify-content-end gap-2">
+                    <a href="{% url 'planificacion:seguimiento_programa' programa.id %}"
+                       class="btn btn-sm btn-outline-primary">
+                        Abrir seguimiento →
                     </a>
                 </div>
 
+            </div>
+
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-light text-center mb-0">
+                Aún no hay planes registrados en esta sección.
             </div>
         </div>
         {% endfor %}
@@ -61,44 +129,27 @@
 
 {% if es_planificacion %}
 <div class="modal fade" id="crearProgramaModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
 
             <div class="modal-header">
-                <h5 class="modal-title">Crear Plan</h5>
-                <button type="button"
-                        class="btn-close"
-                        data-bs-dismiss="modal">
-                </button>
+                <h5 class="modal-title">Crear plan {% if tipo_label %}— {{ tipo_label }}{% endif %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
 
             <form method="POST">
                 {% csrf_token %}
-
                 <div class="modal-body">
-
                     <div class="mb-3">
-                        <label class="form-label">Nombre</label>
+                        <label class="form-label small text-muted">Nombre</label>
                         {{ form.nombre }}
                     </div>
-
                 </div>
 
                 <div class="modal-footer">
-
-                    <button type="button"
-                            class="btn btn-light"
-                            data-bs-dismiss="modal">
-                        Cancelar
-                    </button>
-
-                    <button type="submit"
-                            class="btn btn-primary">
-                        Crear Plan
-                    </button>
-
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear plan</button>
                 </div>
-
             </form>
 
         </div>
@@ -106,5 +157,18 @@
 </div>
 {% endif %}
 
+<script>
+(function () {
+    const input = document.getElementById('programa-search');
+    if (!input) return;
+    const items = document.querySelectorAll('.programa-item');
+    input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        items.forEach(el => {
+            el.style.display = el.dataset.search.includes(q) ? '' : 'none';
+        });
+    });
+})();
+</script>
 
 {% endblock %}

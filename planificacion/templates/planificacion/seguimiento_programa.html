@@ -1,443 +1,528 @@
 {% extends "core/base.html" %}
-{% load l10n %}
+{% load humanize l10n planificacion_extras %}
 {% block content %}
 
 {% localize off %}
 
-<div class="container-fluid">
-
-<div class="d-flex justify-content-between align-items-center mb-4">
-
-<h2 class="fw-bold">
-Seguimiento: {{ programa.nombre }}
-</h2>
-
-<div class="d-flex gap-2 align-items-center">
-
-<!-- ================= AÑO ================= -->
-<form method="GET">
-
-<select name="anio"
-        class="form-select"
-        onchange="this.form.submit()">
-
-{% for a in anios %}
-
-<option value="{{ a }}"
-{% if a == anio %}selected{% endif %}>
-{{ a }}
-</option>
-
-{% endfor %}
-
-</select>
-
-{% if objetivo_abierto %}
-<input type="hidden" name="objetivo_abierto" value="{{ objetivo_abierto }}">
-{% endif %}
-
-</form>
-
-<a href="{% url 'planificacion:lista_programas' %}"
-class="btn btn-light">
-Volver
-</a>
-
-{% if es_planificacion %}
-
-<button class="btn btn-primary"
-        data-bs-toggle="modal"
-        data-bs-target="#modalObjetivo">
-+ Objetivo
-</button>
-
-<button class="btn btn-success"
-        data-bs-toggle="modal"
-        data-bs-target="#modalIndicador">
-+ Indicador
-</button>
-
-{% endif %}
-
-</div>
-</div>
-
-
-
-<!-- 🔵 MODAL OBJETIVO -->
-
-
-<div class="modal fade" id="modalObjetivo">
-<div class="modal-dialog">
-<div class="modal-content">
-
-<form method="POST">
-{% csrf_token %}
-
-<div class="modal-header">
-<h5>Agregar Objetivo</h5>
-<button type="button"
-class="btn-close"
-data-bs-dismiss="modal"></button>
-</div>
-
-<div class="modal-body">
-
-<select name="objetivo_id"
-class="form-select">
-
-{% for obj in objetivos_disponibles %}
-
-<option value="{{ obj.id }}">
-{{ obj.nombre }}
-</option>
-
-{% empty %}
-
-<option disabled>
-No hay objetivos disponibles
-</option>
-
-{% endfor %}
-
-</select>
-
-</div>
-
-<div class="modal-footer">
-
-<button type="submit"
-name="accion"
-value="agregar_objetivo"
-class="btn btn-primary">
-Agregar
-</button>
-
-</div>
-
-</form>
-
-</div>
-</div>
-</div>
-
-
-
-<!-- 🔴 MODAL INDICADOR -->
-
-
-<div class="modal fade" id="modalIndicador">
-<div class="modal-dialog">
-<div class="modal-content">
-
-<form method="POST">
-{% csrf_token %}
-
-<div class="modal-header">
-
-<h5>Agregar Indicador</h5>
-
-<button type="button"
-class="btn-close"
-data-bs-dismiss="modal"></button>
-
-</div>
-
-<div class="modal-body">
-
-<select name="indicador_id"
-class="form-select">
-
-{% for indicador in indicadores_disponibles %}
-
-<option value="{{ indicador.id }}">
-{{ indicador.nombre }}
-</option>
-
-{% empty %}
-
-<option disabled>
-No hay indicadores disponibles
-</option>
-
-{% endfor %}
-
-</select>
-
-</div>
-
-<div class="modal-footer">
-
-<button type="submit"
-name="accion"
-value="agregar_indicador"
-class="btn btn-success">
-Agregar
-</button>
-
-</div>
-
-</form>
-
-</div>
-</div>
-</div>
-
-
-
-<!-- 🔷 TABLA DE SEGUIMIENTO -->
-
-
-{% for bloque in estructura %}
-
-<div class="card shadow-sm border-0 mb-3">
-
-<!-- HEADER DEL OBJETIVO -->
-
-<div class="card-header bg-white">
-
-<div class="d-flex justify-content-between align-items-center">
-
-<button class="btn btn-link text-start fw-bold text-dark w-100"
-        data-bs-toggle="collapse"
-        data-bs-target="#objetivo{{ bloque.objetivo.id }}"
-        onclick="guardarObjetivo('{{ bloque.objetivo.id }}')"
-        style="text-decoration:none;">
-
-Objetivo: {{ bloque.objetivo.nombre }}
-
-</button>
-
-{% if es_planificacion %}
-
-<form method="POST" class="m-0 ms-2">
-
-{% csrf_token %}
-
-<button type="submit"
-name="accion"
-value="eliminar_objetivo"
-class="btn btn-sm btn-outline-danger">
-
-Eliminar
-
-</button>
-
-<input type="hidden"
-name="objetivo_id"
-value="{{ bloque.objetivo.id }}">
-
-</form>
-
-{% endif %}
-
-</div>
-
-</div>
-
-
-<!-- CONTENIDO DESPLEGABLE -->
-
-<div id="objetivo{{ bloque.objetivo.id }}"
-     class="collapse">
-
-<div class="card-body">
-
-<div class="table-responsive">
-
-<table class="table table-sm table-bordered align-middle">
-
-<thead class="table-light">
-
-<tr>
-
-<th>Indicador</th>
-<th>Meta</th>
-<th>Línea Base</th>
-<th>Valor {{ anio }}</th>
-<th>Estrategias</th>
-<th>Acciones</th>
-
-</tr>
-
-</thead>
-
-<tbody>
-
-{% for item in bloque.indicadores %}
-
-<tr>
-
-<td>
-<strong>
-{{ item.indicador.nombre }}
-</strong>
-</td>
-
-<td>
-{{ item.meta|default:"-" }}
-</td>
-
-<td>
-{{ item.linea_base|default:"-" }}
-</td>
-
-<td>
-
-{% if item.valor %}
-
-<span class="badge bg-primary">
-{{ item.valor }}
-</span>
-
-{% else %}
-
-<span class="text-muted">
-Sin datos
-</span>
-
-{% endif %}
-
-</td>
-
-<td>
-
-<ul class="small mb-0">
-
-{% for est in item.estrategias %}
-
-<li>
-{{ est.nombre }}
-</li>
-
-{% empty %}
-
-<li class="text-muted">
-Sin estrategias
-</li>
-
-{% endfor %}
-
-</ul>
-
-</td>
-
-<td>
-
-{% if es_planificacion %}
-
-<form method="POST">
-
-{% csrf_token %}
-
-<button type="submit"
-name="accion"
-value="eliminar_indicador"
-class="btn btn-sm btn-outline-danger">
-
-Eliminar
-
-</button>
-
-<input type="hidden"
-name="indicador_id"
-value="{{ item.indicador.id }}">
-
-</form>
-
-{% endif %}
-
-</td>
-
-</tr>
-
-{% empty %}
-
-<tr>
-
-<td colspan="6" class="text-center text-muted">
-No hay indicadores asociados a este objetivo
-</td>
-
-</tr>
-
-{% endfor %}
-
-</tbody>
-
-</table>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-{% empty %}
-
-<div class="alert alert-light">
-
-Este programa aún no tiene objetivos asociados.
-
-</div>
-
-{% endfor %}
-
-</div>
-
-
-<script>
-
-function guardarObjetivo(id){
-
-const url = new URL(window.location.href)
-
-url.searchParams.set("objetivo_abierto", id)
-
-window.history.replaceState({}, "", url)
-
+<style>
+.kpi { background: #fff; border-radius: 12px; padding: 1.1rem 1.3rem; box-shadow: 0 4px 14px rgba(0,0,0,0.04); border: 1px solid #eef0f3; }
+.kpi .label { font-size: .72rem; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+.kpi .value { font-size: 1.7rem; font-weight: 700; color: #111827; line-height: 1; margin-top: .25rem; }
+
+.objetivo-block { background: #fff; border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.04); margin-bottom: 1.25rem; border: 1px solid #eef0f3; overflow: hidden; }
+.objetivo-head { padding: 1rem 1.25rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: #fafbfc; }
+.objetivo-head:hover { background: #f3f5f8; }
+.objetivo-head h5 { margin: 0; font-size: 1rem; font-weight: 600; color: #111827; }
+.objetivo-head .meta-info { font-size: .8rem; color: #6b7280; }
+.objetivo-progress { width: 200px; }
+.objetivo-progress .bar { height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+.objetivo-progress .bar.track-rojo { background: #fecaca; }
+.objetivo-progress .bar.track-amarillo { background: #fde68a; }
+.objetivo-progress .bar > span { display: block; height: 100%; transition: width .3s; }
+
+.indicador-row { padding: .9rem 1.25rem; border-top: 1px solid #f1f3f5; display: grid; grid-template-columns: 1.6fr .7fr .9fr 1.2fr .9fr .7fr; gap: 1.25rem; align-items: center; }
+.indicador-row.head { background: #f9fafb; font-size: .72rem; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; padding: .55rem 1.25rem; }
+.objetivo-head .caret { display: inline-block; width: 1rem; color: #6b7280; transition: transform .2s; font-size: .7rem; }
+.objetivo-head.expanded .caret { transform: rotate(90deg); }
+.mediciones-block { background: #fafbfc; border-top: 1px solid #f1f3f5; }
+.mediciones-inner { padding: .25rem 1.25rem; }
+.indicador-row .nombre { font-weight: 500; color: #111827; }
+.indicador-row .num { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-variant-numeric: tabular-nums; }
+.bar-progress { height: 10px; background: #e5e7eb; border-radius: 999px; overflow: hidden; position: relative; }
+.bar-progress.track-rojo { background: #fecaca; }
+.bar-progress.track-amarillo { background: #fde68a; }
+.bar-progress > span { display: block; height: 100%; transition: width .3s; }
+.bar-rojo, .bg-rojo { background: #ef4444; }
+.bar-amarillo, .bg-amarillo { background: #f59e0b; }
+.bar-verde, .bg-verde { background: #16a34a; }
+.bar-neutro, .bg-neutro { background: #9ca3af; }
+
+@media (max-width: 992px) {
+    .indicador-row { grid-template-columns: 1fr; gap: .35rem; }
+    .indicador-row.head { display: none; }
 }
 
-</script>
+.crumbs a { color: #6b7280; text-decoration: none; }
+.estado-pill { font-size: .7rem; font-weight: 600; padding: .2rem .55rem; border-radius: 999px; }
+.estado-BORRADOR { background: #f3f4f6; color: #6b7280; }
+.estado-VIGENTE { background: #dcfce7; color: #166534; }
+.estado-CERRADO { background: #fee2e2; color: #991b1b; }
 
+.toast-stack { position: fixed; right: 1rem; top: 1rem; z-index: 2000; max-width: 380px; }
+</style>
+
+<!-- TOASTS -->
+<div class="toast-stack">
+    {% if messages %}
+    {% for m in messages %}
+    <div class="toast align-items-center text-bg-{% if 'success' in m.tags %}success{% elif 'error' in m.tags %}danger{% elif 'warning' in m.tags %}warning{% else %}primary{% endif %} border-0 show mb-2"
+         role="alert">
+      <div class="d-flex">
+        <div class="toast-body">{{ m }}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>
+
+<div class="container-fluid">
+
+    <!-- BREADCRUMB -->
+    <a href="{% url 'planificacion:lista_programas_tipo' programa.tipo %}" class="btn-volver mb-2"><span class="arrow">←</span> Volver</a>
+    <div class="crumbs small mb-2">
+        <a href="{% url 'planificacion:home' %}">Planificación</a>
+        <span class="mx-1 text-muted">/</span>
+        <a href="{% url 'planificacion:lista_programas_tipo' programa.tipo %}">{{ programa.get_tipo_display }}</a>
+        <span class="mx-1 text-muted">/</span>
+        <span class="text-dark">{{ programa.nombre }}</span>
+    </div>
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="fw-bold mb-0 d-inline-block me-2">{{ programa.nombre }}</h2>
+            <span class="estado-pill estado-{{ programa.estado }}">{{ programa.get_estado_display }}</span>
+            <div><small class="text-muted">{{ programa.get_tipo_display }}</small></div>
+        </div>
+
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <form method="GET" class="d-flex align-items-center gap-2">
+                <select name="anio" class="form-select form-select-sm" onchange="this.form.submit()">
+                    {% for a in anios %}
+                    <option value="{{ a }}" {% if a == anio %}selected{% endif %}>Año {{ a }}</option>
+                    {% endfor %}
+                </select>
+                <select name="semestre" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="1" {% if semestre == 1 %}selected{% endif %}>S1</option>
+                    <option value="2" {% if semestre == 2 %}selected{% endif %}>S2</option>
+                </select>
+            </form>
+
+            <a href="{% url 'planificacion:heatmap' programa.pk %}"
+               class="btn btn-sm btn-outline-secondary" title="Heatmap multi-año">📅</a>
+            <a href="{% url 'planificacion:seguimiento_publico' programa.pk %}"
+               class="btn btn-sm btn-outline-secondary" title="Vista pública (read-only)">👁</a>
+            <a href="{% url 'planificacion:excel_exportar' programa.pk %}"
+               class="btn btn-sm btn-outline-secondary" title="Exportar Excel">⬇ Excel</a>
+
+            {% if es_planificacion and not es_publico %}
+                <a href="{% url 'planificacion:excel_plantilla' programa.pk %}"
+                   class="btn btn-sm btn-outline-secondary" title="Descargar plantilla Excel">📄 Plantilla</a>
+                <button class="btn btn-sm btn-outline-primary"
+                        data-bs-toggle="modal" data-bs-target="#modalImport">⬆ Importar</button>
+
+                <button class="btn btn-sm btn-outline-primary"
+                        data-bs-toggle="modal" data-bs-target="#modalObjetivo">+ Objetivo</button>
+                <button class="btn btn-sm btn-outline-success"
+                        data-bs-toggle="modal" data-bs-target="#modalIndicador">+ Indicador</button>
+
+                {% if cierre_existente %}
+                <form method="POST" action="{% url 'planificacion:reabrir_anio' programa.pk %}" class="m-0">
+                    {% csrf_token %}
+                    <input type="hidden" name="anio" value="{{ anio }}">
+                    <button type="submit" class="btn btn-sm btn-outline-warning">Reabrir {{ anio }}</button>
+                </form>
+                {% else %}
+                <button class="btn btn-sm btn-danger"
+                        data-bs-toggle="modal" data-bs-target="#modalCierre">Cerrar {{ anio }}</button>
+                {% endif %}
+
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-dark dropdown-toggle" data-bs-toggle="dropdown">Estado</button>
+                    <ul class="dropdown-menu">
+                        {% for e in programa.Estado.choices %}
+                            <li>
+                                <form method="POST" action="{% url 'planificacion:cambiar_estado' programa.pk %}" class="m-0">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="estado" value="{{ e.0 }}">
+                                    <button class="dropdown-item" type="submit">{{ e.1 }}</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if cierre_existente and not es_publico %}
+    <div class="alert alert-warning py-2 small mb-3">
+        🔒 El año {{ anio }} está cerrado para este plan. Las acciones de edición están deshabilitadas.
+    </div>
+    {% endif %}
+
+    <!-- KPIs -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="kpi" title="Σ(peso × score) / Σ(pesos de indicadores con medición) × 100. Score: verde=1, amarillo=0,7, rojo=0. S/M y N/A se descuentan del total.">
+                <div class="label">Grado de cumplimiento {{ anio }}/S{{ semestre }}</div>
+                <div class="value {% if avance_global is not None %}text-{{ avance_global|color_for }}{% endif %}">
+                    {% if avance_global is not None %}{{ avance_global|floatformat:0 }}%{% else %}—{% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3"><div class="kpi"><div class="label">Objetivos</div><div class="value">{{ total_objetivos }}</div></div></div>
+        <div class="col-md-3"><div class="kpi"><div class="label">Indicadores</div><div class="value">{{ total_indicadores }}</div></div></div>
+        <div class="col-md-3"><div class="kpi"><div class="label">Período</div><div class="value">{{ anio }}/S{{ semestre }}</div></div></div>
+    </div>
+
+    {% if total_objetivos == 0 and not es_publico %}
+    <!-- ONBOARDING -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4 text-center">
+            <h4 class="fw-bold mb-3">Configura tu plan en 3 pasos</h4>
+            <ol class="text-start mx-auto" style="max-width: 480px;">
+                <li class="mb-2">Asocia <strong>objetivos</strong> al plan (botón <em>+ Objetivo</em> arriba).</li>
+                <li class="mb-2">Asocia <strong>indicadores</strong> de esos objetivos (<em>+ Indicador</em>).</li>
+                <li>Define <strong>meta y línea base</strong> en cada indicador y registra valores semestrales.</li>
+            </ol>
+            <p class="text-muted small mt-3">
+                También puedes <a href="{% url 'planificacion:excel_plantilla' programa.pk %}">descargar la plantilla</a> e importar valores en Excel.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- OBJETIVOS -->
+    {% for bloque in estructura %}
+    <div class="objetivo-block">
+        <div class="objetivo-head"
+             onclick="window._togObj({{ bloque.objetivo.id }}, this)">
+            <span class="caret">▶</span>
+            <div class="flex-grow-1">
+                <h5>{{ bloque.objetivo.nombre }}</h5>
+                <div class="meta-info">
+                    {{ bloque.objetivo.get_tipo_display }} ·
+                    {{ bloque.indicadores_con_dato }}/{{ bloque.indicadores_total }} indicadores con dato
+                </div>
+            </div>
+
+            <div class="objetivo-progress text-end">
+                {% if bloque.avance is not None %}
+                    <div class="bar track-{{ bloque.color_obj }}"><span class="bg-{{ bloque.color_obj }}" style="width: {{ bloque.avance|avance_clamp }}%;"></span></div>
+                    <small class="text-muted">{{ bloque.avance|floatformat:0 }}% cumplimiento</small>
+                {% else %}
+                    <small class="text-muted">Sin datos {{ anio }}/S{{ semestre }}</small>
+                {% endif %}
+            </div>
+
+            {% if es_planificacion and not es_publico and not cierre_existente %}
+            <form method="POST" action="{% url 'planificacion:quitar_objetivo' programa.pk %}"
+                  class="m-0 confirm-form" data-msg="¿Quitar objetivo del plan?"
+                  onclick="event.stopPropagation();" onsubmit="event.stopPropagation();">
+                {% csrf_token %}
+                <input type="hidden" name="objetivo_id" value="{{ bloque.objetivo.id }}">
+                <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Quitar objetivo">✕</button>
+            </form>
+            {% endif %}
+        </div>
+
+        <div id="obj-{{ bloque.objetivo.id }}" class="d-none">
+            <div class="indicador-row head">
+                <div>Indicador</div>
+                <div class="text-end">Meta {{ anio }}</div>
+                <div>Medición {{ anio }}/S{{ semestre }}</div>
+                <div>Avance</div>
+                <div class="text-center">Histórico</div>
+                <div></div>
+            </div>
+
+            {% for item in bloque.indicadores %}
+                {% include "planificacion/partials/indicador_row.html" with pi=item.pi indicador=item.indicador meta=item.meta meta_display=item.meta_display estado_meta=item.estado_meta valor=item.valor valor_display=item.valor_display estado_medicion=item.estado_medicion avance=item.avance color=item.color color_hex=item.color_hex seguimientos=item.seguimientos estrategias=item.estrategias %}
+
+                {% if es_planificacion and not es_publico %}
+                <!-- Modal meta + medición (un solo guardado) -->
+                <div class="modal fade modal-fullscreen-md-down" id="modalValor{{ item.pi.id }}" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content rounded-4 border-0 shadow">
+
+                            <form method="POST" enctype="multipart/form-data"
+                                  action="{% url 'planificacion:guardar_meta_y_valor' item.pi.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="anio_meta" value="{{ anio }}">
+
+                                <div class="modal-header">
+                                    <h5 class="modal-title">{{ item.indicador.nombre }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+
+                                <div class="modal-body">
+
+                                    <!-- META + PESO -->
+                                    <h6 class="text-muted small text-uppercase mb-2">Meta · año {{ anio }}</h6>
+
+                                    <div class="btn-group w-100 mb-2" role="group">
+                                        <input type="radio" class="btn-check" name="estado_meta" id="emV{{ item.pi.id }}"
+                                               value="VALOR" {% if item.estado_meta == "VALOR" %}checked{% endif %}
+                                               onchange="document.getElementById('mInput{{ item.pi.id }}').disabled=false;">
+                                        <label class="btn btn-outline-secondary" for="emV{{ item.pi.id }}">Valor</label>
+
+                                        <input type="radio" class="btn-check" name="estado_meta" id="emSM{{ item.pi.id }}"
+                                               value="SM" {% if item.estado_meta == "SM" %}checked{% endif %}
+                                               onchange="document.getElementById('mInput{{ item.pi.id }}').disabled=true;">
+                                        <label class="btn btn-outline-secondary" for="emSM{{ item.pi.id }}">S/M</label>
+
+                                        <input type="radio" class="btn-check" name="estado_meta" id="emNA{{ item.pi.id }}"
+                                               value="NA" {% if item.estado_meta == "NA" %}checked{% endif %}
+                                               onchange="document.getElementById('mInput{{ item.pi.id }}').disabled=true;">
+                                        <label class="btn btn-outline-secondary" for="emNA{{ item.pi.id }}">N/A</label>
+                                    </div>
+
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-md-8">
+                                            <label class="form-label small">Meta {{ anio }}</label>
+                                            <input type="number" step="0.01" name="meta"
+                                                   id="mInput{{ item.pi.id }}"
+                                                   class="form-control" value="{{ item.meta|default:'' }}"
+                                                   {% if item.estado_meta != "VALOR" %}disabled{% endif %}>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Peso</label>
+                                            <select name="peso" class="form-select">
+                                                <option value="1" {% if item.pi.peso == 1 %}selected{% endif %}>1</option>
+                                                <option value="2" {% if item.pi.peso == 2 %}selected{% endif %}>2</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <hr>
+
+                                    <!-- MEDICIÓN -->
+                                    <h6 class="text-muted small text-uppercase mb-2">Medición del período</h6>
+
+                                    <div class="btn-group w-100 mb-2" role="group">
+                                        <input type="radio" class="btn-check" name="estado_medicion" id="esV{{ item.pi.id }}"
+                                               value="VALOR" {% if item.estado_medicion == "VALOR" %}checked{% endif %}
+                                               onchange="document.getElementById('vInput{{ item.pi.id }}').disabled=false;">
+                                        <label class="btn btn-outline-secondary" for="esV{{ item.pi.id }}">Valor</label>
+
+                                        <input type="radio" class="btn-check" name="estado_medicion" id="esSM{{ item.pi.id }}"
+                                               value="SM" {% if item.estado_medicion == "SM" %}checked{% endif %}
+                                               onchange="document.getElementById('vInput{{ item.pi.id }}').disabled=true;">
+                                        <label class="btn btn-outline-secondary" for="esSM{{ item.pi.id }}">S/M</label>
+
+                                        <input type="radio" class="btn-check" name="estado_medicion" id="esNA{{ item.pi.id }}"
+                                               value="NA" {% if item.estado_medicion == "NA" %}checked{% endif %}
+                                               onchange="document.getElementById('vInput{{ item.pi.id }}').disabled=true;">
+                                        <label class="btn btn-outline-secondary" for="esNA{{ item.pi.id }}">N/A</label>
+                                    </div>
+
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Año</label>
+                                            <select name="anio" class="form-select">
+                                                {% for a in anios %}
+                                                  <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Semestre</label>
+                                            <select name="semestre" class="form-select">
+                                                <option value="1" {% if semestre == 1 %}selected{% endif %}>1°</option>
+                                                <option value="2" {% if semestre == 2 %}selected{% endif %}>2°</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Medición</label>
+                                            <input type="number" step="0.01" name="valor"
+                                                   id="vInput{{ item.pi.id }}"
+                                                   class="form-control" value="{{ item.valor|default:'' }}"
+                                                   {% if item.estado_medicion != "VALOR" %}disabled{% endif %}>
+                                        </div>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small">Comentario</label>
+                                        <textarea name="comentario" rows="2" class="form-control">{{ item.comentario_actual }}</textarea>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small">Evidencia (PDF/Excel/Word, opcional)</label>
+                                        {% if item.evidencia_actual %}
+                                            <div class="small mb-1">
+                                                <a href="{{ item.evidencia_actual.url }}" target="_blank">📎 actual</a>
+                                                <span class="text-muted">— sube otra para reemplazar</span>
+                                            </div>
+                                        {% endif %}
+                                        <input type="file" name="evidencia" class="form-control">
+                                    </div>
+
+                                </div>
+
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Guardar</button>
+                                </div>
+
+                            </form>
+
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% empty %}
+                <div class="indicador-row" style="grid-template-columns: 1fr; color: #9ca3af; font-style: italic;">
+                    No hay indicadores asociados a este objetivo.
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% empty %}
+    {% if total_objetivos == 0 %}{% else %}
+    <div class="alert alert-light text-center">Este programa aún no tiene objetivos asociados.</div>
+    {% endif %}
+    {% endfor %}
+
+</div>
+
+
+{% if es_planificacion and not es_publico %}
+<!-- MODALES SECUNDARIOS -->
+<div class="modal fade" id="modalObjetivo">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <form method="POST" action="{% url 'planificacion:agregar_objetivo' programa.pk %}">
+        {% csrf_token %}
+        <div class="modal-header"><h5>Agregar objetivo al plan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <select name="objetivo_id" class="form-select">
+            {% for obj in objetivos_disponibles %}
+              <option value="{{ obj.id }}">{{ obj.nombre }} — {{ obj.get_tipo_display }}</option>
+            {% empty %}<option disabled>No hay objetivos disponibles</option>{% endfor %}
+          </select>
+        </div>
+        <div class="modal-footer"><button type="submit" class="btn btn-primary">Agregar</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalIndicador">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <form method="POST" action="{% url 'planificacion:agregar_indicador' programa.pk %}">
+        {% csrf_token %}
+        <div class="modal-header"><h5>Agregar indicador al plan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <small class="text-muted d-block mb-2">El indicador debe pertenecer a un objetivo ya en el plan.</small>
+          <select name="indicador_id" class="form-select">
+            {% for indicador in indicadores_disponibles %}
+              <option value="{{ indicador.id }}">{{ indicador.nombre }} ({{ indicador.objetivo }})</option>
+            {% empty %}<option disabled>No hay indicadores disponibles</option>{% endfor %}
+          </select>
+        </div>
+        <div class="modal-footer"><button type="submit" class="btn btn-success">Agregar</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalImport">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <form method="POST" action="{% url 'planificacion:excel_importar' programa.pk %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-header"><h5>Importar valores desde Excel</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <p class="small text-muted">
+                Usa la <a href="{% url 'planificacion:excel_plantilla' programa.pk %}">plantilla</a>.
+                Las filas con valor vacío se ignoran. Los años cerrados se rechazan.
+            </p>
+            <input type="file" name="archivo" accept=".xlsx" class="form-control" required>
+        </div>
+        <div class="modal-footer"><button type="submit" class="btn btn-primary">Subir</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalCierre">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <form method="POST" action="{% url 'planificacion:cerrar_anio' programa.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="anio" value="{{ anio }}">
+        <div class="modal-header"><h5>Cerrar año {{ anio }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <p>Esto bloquea cualquier modificación de seguimientos del año <strong>{{ anio }}</strong>. Puedes reabrir después si es necesario.</p>
+            <label class="form-label small">Comentario (opcional)</label>
+            <textarea name="comentario" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-danger">Cerrar año</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Chart.js para sparklines y modal confirm -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// Persistencia de objetivos abiertos entre recargas (POST -> redirect)
+(function () {
+    const STORAGE_KEY = 'pl_obj_open_{{ programa.pk }}';
 
-document.addEventListener("DOMContentLoaded", function() {
-
-    const objetivos = document.querySelectorAll(".collapse");
-
-    const abierto = localStorage.getItem("objetivo_abierto");
-
-    if (abierto) {
-
-        const el = document.getElementById(abierto);
-
-        if (el) {
-            new bootstrap.Collapse(el, { toggle: true });
-        }
-
-    } else {
-
-        if (objetivos.length > 0) {
-            new bootstrap.Collapse(objetivos[0], { toggle: true });
-        }
-
+    function getOpen() {
+        try { return new Set(JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '[]')); }
+        catch (e) { return new Set(); }
+    }
+    function saveOpen(set) {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
     }
 
-    objetivos.forEach(obj => {
+    // Toggle expuesto al onclick del head
+    window._togObj = function (id, head) {
+        const inner = document.getElementById('obj-' + id);
+        if (!inner) return;
+        inner.classList.toggle('d-none');
+        head.classList.toggle('expanded');
+        const open = getOpen();
+        if (inner.classList.contains('d-none')) open.delete(String(id));
+        else open.add(String(id));
+        saveOpen(open);
+    };
 
-        obj.addEventListener("shown.bs.collapse", function () {
-            localStorage.setItem("objetivo_abierto", this.id);
+    // Restaurar estado al cargar
+    document.addEventListener('DOMContentLoaded', function () {
+        getOpen().forEach(function (id) {
+            const inner = document.getElementById('obj-' + id);
+            if (!inner) return;
+            inner.classList.remove('d-none');
+            const head = inner.previousElementSibling;
+            if (head && head.classList.contains('objetivo-head')) {
+                head.classList.add('expanded');
+            }
         });
-
     });
+})();
 
+// Modal confirm reusable
+document.querySelectorAll('.confirm-form').forEach(f => {
+    f.addEventListener('submit', e => {
+        if (!confirm(f.dataset.msg || '¿Confirmar?')) e.preventDefault();
+    });
 });
 
-</script>
+// Atajos de teclado: / foco al buscador, n = nuevo (si existe), g h = ir a home
+let lastKey = '';
+document.addEventListener('keydown', (e) => {
+    if (e.target.matches('input, textarea, select')) return;
+    if (e.key === '/') { e.preventDefault(); const s = document.querySelector('input[type=search]'); if (s) s.focus(); }
+    if (e.key === 'n') { const btn = document.querySelector('[data-bs-target="#modalIndicador"]'); if (btn) btn.click(); }
+    if (lastKey === 'g' && e.key === 'h') window.location = "{% url 'planificacion:home' %}";
+    lastKey = e.key;
+    setTimeout(() => { if (lastKey === e.key) lastKey = ''; }, 600);
+});
 
+// Auto hide toasts
+document.querySelectorAll('.toast').forEach(t => {
+    setTimeout(() => { try { bootstrap.Toast.getOrCreateInstance(t).hide(); } catch(e){} }, 4000);
+});
+</script>
 
 {% endlocalize %}
 

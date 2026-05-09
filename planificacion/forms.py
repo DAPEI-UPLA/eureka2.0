@@ -63,7 +63,7 @@ class ObjetivoForm(forms.ModelForm):
 class EstrategiaForm(forms.ModelForm):
     class Meta:
         model = Estrategia
-        fields = ["nombre", "descripcion", "indicador"]
+        fields = ["nombre", "descripcion", "plazo"]
 
         widgets = {
             "nombre": forms.TextInput(attrs={
@@ -75,7 +75,7 @@ class EstrategiaForm(forms.ModelForm):
                 "rows": 4,
                 "placeholder": "Describe la estrategia..."
             }),
-            "indicador": forms.Select(attrs={
+            "plazo": forms.Select(attrs={
                 "class": "form-select"
             }),
         }

@@ -1,0 +1,103 @@
+{% load humanize %}
+<div class="col-md-6 col-lg-4 obj-item"
+     data-search="{{ objetivo.nombre|lower }} {{ objetivo.descripcion|lower }}">
+    <div class="card card-objetivo rounded-4 h-100 border-0 shadow-sm">
+        <div class="card-body d-flex flex-column">
+
+            <h6 class="fw-semibold mb-2">{{ objetivo.nombre }}</h6>
+
+            <p class="text-muted small mb-3 flex-grow-1">
+                {{ objetivo.descripcion|truncatewords:20 }}
+            </p>
+
+            <div class="mb-3">
+                {% for programa in objetivo.programas_asociados.all %}
+                    <span class="badge rounded-pill badge-programa me-1 mb-1">{{ programa.nombre }}</span>
+                {% empty %}
+                    <span class="text-muted small">Sin asignar a programas</span>
+                {% endfor %}
+            </div>
+
+            <div class="text-muted small mb-3">
+                {{ objetivo.fecha_creacion|naturaltime }} · {{ objetivo.creado_por }}
+            </div>
+
+            {% if es_planificacion %}
+            <div class="d-flex justify-content-end gap-2">
+                <button class="btn btn-sm btn-light"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalEditarObj{{ objetivo.id }}">
+                    Editar
+                </button>
+                <button class="btn btn-sm btn-outline-danger"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalEliminarObj{{ objetivo.id }}">
+                    Eliminar
+                </button>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+{% if es_planificacion %}
+<!-- MODAL EDITAR OBJETIVO -->
+<div class="modal fade" id="modalEditarObj{{ objetivo.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="post" action="{% url 'planificacion:editar_objetivo' objetivo.id %}">
+                {% csrf_token %}
+                <div class="modal-header border-0">
+                    <h5 class="modal-title">Editar objetivo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Nombre</label>
+                        <input type="text" name="nombre" class="form-control"
+                               value="{{ objetivo.nombre }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Descripción</label>
+                        <textarea name="descripcion" rows="3" class="form-control" required>{{ objetivo.descripcion }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Tipo</label>
+                        <select name="tipo" class="form-select">
+                            {% for key, value in objetivo.TipoObjetivo.choices %}
+                            <option value="{{ key }}" {% if objetivo.tipo == key %}selected{% endif %}>{{ value }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ELIMINAR OBJETIVO -->
+<div class="modal fade" id="modalEliminarObj{{ objetivo.id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-body text-center p-4">
+                <h6 class="mb-3">¿Eliminar este objetivo?</h6>
+                <p class="text-muted small mb-4">
+                    Se ocultará de los listados. Si está asociado a programas, se quitará la asociación.
+                </p>
+                <div class="d-flex justify-content-center gap-2">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <form method="post" action="{% url 'planificacion:eliminar_objetivo' objetivo.id %}" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

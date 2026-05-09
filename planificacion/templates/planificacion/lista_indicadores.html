@@ -5,11 +5,20 @@
 
 <div class="container py-4">
 
+    <!-- Breadcrumb -->
+    <a href="{% url 'planificacion:home' %}" class="btn-volver mb-2"><span class="arrow">←</span> Volver</a>
+    <div class="small mb-2">
+        <a href="{% url 'planificacion:home' %}" class="text-muted text-decoration-none">Planificación</a>
+        <span class="mx-1 text-muted">/</span>
+        <span class="text-dark">Indicadores</span>
+    </div>
+
     <!-- Título -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold text-primary">
-            Indicadores
-        </h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="fw-bold text-primary mb-0">Indicadores</h2>
+            <small class="text-muted">{{ indicadores|length }} registrado{{ indicadores|length|pluralize }}</small>
+        </div>
 
         {% if es_planificacion %}
         <button class="btn btn-primary px-4 shadow-sm"
@@ -21,11 +30,25 @@
         {% endif %}
     </div>
 
+    <!-- Filtros -->
+    <div class="d-flex gap-2 mb-3 flex-wrap">
+        <input id="ind-search" type="search" class="form-control form-control-sm"
+               placeholder="Buscar por nombre o descripción..." style="max-width: 320px;">
+        <select id="ind-unidad" class="form-select form-select-sm" style="max-width: 180px;">
+            <option value="">Todas las unidades</option>
+            <option value="CAR">Caracteres</option>
+            <option value="POR">Porcentual</option>
+            <option value="UNI">Unitario</option>
+        </select>
+    </div>
+
     <!-- Tarjetas -->
-    <div class="row g-4">
+    <div class="row g-4" id="ind-grid">
 
         {% for indicador in indicadores %}
-        <div class="col-md-4">
+        <div class="col-md-4 ind-item"
+             data-search="{{ indicador.nombre|lower }} {{ indicador.descripcion|lower }}"
+             data-unidad="{{ indicador.unidad_medida }}">
 
             <div class="card shadow-sm border-0 rounded-4 h-100">
 
@@ -46,12 +69,20 @@
                         </p>
                     {% endif %}
 
-                    {% if indicador.meta %}
-                        <p class="mb-1">
-                            <strong>Meta:</strong>
-                            {{ indicador.meta }} {{ indicador.unidad_medida }}
-                        </p>
-                    {% endif %}
+                    <div class="d-flex flex-wrap gap-1 mb-2">
+                        <span class="badge bg-light text-dark border">
+                            {{ indicador.get_unidad_medida_display }}
+                        </span>
+                        {% if indicador.linea_base %}
+                            <span class="badge bg-info-subtle text-info-emphasis">Línea base</span>
+                        {% endif %}
+                        {% if indicador.calculo_invertido %}
+                            <span class="badge bg-warning-subtle text-warning-emphasis">Invertido</span>
+                        {% endif %}
+                        {% if indicador.acumulativo %}
+                            <span class="badge bg-success-subtle text-success-emphasis">Acumulativo</span>
+                        {% endif %}
+                    </div>
 
                     <p class="small text-muted">
                         Creado el:
@@ -162,37 +193,24 @@
                                 </small>
                             </div>
 
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label fw-semibold">
-                                        Meta
-                                    </label>
-                                    <input type="number"
-                                        step="0.01"
-                                        name="meta"
-                                        class="form-control"
-                                        value="{{ indicador.meta }}">
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label fw-semibold">
-                                        Unidad de medida
-                                    </label>
-                                    <select name="unidad_medida" class="form-select">
-                                        <option value="CAR"
-                                            {% if indicador.unidad_medida == "CAR" %}selected{% endif %}>
-                                            Caracteres
-                                        </option>
-                                        <option value="POR"
-                                            {% if indicador.unidad_medida == "POR" %}selected{% endif %}>
-                                            Porcentual
-                                        </option>
-                                        <option value="UNI"
-                                            {% if indicador.unidad_medida == "UNI" %}selected{% endif %}>
-                                            Unitario
-                                        </option>
-                                    </select>
-                                </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">
+                                    Unidad de medida
+                                </label>
+                                <select name="unidad_medida" class="form-select">
+                                    <option value="CAR"
+                                        {% if indicador.unidad_medida == "CAR" %}selected{% endif %}>
+                                        Caracteres
+                                    </option>
+                                    <option value="POR"
+                                        {% if indicador.unidad_medida == "POR" %}selected{% endif %}>
+                                        Porcentual
+                                    </option>
+                                    <option value="UNI"
+                                        {% if indicador.unidad_medida == "UNI" %}selected{% endif %}>
+                                        Unitario
+                                    </option>
+                                </select>
                             </div>
 
                             <hr class="my-4">
@@ -226,6 +244,10 @@
                                             ¿Cálculo invertido?
                                         </label>
                                     </div>
+                                    <small class="text-muted d-block mt-1" style="font-size:.75rem;">
+                                        Marca esta opción si <strong>menos es mejor</strong>
+                                        (ej: tiempo de espera, % de deserción, nº de errores).
+                                    </small>
                                 </div>
 
                                 <div class="col-md-4 mb-3">
@@ -386,20 +408,11 @@
                         </small>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold">
-                                Meta
-                            </label>
-                            {{ form.meta }}
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold">
-                                Unidad de medida
-                            </label>
-                            {{ form.unidad_medida }}
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Unidad de medida
+                        </label>
+                        {{ form.unidad_medida }}
                     </div>
 
                     <hr class="my-4">
@@ -427,6 +440,10 @@
                                     ¿Cálculo invertido?
                                 </label>
                             </div>
+                            <small class="text-muted d-block mt-1" style="font-size:.75rem;">
+                                Marca esta opción si <strong>menos es mejor</strong>
+                                (ej: tiempo de espera, % de deserción, nº de errores).
+                            </small>
                         </div>
 
                         <div class="col-md-4 mb-3">
@@ -461,5 +478,24 @@
     </div>
 </div>
 {% endif %}
+
+<script>
+(function () {
+    const search = document.getElementById('ind-search');
+    const unidadSel = document.getElementById('ind-unidad');
+    const items = document.querySelectorAll('.ind-item');
+    function apply() {
+        const q = (search.value || '').trim().toLowerCase();
+        const u = unidadSel.value;
+        items.forEach(el => {
+            const matchQ = !q || el.dataset.search.includes(q);
+            const matchU = !u || el.dataset.unidad === u;
+            el.style.display = (matchQ && matchU) ? '' : 'none';
+        });
+    }
+    search.addEventListener('input', apply);
+    unidadSel.addEventListener('change', apply);
+})();
+</script>
 
 {% endblock %}
