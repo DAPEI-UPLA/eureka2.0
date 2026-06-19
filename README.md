@@ -1,4 +1,4 @@
-# Sistema DAPEI
+# Sistema PRISMA
 ## Descripción:
 El sistema DAPEI es una plataforma web desarrollada en Django para la gestión, planificación y seguimiento de programas estratégicos mediante indicadores.
 El sistema permite:
