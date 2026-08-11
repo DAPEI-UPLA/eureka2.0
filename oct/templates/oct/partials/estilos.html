@@ -1,0 +1,284 @@
+{% comment %}Estilos compartidos del módulo OCT. Incluir dentro del bloque content.{% endcomment %}
+<style>
+    /* ===== Encabezado de página ===== */
+    .oct-page-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.75rem;
+    }
+    .oct-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        font-size: .72rem;
+        font-weight: 600;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: #009fe3;
+        margin-bottom: .35rem;
+    }
+    .oct-page-head h2 {
+        font-weight: 700;
+        color: #2f3a45;
+        margin: 0;
+    }
+    .oct-page-head .oct-sub {
+        color: #94a3b8;
+        margin: .25rem 0 0;
+        font-size: .95rem;
+    }
+
+    /* ===== Tarjetas tipo "hub" (accesos) ===== */
+    .oct-tile {
+        position: relative;
+        display: block;
+        height: 100%;
+        background: #fff;
+        border: 1px solid #eef1f4;
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-decoration: none;
+        color: inherit;
+        overflow: hidden;
+        transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+    }
+    .oct-tile::before {
+        content: "";
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 5px;
+        background: #009fe3;
+        opacity: .85;
+    }
+    .oct-tile:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 14px 30px rgba(0,159,227,.12);
+        border-color: #d6eefb;
+    }
+    .oct-tile .oct-tile-icon {
+        font-size: 1.6rem;
+        line-height: 1;
+        margin-bottom: .85rem;
+        display: inline-block;
+    }
+    .oct-tile h5 {
+        font-weight: 600;
+        color: #2f3a45;
+        margin-bottom: .4rem;
+    }
+    .oct-tile p {
+        color: #94a3b8;
+        font-size: .85rem;
+        margin: 0;
+    }
+    .oct-tile .oct-tile-go {
+        margin-top: 1rem;
+        font-size: .8rem;
+        font-weight: 600;
+        color: #009fe3;
+        opacity: 0;
+        transform: translateX(-6px);
+        transition: all .22s ease;
+    }
+    .oct-tile:hover .oct-tile-go {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    .oct-tile--accent::before { background: #f59e0b; }
+    .oct-tile--accent:hover { box-shadow: 0 14px 30px rgba(245,158,11,.14); }
+    .oct-tile--accent .oct-tile-go { color: #d97706; }
+
+    /* ===== Tarjeta contenedora estándar ===== */
+    .oct-card {
+        background: #fff;
+        border: 1px solid #eef1f4;
+        border-radius: 16px;
+        box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    }
+    .oct-card .table { margin: 0; }
+    .oct-card .table thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-size: .72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        border-bottom: 1px solid #eef1f4;
+        padding: .85rem 1rem;
+    }
+    .oct-card .table tbody td {
+        padding: .9rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+    .oct-card .table tbody tr:last-child td { border-bottom: 0; }
+    .oct-card .table tbody tr { transition: background .12s ease; }
+    .oct-card .table tbody tr:hover { background: #f8fbfe; }
+
+    .oct-empty {
+        text-align: center;
+        color: #94a3b8;
+        padding: 2.5rem 1rem;
+    }
+    .oct-empty .oct-empty-icon { font-size: 1.8rem; display: block; margin-bottom: .5rem; opacity: .7; }
+
+    /* ===== Badges de estado ===== */
+    .oct-badge {
+        display: inline-block;
+        padding: .32em .75em;
+        border-radius: 50rem;
+        font-size: .72rem;
+        font-weight: 600;
+        letter-spacing: .02em;
+        line-height: 1.4;
+    }
+    .oct-badge--borrador   { background: #eef2f6; color: #64748b; }
+    .oct-badge--enviada    { background: #e0f2fe; color: #0369a1; }
+    .oct-badge--devuelta   { background: #fef3c7; color: #b45309; }
+    .oct-badge--aprobada   { background: #dcfce7; color: #15803d; }
+    .oct-badge--postulada  { background: #ede9fe; color: #6d28d9; }
+    .oct-badge--adjudicada { background: #cffafe; color: #0e7490; }
+    .oct-badge--rechazada  { background: #fee2e2; color: #b91c1c; }
+    .oct-badge--neutro     { background: #f1f5f9; color: #475569; }
+
+    /* ===== Botones del módulo ===== */
+    .btn-oct {
+        background: #009fe3;
+        border-color: #009fe3;
+        color: #fff;
+        border-radius: 9px;
+        font-weight: 500;
+    }
+    .btn-oct:hover { background: #0089c4; border-color: #0089c4; color: #fff; }
+    .btn-oct-ghost {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        border-radius: 9px;
+        font-weight: 500;
+    }
+    .btn-oct-ghost:hover { border-color: #009fe3; color: #009fe3; }
+
+    /* ===== Definiciones (vista detalle) ===== */
+    .oct-field { margin-bottom: 1.1rem; }
+    .oct-field-label {
+        font-size: .72rem;
+        font-weight: 600;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: #94a3b8;
+        margin-bottom: .15rem;
+    }
+    .oct-field-value { color: #334155; }
+    .oct-card-head {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #eef1f4;
+        font-weight: 600;
+        color: #2f3a45;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+
+    /* ===== Chips de filtro ===== */
+    .oct-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
+    .oct-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .35rem .8rem;
+        border-radius: 50rem;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #475569;
+        font-size: .82rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all .15s ease;
+    }
+    .oct-chip:hover { border-color: #009fe3; color: #009fe3; }
+    .oct-chip.active { background: #009fe3; border-color: #009fe3; color: #fff; }
+    .oct-chip .oct-chip-count {
+        background: rgba(0,0,0,.06);
+        border-radius: 50rem;
+        padding: 0 .5rem;
+        font-size: .72rem;
+        font-weight: 600;
+    }
+    .oct-chip.active .oct-chip-count { background: rgba(255,255,255,.25); }
+
+    /* ===== Contador en encabezado ===== */
+    .oct-count-pill {
+        display: inline-block;
+        background: #e0f2fe;
+        color: #0369a1;
+        border-radius: 50rem;
+        padding: .15rem .65rem;
+        font-size: .8rem;
+        font-weight: 600;
+        margin-left: .5rem;
+    }
+    .oct-tile-badge {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: #ef4444;
+        color: #fff;
+        border-radius: 50rem;
+        min-width: 1.5rem;
+        height: 1.5rem;
+        padding: 0 .4rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .75rem;
+        font-weight: 700;
+    }
+
+    /* ===== Lista de documentos ===== */
+    .oct-doc {
+        display: flex;
+        align-items: center;
+        gap: .65rem;
+        padding: .6rem .85rem;
+        border: 1px solid #eef1f4;
+        border-radius: 10px;
+        margin-bottom: .5rem;
+        background: #fff;
+    }
+    .oct-doc .oct-doc-icon { font-size: 1.1rem; }
+    .oct-doc .oct-doc-name { flex: 1 1 auto; min-width: 0; color: #334155; font-size: .88rem; word-break: break-word; }
+    .oct-doc .oct-doc-date { color: #94a3b8; font-size: .76rem; white-space: nowrap; }
+
+    /* ===== Bitácora / timeline ===== */
+    .oct-timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+    .oct-timeline::before {
+        content: "";
+        position: absolute;
+        left: 9px; top: 4px; bottom: 4px;
+        width: 2px;
+        background: #eef1f4;
+    }
+    .oct-tl-item { position: relative; padding: 0 0 1.1rem 2rem; }
+    .oct-tl-item:last-child { padding-bottom: 0; }
+    .oct-tl-dot {
+        position: absolute;
+        left: 2px; top: 2px;
+        width: 16px; height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        border: 3px solid #009fe3;
+    }
+    .oct-tl-dot.creacion   { border-color: #94a3b8; }
+    .oct-tl-dot.envio      { border-color: #0369a1; }
+    .oct-tl-dot.aprobacion { border-color: #15803d; }
+    .oct-tl-dot.devolucion { border-color: #b45309; }
+    .oct-tl-dot.cambio_estado { border-color: #6d28d9; }
+    .oct-tl-dot.documento  { border-color: #0e7490; }
+    .oct-tl-meta { font-size: .76rem; color: #94a3b8; margin-bottom: .1rem; }
+    .oct-tl-detalle { color: #334155; font-size: .9rem; }
+    .oct-tl-tipo { font-weight: 600; color: #2f3a45; }
+</style>

@@ -67,6 +67,11 @@ class DocumentoIniciativa(models.Model):
 
     def __str__(self):
         return f"Documento - {self.iniciativa.nombre}"
+
+    @property
+    def nombre_archivo(self):
+        import os
+        return os.path.basename(self.archivo.name)
     
     
 class Formulacion(models.Model):
@@ -127,4 +132,48 @@ class DocumentoFormulacion(models.Model):
 
     def __str__(self):
         return f"Documento {self.formulacion.iniciativa.nombre}"
+
+    @property
+    def nombre_archivo(self):
+        import os
+        return os.path.basename(self.archivo.name)
+
+
+class MovimientoIniciativa(models.Model):
+    """Bitácora de eventos de una iniciativa (creación, envíos, aprobaciones,
+    devoluciones, formulación y cambios de estado del ciclo de vida)."""
+
+    class Tipo(models.TextChoices):
+        CREACION = "CREACION", "Creación"
+        ENVIO = "ENVIO", "Envío a revisión"
+        APROBACION = "APROBACION", "Aprobación"
+        DEVOLUCION = "DEVOLUCION", "Devolución"
+        EDICION = "EDICION", "Edición"
+        FORMULACION = "FORMULACION", "Formulación"
+        CAMBIO_ESTADO = "CAMBIO_ESTADO", "Cambio de estado"
+        DOCUMENTO = "DOCUMENTO", "Documento"
+
+    iniciativa = models.ForeignKey(
+        Iniciativa,
+        on_delete=models.CASCADE,
+        related_name="movimientos",
+    )
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="movimientos_iniciativa",
+    )
+    tipo = models.CharField(max_length=20, choices=Tipo.choices)
+    estado_anterior = models.CharField(max_length=30, blank=True)
+    estado_nuevo = models.CharField(max_length=30, blank=True)
+    detalle = models.TextField(blank=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-fecha"]
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.iniciativa.nombre} ({self.fecha:%Y-%m-%d %H:%M})"
     

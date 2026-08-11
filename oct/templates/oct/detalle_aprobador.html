@@ -1,60 +1,86 @@
 {% extends "core/base.html" %}
 {% block content %}
+{% include "oct/partials/estilos.html" %}
 
 <div class="container py-5">
 
-    <h3 class="fw-bold mb-4">Revisión de iniciativa</h3>
-
-    <div class="card shadow-sm border-0 p-4 mb-4">
-
-        <h5 class="fw-semibold">{{ iniciativa.nombre }}</h5>
-        <p class="text-muted small mb-3">
-            Responsable: {{ iniciativa.responsable }} |
-            Unidad: {{ iniciativa.unidad }}
-        </p>
-
-        <p><strong>Descripción:</strong><br>
-        {{ iniciativa.descripcion }}</p>
-
-        <p><strong>Función institucional:</strong>
-        {{ iniciativa.get_funcion_institucional_display }}</p>
-
-        <p><strong>Fechas:</strong>
-        {{ iniciativa.fecha_inicio }} - {{ iniciativa.fecha_termino }}</p>
-
-        <p><strong>Descarga de horas:</strong>
-        {% if iniciativa.descarga_horas %}Sí{% else %}No{% endif %}
-        </p>
-
+    <div class="oct-page-head">
+        <div>
+            <span class="oct-eyebrow">🤝 OCT · Revisión</span>
+            <h2>Revisión de iniciativa</h2>
+            <p class="oct-sub">Revisa el detalle y decide si aprobar o devolver con observaciones.</p>
+        </div>
+        <a href="{% url 'oct:panel_aprobacion' %}" class="btn-volver">
+            <span class="arrow">←</span> Volver
+        </a>
     </div>
 
-    <div class="card shadow-sm border-0 p-4">
-
-        <form method="post">
-            {% csrf_token %}
-
-            <div class="mb-3">
-                <label class="form-label fw-semibold">
-                    Observaciones (solo si se devuelve)
-                </label>
-                <textarea name="observaciones" class="form-control" rows="3"></textarea>
+    <div class="oct-card mb-4">
+        <div class="oct-card-head">
+            📋 {{ iniciativa.nombre }}
+            <span class="ms-auto">
+                {% include "oct/partials/badge_estado.html" with estado=iniciativa.estado label=iniciativa.get_estado_display %}
+            </span>
+        </div>
+        <div class="card-body p-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="oct-field">
+                        <div class="oct-field-label">Responsable</div>
+                        <div class="oct-field-value">{{ iniciativa.responsable }}</div>
+                    </div>
+                    <div class="oct-field">
+                        <div class="oct-field-label">Unidad</div>
+                        <div class="oct-field-value">{{ iniciativa.unidad }}</div>
+                    </div>
+                    <div class="oct-field">
+                        <div class="oct-field-label">Función institucional</div>
+                        <div class="oct-field-value">{{ iniciativa.get_funcion_institucional_display }}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="oct-field">
+                        <div class="oct-field-label">Fechas</div>
+                        <div class="oct-field-value">
+                            {{ iniciativa.fecha_inicio|date:"d/m/Y"|default:"—" }}
+                            &nbsp;→&nbsp;
+                            {{ iniciativa.fecha_termino|date:"d/m/Y"|default:"—" }}
+                        </div>
+                    </div>
+                    <div class="oct-field">
+                        <div class="oct-field-label">Descarga de horas</div>
+                        <div class="oct-field-value">{% if iniciativa.descarga_horas %}Sí{% else %}No{% endif %}</div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="oct-field mb-0">
+                        <div class="oct-field-label">Descripción</div>
+                        <div class="oct-field-value">{{ iniciativa.descripcion }}</div>
+                    </div>
+                </div>
             </div>
+        </div>
+    </div>
 
-            <div class="d-flex justify-content-end gap-2">
-
-                <button type="submit" name="accion" value="devolver"
-                        class="btn btn-outline-warning">
-                    Devolver con observaciones
-                </button>
-
-                <button type="submit" name="accion" value="aprobar"
-                        class="btn btn-dark">
-                    Aprobar
-                </button>
-
-            </div>
-        </form>
-
+    <div class="oct-card">
+        <div class="card-body p-4">
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Observaciones <span class="text-muted small">(obligatorias si se devuelve)</span></label>
+                    <textarea name="observaciones" class="form-control" rows="3"
+                              placeholder="Detalla las correcciones necesarias..."></textarea>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="submit" name="accion" value="devolver" class="btn btn-warning text-white">
+                        ↺ Devolver con observaciones
+                    </button>
+                    <button type="submit" name="accion" value="aprobar" class="btn btn-success">
+                        ✓ Aprobar
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
 </div>

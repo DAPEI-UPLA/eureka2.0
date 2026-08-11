@@ -44,6 +44,17 @@ class IniciativaForm(forms.ModelForm):
             }),
         }
 
+    def clean(self):
+        cleaned = super().clean()
+        inicio = cleaned.get("fecha_inicio")
+        termino = cleaned.get("fecha_termino")
+        if inicio and termino and termino < inicio:
+            self.add_error(
+                "fecha_termino",
+                "La fecha de término no puede ser anterior a la fecha de inicio.",
+            )
+        return cleaned
+
 
 class FormulacionForm(forms.ModelForm):
 
@@ -53,3 +64,14 @@ class FormulacionForm(forms.ModelForm):
             "nombre_fondo",
             "link_convocatoria",
         ]
+
+        widgets = {
+            "nombre_fondo": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ej: Fondo de Innovación Regional",
+            }),
+            "link_convocatoria": forms.URLInput(attrs={
+                "class": "form-control",
+                "placeholder": "https://...",
+            }),
+        }

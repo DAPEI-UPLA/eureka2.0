@@ -1,0 +1,193 @@
+{% extends "core/base.html" %}
+{% block content %}
+{% include "oct/partials/estilos.html" %}
+
+<div class="container py-5">
+
+    <div class="mb-3">
+        <a href="{% url 'oct:mis_iniciativas' %}" class="btn-volver">
+            <span class="arrow">←</span> Volver a Mis iniciativas
+        </a>
+    </div>
+
+    <div class="oct-page-head">
+        <div>
+            <span class="oct-eyebrow">🤝 OCT · Iniciativa</span>
+            <h2>{{ iniciativa.nombre }}</h2>
+            <p class="oct-sub mb-0">
+                {% include "oct/partials/badge_estado.html" with estado=iniciativa.estado label=iniciativa.get_estado_display %}
+            </p>
+        </div>
+
+        {% if es_responsable %}
+        <div class="d-flex gap-2 flex-wrap">
+            {% if iniciativa.estado == Estado.BORRADOR or iniciativa.estado == Estado.DEVUELTA %}
+                <a href="{% url 'oct:editar_iniciativa' iniciativa.pk %}" class="btn btn-oct">✏️ Editar</a>
+            {% elif iniciativa.estado == Estado.APROBADA %}
+                <a href="{% url 'oct:formular_iniciativas' %}" class="btn btn-oct">🧩 Formular</a>
+            {% elif iniciativa.estado == Estado.POSTULADA %}
+                <form method="post" action="{% url 'oct:marcar_adjudicada' iniciativa.pk %}"
+                      class="d-inline confirm-form" data-msg="¿Confirmas que la iniciativa fue adjudicada?">
+                    {% csrf_token %}
+                    <button class="btn btn-success">🎉 Adjudicada</button>
+                </form>
+                <form method="post" action="{% url 'oct:marcar_no_adjudicada' iniciativa.pk %}"
+                      class="d-inline confirm-form" data-msg="¿Confirmas que la iniciativa NO fue adjudicada?">
+                    {% csrf_token %}
+                    <button class="btn btn-oct-ghost">No adjudicada</button>
+                </form>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    {% if iniciativa.estado == Estado.DEVUELTA and iniciativa.observaciones %}
+        <div class="alert alert-warning border-0 shadow-sm" style="border-radius:12px;">
+            <h6 class="fw-bold mb-1">📝 Observaciones del revisor</h6>
+            <p class="mb-0">{{ iniciativa.observaciones }}</p>
+        </div>
+    {% endif %}
+
+    <div class="row g-4">
+
+        <!-- Columna izquierda: datos + formulación + documentos -->
+        <div class="col-lg-7">
+
+            <div class="oct-card mb-4">
+                <div class="oct-card-head">📋 Datos de la iniciativa</div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="oct-field">
+                                <div class="oct-field-label">Responsable</div>
+                                <div class="oct-field-value">{{ iniciativa.responsable }}</div>
+                            </div>
+                            <div class="oct-field">
+                                <div class="oct-field-label">Unidad</div>
+                                <div class="oct-field-value">{{ iniciativa.unidad }}</div>
+                            </div>
+                            <div class="oct-field">
+                                <div class="oct-field-label">Función institucional</div>
+                                <div class="oct-field-value">{{ iniciativa.get_funcion_institucional_display }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="oct-field">
+                                <div class="oct-field-label">Fechas</div>
+                                <div class="oct-field-value">
+                                    {{ iniciativa.fecha_inicio|date:"d/m/Y"|default:"—" }}
+                                    &nbsp;→&nbsp;
+                                    {{ iniciativa.fecha_termino|date:"d/m/Y"|default:"—" }}
+                                </div>
+                            </div>
+                            <div class="oct-field">
+                                <div class="oct-field-label">Descarga de horas</div>
+                                <div class="oct-field-value">{% if iniciativa.descarga_horas %}Sí{% else %}No{% endif %}</div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="oct-field mb-0">
+                                <div class="oct-field-label">Descripción</div>
+                                <div class="oct-field-value">{{ iniciativa.descripcion }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulación -->
+            <div class="oct-card mb-4">
+                <div class="oct-card-head">
+                    🧩 Formulación
+                    {% if formulacion %}
+                    <span class="ms-auto">
+                        {% include "oct/partials/badge_estado.html" with estado=formulacion.estado label=formulacion.get_estado_display %}
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="card-body p-4">
+                    {% if formulacion %}
+                        <div class="oct-field">
+                            <div class="oct-field-label">Fondo o licitación</div>
+                            <div class="oct-field-value fw-semibold">{{ formulacion.nombre_fondo }}</div>
+                        </div>
+                        <a href="{% url 'oct:ver_formulacion' iniciativa.id %}" class="btn btn-sm btn-oct-ghost">
+                            Ver formulación completa →
+                        </a>
+                    {% elif iniciativa.estado == Estado.APROBADA and es_responsable %}
+                        <p class="text-muted mb-2">Esta iniciativa aún no tiene formulación.</p>
+                        <a href="{% url 'oct:formular_iniciativas' %}" class="btn btn-sm btn-oct">Formular ahora</a>
+                    {% else %}
+                        <div class="text-muted">Sin formulación registrada.</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Documentos -->
+            <div class="oct-card">
+                <div class="oct-card-head">📎 Documentos</div>
+                <div class="card-body p-4">
+                    {% for doc in documentos %}
+                        <div class="oct-doc">
+                            <span class="oct-doc-icon">📄</span>
+                            <a class="oct-doc-name" href="{{ doc.archivo.url }}" target="_blank" rel="noopener">
+                                {{ doc.nombre_archivo }}
+                            </a>
+                            <span class="oct-doc-date">{{ doc.fecha_subida|date:"d/m/Y" }}</span>
+                            {% if es_responsable %}
+                            <form method="post" action="{% url 'oct:eliminar_documento_iniciativa' doc.pk %}"
+                                  class="confirm-form" data-msg="¿Eliminar este documento?">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-link text-danger p-0">✕</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    {% empty %}
+                        <p class="text-muted small mb-3">No hay documentos adjuntos.</p>
+                    {% endfor %}
+
+                    {% if es_responsable %}
+                    <form method="post" action="{% url 'oct:subir_documento_iniciativa' iniciativa.pk %}"
+                          enctype="multipart/form-data" class="d-flex gap-2 mt-2">
+                        {% csrf_token %}
+                        <input type="file" name="archivo" class="form-control form-control-sm" required>
+                        <button class="btn btn-sm btn-oct text-nowrap">+ Subir</button>
+                    </form>
+                    <div class="form-text">PDF, Word o Excel · máx. 10 MB.</div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Columna derecha: bitácora -->
+        <div class="col-lg-5">
+            <div class="oct-card">
+                <div class="oct-card-head">🕘 Bitácora</div>
+                <div class="card-body p-4">
+                    <ul class="oct-timeline">
+                        {% for m in movimientos %}
+                        <li class="oct-tl-item">
+                            <span class="oct-tl-dot {{ m.tipo|lower }}"></span>
+                            <div class="oct-tl-meta">
+                                {{ m.fecha|date:"d/m/Y H:i" }}
+                                {% if m.usuario %} · {{ m.usuario.get_full_name|default:m.usuario.username }}{% endif %}
+                            </div>
+                            <div class="oct-tl-detalle">
+                                <span class="oct-tl-tipo">{{ m.get_tipo_display }}.</span>
+                                {{ m.detalle }}
+                            </div>
+                        </li>
+                        {% empty %}
+                        <li class="text-muted small">Sin movimientos registrados.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,56 +1,49 @@
 {% extends "core/base.html" %}
 {% block content %}
+{% include "oct/partials/estilos.html" %}
 
-<div class="container py-5">
+<div class="container py-5" style="max-width: 760px;">
 
-    <div class="mb-4">
-        <h3 class="fw-bold">Registrar iniciativa</h3>
-        <p class="text-muted mb-0">
-            Complete la información para registrar una nueva iniciativa.
-        </p>
+    <div class="oct-page-head">
+        <div>
+            <span class="oct-eyebrow">🤝 OCT · Iniciativas</span>
+            <h2>Registrar iniciativa</h2>
+            <p class="oct-sub">Completa la información para registrar una nueva iniciativa.</p>
+        </div>
+        <a href="{% url 'oct:mis_iniciativas' %}" class="btn-volver">
+            <span class="arrow">←</span> Volver
+        </a>
     </div>
 
     <form method="post">
         {% csrf_token %}
 
-        <div class="card shadow-sm border-0 p-4">
-
+        <div class="oct-card p-4">
             {% for field in form %}
-
                 {% if field.name == "descarga_horas" %}
                     <div class="form-check mb-3">
                         {{ field }}
-                        <label class="form-check-label">
-                            {{ field.label }}
-                        </label>
+                        <label class="form-check-label">{{ field.label }}</label>
                     </div>
                 {% else %}
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">
-                            {{ field.label }}
-                        </label>
+                        <label class="form-label fw-semibold">{{ field.label }}</label>
                         {{ field }}
-
                         {% if field.errors %}
-                            <div class="text-danger small mt-1">
-                                {{ field.errors }}
-                            </div>
+                            <div class="text-danger small mt-1">{{ field.errors }}</div>
                         {% endif %}
                     </div>
                 {% endif %}
-
             {% endfor %}
 
             <div class="d-flex justify-content-end gap-2 mt-4">
-                <button type="submit" name="guardar" class="btn btn-outline-secondary px-4">
+                <button type="submit" name="guardar" class="btn btn-oct-ghost px-4">
                     Guardar como borrador
                 </button>
-
-                <button type="submit" name="enviar" class="btn btn-dark px-4">
+                <button type="submit" name="enviar" class="btn btn-oct px-4">
                     Enviar a revisión
                 </button>
             </div>
-
         </div>
 
     </form>

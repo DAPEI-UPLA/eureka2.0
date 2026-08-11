@@ -1,186 +1,146 @@
 {% extends "core/base.html" %}
 {% block content %}
+{% include "oct/partials/estilos.html" %}
 
 <div class="container py-5">
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-<h3 class="fw-bold">Detalle de iniciativa</h3>
+    <div class="oct-page-head">
+        <div>
+            <span class="oct-eyebrow">🤝 OCT · Formulación</span>
+            <h2>Detalle de iniciativa</h2>
+            <p class="oct-sub">Información de la iniciativa y su formulación asociada.</p>
+        </div>
+        <a href="javascript:history.back()" class="btn-volver">
+            <span class="arrow">←</span> Volver
+        </a>
+    </div>
 
-<a href="javascript:history.back()" class="btn btn-outline-dark">
-Volver
-</a>
-</div>
+    <div class="row g-4">
 
+        <!-- INFORMACIÓN INICIATIVA -->
+        <div class="col-lg-6">
+            <div class="oct-card h-100">
+                <div class="oct-card-head">
+                    📋 Información de la iniciativa
+                    <span class="ms-auto">
+                        {% include "oct/partials/badge_estado.html" with estado=iniciativa.estado label=iniciativa.get_estado_display %}
+                    </span>
+                </div>
+                <div class="card-body p-4">
+                    <div class="oct-field">
+                        <div class="oct-field-label">Nombre</div>
+                        <div class="oct-field-value fw-semibold">{{ iniciativa.nombre }}</div>
+                    </div>
+                    <div class="oct-field">
+                        <div class="oct-field-label">Unidad</div>
+                        <div class="oct-field-value">{{ iniciativa.unidad }}</div>
+                    </div>
+                    <div class="oct-field">
+                        <div class="oct-field-label">Responsable</div>
+                        <div class="oct-field-value">{{ iniciativa.responsable }}</div>
+                    </div>
+                    <div class="oct-field">
+                        <div class="oct-field-label">Función institucional</div>
+                        <div class="oct-field-value">{{ iniciativa.get_funcion_institucional_display }}</div>
+                    </div>
+                    <div class="oct-field mb-0">
+                        <div class="oct-field-label">Descripción</div>
+                        <div class="oct-field-value">{{ iniciativa.descripcion }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<div class="row g-4">
+        <!-- INFORMACIÓN FORMULACIÓN -->
+        <div class="col-lg-6">
+            <div class="oct-card h-100">
+                <div class="oct-card-head">
+                    🧩 Formulación
+                    {% if formulacion %}
+                    <span class="ms-auto">
+                        {% include "oct/partials/badge_estado.html" with estado=formulacion.estado label=formulacion.get_estado_display %}
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="card-body p-4">
+                    {% if formulacion %}
+                        <div class="oct-field">
+                            <div class="oct-field-label">Fondo o licitación</div>
+                            <div class="oct-field-value fw-semibold">{{ formulacion.nombre_fondo }}</div>
+                        </div>
+                        <div class="oct-field">
+                            <div class="oct-field-label">Convocatoria</div>
+                            <div class="oct-field-value">
+                                {% if formulacion.link_convocatoria %}
+                                    <a href="{{ formulacion.link_convocatoria }}" target="_blank" rel="noopener">
+                                        Ver convocatoria ↗
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">No informado</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="oct-field mb-0">
+                            <div class="oct-field-label">Observaciones</div>
+                            <div class="oct-field-value">
+                                {% if formulacion.observaciones %}
+                                    {{ formulacion.observaciones }}
+                                {% else %}
+                                    <span class="text-muted">Sin observaciones</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="oct-empty mb-0">
+                            <span class="oct-empty-icon">🧩</span>
+                            Esta iniciativa aún no tiene formulación registrada.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
 
-<!-- INFORMACIÓN INICIATIVA -->
-<div class="col-lg-6">
+        <!-- DOCUMENTOS DE LA FORMULACIÓN -->
+        {% if formulacion %}
+        <div class="col-12">
+            <div class="oct-card">
+                <div class="oct-card-head">📎 Documentos de la formulación</div>
+                <div class="card-body p-4">
+                    {% for doc in formulacion.documentos.all %}
+                        <div class="oct-doc">
+                            <span class="oct-doc-icon">📄</span>
+                            <a class="oct-doc-name" href="{{ doc.archivo.url }}" target="_blank" rel="noopener">
+                                {{ doc.nombre_archivo }}
+                            </a>
+                            <span class="oct-doc-date">{{ doc.fecha_subida|date:"d/m/Y" }}</span>
+                            {% if iniciativa.responsable == request.user %}
+                            <form method="post" action="{% url 'oct:eliminar_documento_formulacion' doc.pk %}"
+                                  class="confirm-form" data-msg="¿Eliminar este documento?">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-link text-danger p-0">✕</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    {% empty %}
+                        <p class="text-muted small mb-3">No hay documentos adjuntos.</p>
+                    {% endfor %}
 
-<div class="card shadow-sm border-0 h-100">
+                    {% if iniciativa.responsable == request.user %}
+                    <form method="post" action="{% url 'oct:subir_documento_formulacion' formulacion.pk %}"
+                          enctype="multipart/form-data" class="d-flex gap-2 mt-2">
+                        {% csrf_token %}
+                        <input type="file" name="archivo" class="form-control form-control-sm" required>
+                        <button class="btn btn-sm btn-oct text-nowrap">+ Subir</button>
+                    </form>
+                    <div class="form-text">PDF, Word o Excel · máx. 10 MB.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
-<div class="card-header bg-light fw-semibold">
-Información de la iniciativa
-</div>
-
-<div class="card-body">
-
-<div class="mb-3">
-<label class="text-muted small">Nombre</label>
-<div class="fw-semibold">
-{{ iniciativa.nombre }}
-</div>
-</div>
-
-<div class="mb-3">
-<label class="text-muted small">Unidad</label>
-<div>
-{{ iniciativa.unidad }}
-</div>
-</div>
-
-<div class="mb-3">
-<label class="text-muted small">Responsable</label>
-<div>
-{{ iniciativa.responsable }}
-</div>
-</div>
-
-<div class="mb-3">
-<label class="text-muted small">Función institucional</label>
-<div>
-{{ iniciativa.get_funcion_institucional_display }}
-</div>
-</div>
-
-<div class="mb-3">
-<label class="text-muted small">Descripción</label>
-<div>
-{{ iniciativa.descripcion }}
-</div>
-</div>
-
-<div class="mb-3">
-<label class="text-muted small">Estado iniciativa</label>
-<div>
-
-<span class="badge bg-dark">
-{{ iniciativa.get_estado_display }}
-</span>
-
-</div>
-</div>
-
-</div>
-</div>
-</div>
-
-
-<!-- INFORMACIÓN FORMULACIÓN -->
-<div class="col-lg-6">
-
-<div class="card shadow-sm border-0 h-100">
-
-<div class="card-header bg-light fw-semibold">
-Formulación
-</div>
-
-<div class="card-body">
-
-{% if formulacion %}
-
-<div class="mb-3">
-<label class="text-muted small">Fondo o licitación</label>
-<div class="fw-semibold">
-{{ formulacion.nombre_fondo }}
-</div>
-</div>
-
-
-<div class="mb-3">
-<label class="text-muted small">Convocatoria</label>
-<div>
-
-{% if formulacion.link_convocatoria %}
-<a href="{{ formulacion.link_convocatoria }}" target="_blank">
-Ver convocatoria
-</a>
-{% else %}
-<span class="text-muted">No informado</span>
-{% endif %}
-
-</div>
-</div>
-
-
-<div class="mb-3">
-<label class="text-muted small">Estado formulación</label>
-<div>
-
-{% if formulacion.estado == "BOR" %}
-<span class="badge bg-secondary">
-Borrador
-</span>
-
-{% elif formulacion.estado == "ENV" %}
-<span class="badge bg-primary">
-En revisión
-</span>
-
-{% elif formulacion.estado == "DEV" %}
-<span class="badge bg-warning text-dark">
-Devuelta
-</span>
-
-{% elif formulacion.estado == "APR" %}
-<span class="badge bg-success">
-Aprobada
-</span>
-{% endif %}
-
-</div>
-</div>
-
-
-<div class="mb-3">
-<label class="text-muted small">Observaciones</label>
-<div>
-
-{% if formulacion.observaciones %}
-{{ formulacion.observaciones }}
-{% else %}
-<span class="text-muted">Sin observaciones</span>
-{% endif %}
+    </div>
 
 </div>
-</div>
-
-{% else %}
-
-<div class="text-muted">
-Esta iniciativa aún no tiene formulación registrada.
-</div>
-
-{% endif %}
-
-</div>
-</div>
-</div>
-
-</div>
-
-</div>
-
-<style>
-
-    .card{
-    border-radius:12px;
-    }
-
-    .card-header{
-    border-bottom:1px solid #eee;
-    }
-
-</style>
 
 {% endblock %}

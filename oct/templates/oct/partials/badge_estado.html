@@ -1,0 +1,13 @@
+{% comment %}
+Badge de estado reutilizable para iniciativas y formulaciones.
+Uso: {% include "oct/partials/badge_estado.html" with estado=i.estado label=i.get_estado_display %}
+{% endcomment %}
+<span class="oct-badge
+{% if estado == 'BORRADOR' or estado == 'BOR' %} oct-badge--borrador
+{% elif estado == 'ENVIADA' or estado == 'ENV' or estado == 'REVISION_OCT' %} oct-badge--enviada
+{% elif estado == 'DEVUELTA' or estado == 'DEV' %} oct-badge--devuelta
+{% elif estado == 'APROBADA' or estado == 'APR' %} oct-badge--aprobada
+{% elif estado == 'POSTULADA' %} oct-badge--postulada
+{% elif estado == 'ADJUDICADA' %} oct-badge--adjudicada
+{% elif estado == 'NO_ADJUDICADA' %} oct-badge--rechazada
+{% else %} oct-badge--neutro{% endif %}">{{ label }}</span>

@@ -1,99 +1,79 @@
 {% extends "core/base.html" %}
 {% block content %}
+{% include "oct/partials/estilos.html" %}
 
 <div class="container py-5">
 
-    <div class="mb-5">
-        <h2 class="fw-bold">Iniciativas</h2>
-        <p class="text-muted mb-0">
-            Gestión y seguimiento de iniciativas institucionales.
-        </p>
+    <div class="mb-3">
+        <a href="{% url 'oct:home' %}" class="btn-volver">
+            <span class="arrow">←</span> Volver a OCT
+        </a>
+    </div>
+
+    <div class="oct-page-head">
+        <div>
+            <span class="oct-eyebrow">🤝 OCT · Iniciativas</span>
+            <h2>Iniciativas</h2>
+            <p class="oct-sub">Gestión y seguimiento de iniciativas institucionales.</p>
+        </div>
+        <a href="{% url 'oct:registrar_iniciativa' %}" class="btn btn-oct">
+            + Nueva iniciativa
+        </a>
     </div>
 
     <div class="row g-4">
 
-        <!-- Ver mis iniciativas -->
         <div class="col-md-6 col-lg-4">
-            <div class="card shadow-sm border-0 h-100 card-hover">
-                <div class="card-body p-4">
-                    <h5 class="fw-semibold">Ver mis iniciativas</h5>
-                    <p class="text-muted small">
-                        Consulta el estado y detalle de tus iniciativas.
-                    </p>
-                    <a href="{% url 'oct:mis_iniciativas' %}" class="stretched-link"></a>
-                </div>
-            </div>
+            <a href="{% url 'oct:mis_iniciativas' %}" class="oct-tile">
+                <span class="oct-tile-icon">📂</span>
+                <h5>Ver mis iniciativas</h5>
+                <p>Consulta el estado y detalle de tus iniciativas.</p>
+                <div class="oct-tile-go">Entrar →</div>
+            </a>
         </div>
 
-        <!-- Registrar iniciativa -->
         <div class="col-md-6 col-lg-4">
-            <div class="card shadow-sm border-0 h-100 card-hover">
-                <div class="card-body p-4">
-                    <h5 class="fw-semibold">Registrar iniciativa</h5>
-                    <p class="text-muted small">
-                        Ingresa una nueva iniciativa para revisión.
-                    </p>
-                    <a href="{% url 'oct:registrar_iniciativa' %}" class="stretched-link"></a>
-                </div>
-            </div>
+            <a href="{% url 'oct:registrar_iniciativa' %}" class="oct-tile">
+                <span class="oct-tile-icon">📝</span>
+                <h5>Registrar iniciativa</h5>
+                <p>Ingresa una nueva iniciativa para revisión.</p>
+                <div class="oct-tile-go">Entrar →</div>
+            </a>
         </div>
 
-        <!-- Formular iniciativa -->
         <div class="col-md-6 col-lg-4">
-            <div class="card shadow-sm border-0 h-100 card-hover">
-                <div class="card-body p-4">
-                    <h5 class="fw-semibold">Formular iniciativa</h5>
-                    <p class="text-muted small">
-                        Completa la formulación de iniciativas aprobadas por la OCT.
-                    </p>
-                    <a href="{% url 'oct:formular_iniciativas' %}" class="stretched-link"></a>
-                </div>
-            </div>
+            <a href="{% url 'oct:formular_iniciativas' %}" class="oct-tile">
+                <span class="oct-tile-icon">🧩</span>
+                <h5>Formular iniciativa</h5>
+                <p>Completa la formulación de iniciativas aprobadas por la OCT.</p>
+                <div class="oct-tile-go">Entrar →</div>
+            </a>
         </div>
 
         {% if es_aprobador %}
-        <!-- Revisar iniciativas -->
         <div class="col-md-6 col-lg-4">
-            <div class="card shadow-sm border-0 h-100 card-hover">
-                <div class="card-body p-4">
-                    <h5 class="fw-semibold">Revisar iniciativas</h5>
-                    <p class="text-muted small">
-                        Revisa, aprueba o devuelve iniciativas enviadas.
-                    </p>
-                    <a href="{% url 'oct:panel_aprobacion' %}" class="stretched-link"></a>
-                </div>
-            </div>
+            <a href="{% url 'oct:panel_aprobacion' %}" class="oct-tile oct-tile--accent">
+                {% if pendientes_iniciativas %}<span class="oct-tile-badge">{{ pendientes_iniciativas }}</span>{% endif %}
+                <span class="oct-tile-icon">✅</span>
+                <h5>Revisar iniciativas</h5>
+                <p>Revisa, aprueba o devuelve iniciativas enviadas.</p>
+                <div class="oct-tile-go">Entrar →</div>
+            </a>
         </div>
-        {% endif %}
 
-        {% if es_aprobador %}
-        <!-- Revisar formulaciones -->
         <div class="col-md-6 col-lg-4">
-            <div class="card shadow-sm border-0 h-100 card-hover">
-                <div class="card-body p-4">
-                    <h5 class="fw-semibold">Revisar formulaciones</h5>
-                    <p class="text-muted small">
-                        Revisa, aprueba o devuelve formulaciones enviadas.
-                    </p>
-                    <a href="{% url 'oct:revisar_formulaciones' %}" class="stretched-link"></a>
-                </div>
-            </div>
+            <a href="{% url 'oct:revisar_formulaciones' %}" class="oct-tile oct-tile--accent">
+                {% if pendientes_formulaciones %}<span class="oct-tile-badge">{{ pendientes_formulaciones }}</span>{% endif %}
+                <span class="oct-tile-icon">🗂️</span>
+                <h5>Revisar formulaciones</h5>
+                <p>Revisa, aprueba o devuelve formulaciones enviadas.</p>
+                <div class="oct-tile-go">Entrar →</div>
+            </a>
         </div>
         {% endif %}
 
     </div>
 
 </div>
-
-<style>
-.card-hover {
-    transition: all 0.2s ease-in-out;
-    border-radius: 12px;
-}
-.card-hover:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
-}
-</style>
 
 {% endblock %}

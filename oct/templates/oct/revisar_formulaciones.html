@@ -1,172 +1,117 @@
 {% extends "core/base.html" %}
 {% block content %}
+{% include "oct/partials/estilos.html" %}
 
 <div class="container py-5">
 
-<h3 class="fw-bold mb-4">Revisar formulaciones</h3>
+    <div class="mb-3">
+        <a href="{% url 'oct:iniciativas_home' %}" class="btn-volver">
+            <span class="arrow">←</span> Volver a Iniciativas
+        </a>
+    </div>
 
-<div class="card shadow-sm border-0">
+    <div class="oct-page-head">
+        <div>
+            <span class="oct-eyebrow">🤝 OCT · Revisión</span>
+            <h2>Revisar formulaciones {% if total %}<span class="oct-count-pill">{{ total }}</span>{% endif %}</h2>
+            <p class="oct-sub">Formulaciones enviadas a revisión por los responsables.</p>
+        </div>
+    </div>
 
-<div class="table-responsive">
+    <div class="oct-card">
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Iniciativa</th>
+                        <th>Unidad</th>
+                        <th>Fondo</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in formulaciones %}
+                    <tr>
+                        <td class="fw-semibold text-dark">{{ f.iniciativa.nombre }}</td>
+                        <td>{{ f.iniciativa.unidad }}</td>
+                        <td>{{ f.nombre_fondo }}</td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-2">
+                                <a href="{% url 'oct:ver_formulacion' f.iniciativa.id %}"
+                                   class="btn btn-sm btn-oct-ghost">
+                                    👁️ Ver
+                                </a>
 
-<table class="table table-hover align-middle mb-0">
+                                <form method="post" action="{% url 'oct:aprobar_formulacion' f.id %}"
+                                      class="d-inline confirm-form" data-msg="¿Aprobar esta formulación?">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        ✓ Aprobar
+                                    </button>
+                                </form>
 
-<thead class="table-light">
-<tr>
-<th>Iniciativa</th>
-<th>Unidad</th>
-<th>Fondo</th>
-<th></th>
-</tr>
-</thead>
-
-<tbody>
-
-{% for f in formulaciones %}
-
-<tr>
-
-<td>
-{{ f.iniciativa.nombre }}
-</td>
-
-<td>
-{{ f.iniciativa.unidad }}
-</td>
-
-<td>
-{{ f.nombre_fondo }}
-</td>
-
-<td class="text-end">
-
-<a href="{% url 'oct:ver_formulacion' f.iniciativa.id %}"
-class="btn btn-sm btn-outline-dark">
-Ver
-</a>
-
-<a href="{% url 'oct:aprobar_formulacion' f.id %}"
-class="btn btn-sm btn-success">
-Aprobar
-</a>
-
-<button
-class="btn btn-sm btn-warning"
-data-bs-toggle="modal"
-data-bs-target="#devolverModal"
-data-id="{{ f.id }}"
-data-nombre="{{ f.iniciativa.nombre }}"
->
-Devolver
-</button>
-
-</td>
-
-</tr>
-
-{% empty %}
-
-<tr>
-<td colspan="4" class="text-center text-muted py-4">
-No hay formulaciones enviadas para revisión
-</td>
-</tr>
-
-{% endfor %}
-
-</tbody>
-
-</table>
+                                <button class="btn btn-sm btn-warning text-white"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#devolverModal"
+                                        data-id="{{ f.id }}"
+                                        data-nombre="{{ f.iniciativa.nombre }}">
+                                    ↺ Devolver
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">
+                            <div class="oct-empty">
+                                <span class="oct-empty-icon">🗂️</span>
+                                No hay formulaciones enviadas para revisión.
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
 </div>
-</div>
-
-</div>
-
 
 <!-- MODAL DEVOLVER -->
-
 <div class="modal fade" id="devolverModal" tabindex="-1">
-
-<div class="modal-dialog modal-dialog-centered">
-
-<div class="modal-content">
-
-<div class="modal-header">
-
-<h5 class="modal-title">
-Devolver formulación
-</h5>
-
-<button class="btn-close" data-bs-dismiss="modal"></button>
-
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold">Devolver formulación</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="formDevolver">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p class="text-muted small">
+                        Iniciativa: <strong id="nombreIniciativa"></strong>
+                    </p>
+                    <textarea name="observaciones" class="form-control" rows="4"
+                              placeholder="Escribe las observaciones para el responsable..."
+                              required></textarea>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-oct-ghost" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning text-white">Devolver</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
-
-<form method="post" id="formDevolver">
-
-{% csrf_token %}
-
-<div class="modal-body">
-
-<p class="text-muted small">
-Iniciativa:
-<strong id="nombreIniciativa"></strong>
-</p>
-
-<textarea
-name="observaciones"
-class="form-control"
-rows="4"
-placeholder="Escribe las observaciones..."
-required
-></textarea>
-
-</div>
-
-<div class="modal-footer">
-
-<button
-type="button"
-class="btn btn-outline-secondary"
-data-bs-dismiss="modal"
->
-Cancelar
-</button>
-
-<button
-type="submit"
-class="btn btn-warning"
->
-Devolver
-</button>
-
-</div>
-
-</form>
-
-</div>
-</div>
-</div>
-
 
 <script>
-
-const modal = document.getElementById('devolverModal')
-
-modal.addEventListener('show.bs.modal', function (event) {
-
-const button = event.relatedTarget
-
-const id = button.getAttribute('data-id')
-const nombre = button.getAttribute('data-nombre')
-
-document.getElementById("nombreIniciativa").innerText = nombre
-
-document.getElementById("formDevolver").action =
-`/oct/formulaciones/devolver/${id}/`
-
-})
-
+    const modal = document.getElementById('devolverModal');
+    modal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        document.getElementById("nombreIniciativa").innerText = button.getAttribute('data-nombre');
+        document.getElementById("formDevolver").action =
+            `/oct/formulaciones/devolver/${button.getAttribute('data-id')}/`;
+    });
 </script>
 
 {% endblock %}
