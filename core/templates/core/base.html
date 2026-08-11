@@ -1,17 +1,60 @@
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Sistema{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Prisma{% endblock %}</title>
+
+    {% comment %}
+    El favicon usa la versión simplificada del faro: a 16 px la estrella y los
+    vanos de la torre solo ensucian. El PNG queda de respaldo para navegadores
+    que no aceptan favicon en SVG.
+    {% endcomment %}
+    <link rel="icon" type="image/svg+xml" href="{% static 'core/img/prisma-16.svg' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'core/img/prisma-32.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'core/img/prisma-180.png' %}">
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
+    <!-- Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
     <style>
+        :root {
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+        }
         body {
             overflow-x: hidden;
             background-color: #f4f4f4;
             color: #565656;
+            font-family: var(--font-sans);
+            font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* HTMX: fade-in suave al swap */
+        .htmx-swapping {
+            opacity: 0;
+            transition: opacity .15s ease-out;
+        }
+        .htmx-added {
+            opacity: 0;
+        }
+        .htmx-settling {
+            opacity: 1;
+            transition: opacity .25s ease-in;
+        }
+
+        /* Focus ring más sutil */
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #93c5fd;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, .15);
         }
 
         /* ===== SIDEBAR ===== */
@@ -19,18 +62,48 @@
             width: 260px;
             min-height: 100vh;
             background-color: #2f3a45; /* Gris institucional neutro */
-            transition: margin-left 0.3s ease;
-            padding-top: 20px;
+            transition: width 0.3s ease;
+            flex-shrink: 0;
+            overflow: hidden;
         }
 
         .sidebar.hidden {
-            margin-left: -260px;
+            width: 0;
+            padding: 0;
+        }
+
+        .sidebar-content {
+            width: 260px;
+            padding: 20px 1rem 0;
+        }
+
+        /* Garantiza que el área principal pueda crecer correctamente
+           sin que un hijo con min-width intrínseco bloquee el flex. */
+        .main-area {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .sidebar-marca {
+            display: flex;
+            align-items: center;
+            gap: .6rem;
         }
 
         .sidebar-title {
+            display: block;
             font-weight: 700;
             color: #ffffff;
             letter-spacing: 1px;
+            font-size: 1.05rem;
+            line-height: 1.15;
+        }
+
+        .sidebar-bajada {
+            display: block;
+            color: rgba(255, 255, 255, .5);
+            font-size: .6rem;
+            letter-spacing: .07em;
         }
 
         /* Links */
@@ -107,6 +180,39 @@
         .borde-finalizado::before  { background: #198754; }
         .borde-suspendido::before  { background: #dc3545; }
 
+        /* ===== BOTÓN VOLVER (compartido) ===== */
+        .btn-volver {
+            display: inline-flex;
+            align-items: center;
+            gap: .45rem;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            color: #6b7280;
+            border-radius: 999px;
+            padding: .35rem .9rem;
+            font-size: .8rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all .15s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .btn-volver:hover {
+            background: #ffffff;
+            border-color: #009fe3;
+            color: #009fe3;
+            box-shadow: 0 4px 10px rgba(0,159,227,0.10);
+            transform: translateX(-2px);
+        }
+        .btn-volver .arrow {
+            display: inline-block;
+            font-size: .95rem;
+            line-height: 1;
+            transition: transform .15s ease;
+        }
+        .btn-volver:hover .arrow {
+            transform: translateX(-2px);
+        }
+
     </style>
 </head>
 <body>
@@ -114,8 +220,15 @@
 <div class="d-flex">
 
     <!-- Sidebar -->
-    <div id="sidebar" class="sidebar p-3">
-        <h5 class="text-white mb-4">Menú</h5>
+    <div id="sidebar" class="sidebar">
+      <div class="sidebar-content">
+        <div class="sidebar-marca mb-4">
+            <img src="{% static 'core/img/prisma.svg' %}" alt="" width="34" height="34">
+            <div>
+                <span class="sidebar-title">PRISMA</span>
+                <span class="sidebar-bajada">DAPEI · UPLA</span>
+            </div>
+        </div>
 
         <ul class="nav nav-pills flex-column gap-2">
 
@@ -140,17 +253,27 @@
                     <ul class="nav flex-column mt-2">
                         <li class="nav-item">
                             <a class="nav-link small" href="{% url 'planificacion:home' %}">
+                                Panel
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'planificacion:lista_programas' %}">
+                                Planes
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'planificacion:lista_objetivos' %}">
+                                Objetivos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'planificacion:indicadores' %}">
                                 Indicadores
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link small" href="#">
-                                Programas
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link small" href="#">
-                                Objetivos
+                            <a class="nav-link small" href="{% url 'planificacion:estrategias' %}">
+                                Estrategias
                             </a>
                         </li>
                     </ul>
@@ -175,8 +298,44 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'proyectos:graficos_proyectos' %}">
+                                Gráficos
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link small" href="#">
                                 Crear proyecto
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- ANÁLISIS -->
+            <li class="nav-item">
+                <a class="nav-link d-flex justify-content-between align-items-center"
+                data-bs-toggle="collapse"
+                href="#menuAnalisis"
+                role="button">
+                    📈 Análisis
+                    <span>▾</span>
+                </a>
+
+                <div class="collapse ms-3" id="menuAnalisis">
+                    <ul class="nav flex-column mt-2">
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'analisis:home' %}">
+                                Panel
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'analisis:panel_informes' %}">
+                                Informes
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'analisis:graficos_informes' %}">
+                                Gráficos
                             </a>
                         </li>
                     </ul>
@@ -209,11 +368,78 @@
                 </div>
             </li>
 
+            <!-- OTEC -->
+            <li class="nav-item">
+                <a class="nav-link d-flex justify-content-between align-items-center"
+                data-bs-toggle="collapse"
+                href="#menuOTEC"
+                role="button">
+                    🎓 OTEC
+                    <span>▾</span>
+                </a>
+
+                <div class="collapse ms-3" id="menuOTEC">
+                    <ul class="nav flex-column mt-2">
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'otec:home' %}">
+                                Inicio OTEC
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'otec:panel_gestion' %}">
+                                Gestión de capacitación
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'otec:lista_actividades' %}">
+                                Actividades
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'otec:lista_propuestas' %}">
+                                Propuestas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'otec:indicadores' %}">
+                                Indicadores y carga laboral
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'otec:graficos' %}">
+                                Gráficos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'otec:flujo_caja' %}">
+                                Flujo de caja
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'otec:carta_gantt' %}">
+                                Carta Gantt
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'otec:calendario_zoom' %}">
+                                Salas Zoom
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link small" href="{% url 'otec:importar' %}">
+                                Cargar Excel
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
         </ul>
+      </div>
     </div>
 
     <!-- Main -->
-    <div class="flex-grow-1">
+    <div class="main-area">
 
         <!-- Topbar -->
         <div class="topbar d-flex align-items-center px-3 justify-content-between">
@@ -228,6 +454,22 @@
 
         <!-- Content -->
         <div class="content">
+
+            <!-- TOASTS globales -->
+            <div class="toast-stack" style="position: fixed; right: 1rem; top: 1rem; z-index: 2000; max-width: 380px;">
+                {% if messages %}
+                {% for m in messages %}
+                <div class="toast align-items-center text-bg-{% if 'success' in m.tags %}success{% elif 'error' in m.tags %}danger{% elif 'warning' in m.tags %}warning{% else %}primary{% endif %} border-0 show mb-2"
+                     role="alert">
+                  <div class="d-flex">
+                    <div class="toast-body">{{ m }}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                  </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+
             {% block content %}{% endblock %}
         </div>
 
@@ -252,6 +494,48 @@
   document.body.addEventListener('htmx:configRequest', (event) => {
     event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
   });
+
+  // Permitir que respuestas 4xx (validación) se inserten en el target
+  document.body.addEventListener('htmx:beforeSwap', (event) => {
+    const status = event.detail.xhr.status;
+    if (status === 400 || status === 422) {
+      event.detail.shouldSwap = true;
+      event.detail.isError = false;
+    }
+  });
+</script>
+<script>
+    // Separador de miles mientras se escribe el monto.
+    //
+    // Solo sobre campos de texto: un <input type="number"> descarta cualquier
+    // valor que no sea un número válido, y "3.000.000" tiene dos puntos, así
+    // que el navegador dejaba el campo vacío. De ahí que los montos se
+    // "reiniciaran" justo al pasar del millón (seis dígitos aún colaban,
+    // porque "300.000" sí se lee como un decimal válido).
+    document.addEventListener("input", function(e) {
+        const campo = e.target;
+        const esMonto = campo.name === "presupuesto_corriente" ||
+                        campo.name === "presupuesto_capital";
+        if (!esMonto || campo.type === "number") return;
+
+        const digitos = campo.value.replace(/\D/g, "");
+        // Sin dígitos se deja vacío: formatear "" daría un "0" que impide
+        // borrar lo escrito para empezar de nuevo.
+        campo.value = digitos ? new Intl.NumberFormat("es-CL").format(digitos) : "";
+    });
+
+    // Auto-hide toasts globales
+    document.querySelectorAll('.toast.show').forEach(t => {
+        setTimeout(() => { try { bootstrap.Toast.getOrCreateInstance(t).hide(); } catch(e){} }, 4500);
+    });
+
+    // Confirm reusable: cualquier form/button con .confirm-form/.confirm-btn pide confirmación
+    document.addEventListener('submit', e => {
+        const f = e.target;
+        if (f.classList && f.classList.contains('confirm-form')) {
+            if (!confirm(f.dataset.msg || '¿Confirmar acción?')) e.preventDefault();
+        }
+    }, true);
 </script>
 
 

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="256" height="256" role="img" aria-label="Prisma">
+  <title>Prisma — versión simplificada para tamaños chicos</title>
+  <!--
+    Misma silueta que prisma-c-faro.svg, sin estrella y con la escalinata en un
+    solo bloque. El vano cyan se conserva a propósito: sin él, el frontón sobre
+    la torre se lee como una flecha hacia arriba en vez de un faro.
+  -->
+
+  <rect width="64" height="64" rx="15" fill="#1d1d1b"/>
+
+  <!-- Basamento -->
+  <rect x="9" y="49" width="28" height="7" rx="2.4" fill="#ffffff"/>
+
+  <!-- Torre, con poca conicidad para que aguante el tamaño chico -->
+  <path d="M15.5 49 18 27h10l2.5 22z" fill="#ffffff"/>
+  <!-- Frontón -->
+  <path d="M23 17 30.5 27h-15z" fill="#ffffff"/>
+
+  <!-- Vano: la mancha de color que evita la lectura de flecha -->
+  <rect x="20.4" y="33" width="5.2" height="9" rx="2.6" fill="#009fe3"/>
+
+  <!-- El haz, en tres indicadores -->
+  <g stroke-width="5" stroke-linecap="round" fill="none">
+    <path d="M34 22 56 13"   stroke="#bfe8f8"/>
+    <path d="M34.5 25 59 25" stroke="#3fb8ea"/>
+    <path d="M34 28 53 37"   stroke="#009fe3"/>
+  </g>
+</svg>

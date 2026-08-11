@@ -85,7 +85,7 @@
                 <div class="dashboard-icon">📈</div>
                 <h5 class="dashboard-title">Análisis</h5>
                 <p class="dashboard-text">Resultados y seguimiento</p>
-                <a href="#" class="btn dashboard-btn">
+                <a href="{% url 'analisis:home' %}" class="btn dashboard-btn">
                     Ingresar
                 </a>
             </div>
@@ -114,6 +114,20 @@
                 <h5 class="dashboard-title">OCT</h5>
                 <p class="dashboard-text">Oficina de cooperación técnica</p>
                 <a href="{% url 'oct:home' %}" class="btn dashboard-btn">
+                    Ingresar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- OTEC -->
+    <div class="col-md-3">
+        <div class="card dashboard-card shadow-sm h-100">
+            <div class="card-body text-center p-4">
+                <div class="dashboard-icon">🎓</div>
+                <h5 class="dashboard-title">OTEC</h5>
+                <p class="dashboard-text">Organismo técnico de capacitación</p>
+                <a href="{% url 'otec:home' %}" class="btn dashboard-btn">
                     Ingresar
                 </a>
             </div>
