@@ -1,21 +1,7 @@
-"""
-URL configuration for sistema project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
+
+from core.views import media_protegida
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -23,5 +9,10 @@ urlpatterns = [
     path('planificacion/', include('planificacion.urls')),
     path('proyectos/', include('proyectos.urls')),
     path('oct/', include('oct.urls')),
-
+    path('otec/', include('otec.urls')),
+    path('analisis/', include('analisis.urls')),
+    # Los archivos subidos se sirven SIEMPRE a través de una vista protegida
+    # (login_required), tanto en desarrollo como en producción, para no exponer
+    # documentos sensibles por URL directa.
+    re_path(r'^media/(?P<ruta>.+)$', media_protegida, name='media_protegida'),
 ]
