@@ -1,0 +1,631 @@
+/* OTEC — sistema visual.
+   Un solo acento (azul UPLA) sobre neutros. El color con significado se
+   reserva para estado y riesgo; la jerarquía la da el tamaño y el peso. */
+
+:root {
+    --otec-primary: #009fe3;
+    --otec-text: #1f2937;
+    --otec-muted: #6b7280;
+    --otec-faint: #9ca3af;
+    --otec-line: #e5e7eb;
+    --otec-surface: #ffffff;
+    --otec-bg-soft: #f9fafb;
+
+    --otec-ok: #16a34a;
+    --otec-warn: #d97706;
+    --otec-danger: #dc2626;
+
+    --otec-radius: 12px;
+    --otec-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+}
+
+/* ===== Encabezado de sección ===== */
+.otec-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+}
+.otec-header h2 {
+    font-weight: 700;
+    color: var(--otec-text);
+    margin: 0;
+    font-size: 1.5rem;
+}
+.otec-header p {
+    color: var(--otec-muted);
+    margin: .25rem 0 0;
+    font-size: .9rem;
+}
+
+.otec-eyebrow {
+    display: inline-block;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--otec-primary);
+    margin-bottom: .3rem;
+}
+
+/* ===== Panel de entrada ===== */
+.otec-resumen {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.4rem;
+    align-items: center;
+    padding: .85rem 1.15rem;
+    margin-bottom: 1.5rem;
+    background: var(--otec-surface);
+    border: 1px solid var(--otec-line);
+    border-radius: var(--otec-radius);
+    font-size: .85rem;
+    color: var(--otec-muted);
+}
+.otec-resumen strong {
+    color: var(--otec-text);
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.otec-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+    gap: 1rem;
+}
+.otec-tile {
+    display: flex;
+    flex-direction: column;
+    background: var(--otec-surface);
+    border: 1px solid var(--otec-line);
+    border-radius: var(--otec-radius);
+    padding: 1.25rem;
+    text-decoration: none;
+    box-shadow: var(--otec-shadow);
+    transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.otec-tile:hover {
+    border-color: var(--otec-primary);
+    box-shadow: 0 8px 20px rgba(0, 159, 227, .10);
+    transform: translateY(-2px);
+}
+.otec-tile__icono { font-size: 1.6rem; line-height: 1; margin-bottom: .7rem; }
+.otec-tile__titulo {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--otec-text);
+    margin: 0 0 .35rem;
+}
+.otec-tile__texto {
+    font-size: .82rem;
+    color: var(--otec-muted);
+    line-height: 1.5;
+    margin: 0 0 .9rem;
+    flex-grow: 1;
+}
+.otec-tile__dato {
+    font-size: .76rem;
+    color: var(--otec-faint);
+    font-variant-numeric: tabular-nums;
+}
+.otec-tile__ir {
+    margin-top: .6rem;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--otec-primary);
+}
+
+/* ===== Tarjetas ===== */
+.otec-card {
+    background: var(--otec-surface);
+    border: 1px solid var(--otec-line);
+    border-radius: var(--otec-radius);
+    box-shadow: var(--otec-shadow);
+}
+.otec-card__body { padding: 1.15rem 1.25rem; }
+.otec-card__title {
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--otec-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin: 0 0 .85rem;
+}
+
+/* ===== KPI ===== */
+.otec-kpi { display: flex; flex-direction: column; gap: .2rem; }
+.otec-kpi__label {
+    font-size: .78rem;
+    color: var(--otec-muted);
+    font-weight: 500;
+}
+.otec-kpi__value {
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: var(--otec-text);
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+}
+.otec-kpi__hint { font-size: .75rem; color: var(--otec-faint); }
+.otec-kpi__value--ok { color: var(--otec-ok); }
+.otec-kpi__value--danger { color: var(--otec-danger); }
+
+/* ===== Barra de progreso ===== */
+.otec-progress {
+    height: 6px;
+    background: var(--otec-line);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.otec-progress__fill {
+    height: 100%;
+    background: var(--otec-primary);
+    border-radius: 999px;
+    transition: width .3s ease;
+}
+
+/* ===== Punto de estado (en vez de píldoras de color) ===== */
+.otec-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .82rem;
+    color: var(--otec-text);
+    white-space: nowrap;
+}
+.otec-dot::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--otec-faint);
+    flex-shrink: 0;
+}
+.otec-dot--ok::before { background: var(--otec-ok); }
+.otec-dot--warn::before { background: var(--otec-warn); }
+.otec-dot--danger::before { background: var(--otec-danger); }
+.otec-dot--info::before { background: var(--otec-primary); }
+
+/* ===== Tabla ===== */
+.otec-tabla-wrap { overflow-x: auto; }
+.otec-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .875rem;
+}
+.otec-tabla th {
+    text-align: left;
+    font-size: .72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--otec-muted);
+    padding: .6rem .75rem;
+    border-bottom: 1px solid var(--otec-line);
+    white-space: nowrap;
+}
+.otec-tabla td {
+    padding: .75rem;
+    border-bottom: 1px solid var(--otec-line);
+    color: var(--otec-text);
+    vertical-align: middle;
+}
+.otec-tabla tbody tr:hover { background: var(--otec-bg-soft); }
+.otec-tabla .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* Código arriba, nombre debajo: el código es el identificador real. */
+.otec-codigo {
+    font-size: .74rem;
+    color: var(--otec-muted);
+    font-weight: 500;
+    letter-spacing: .02em;
+}
+.otec-nombre {
+    display: block;
+    font-weight: 600;
+    color: var(--otec-text);
+    text-decoration: none;
+    line-height: 1.3;
+}
+a.otec-nombre:hover { color: var(--otec-primary); }
+
+/* ===== Filtros ===== */
+.otec-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+.otec-filtros .form-control,
+.otec-filtros .form-select {
+    font-size: .85rem;
+    border-color: var(--otec-line);
+    border-radius: 8px;
+    width: auto;
+    min-width: 160px;
+}
+
+/* ===== Checklist ===== */
+.otec-etapa + .otec-etapa { margin-top: 1.25rem; }
+.otec-etapa__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .6rem 0;
+    border-bottom: 1px solid var(--otec-line);
+}
+.otec-etapa__nombre {
+    font-weight: 600;
+    color: var(--otec-text);
+    font-size: .92rem;
+}
+.otec-etapa__conteo {
+    font-size: .78rem;
+    color: var(--otec-muted);
+    font-variant-numeric: tabular-nums;
+}
+.otec-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .55rem 0;
+    border-bottom: 1px solid var(--otec-bg-soft);
+}
+.otec-item__nombre { font-size: .875rem; color: var(--otec-text); }
+.otec-item__detalle {
+    display: block;
+    font-size: .75rem;
+    color: var(--otec-faint);
+}
+.otec-item__critico {
+    font-size: .68rem;
+    color: var(--otec-danger);
+    font-weight: 600;
+    letter-spacing: .03em;
+    margin-left: .4rem;
+}
+.otec-item select {
+    font-size: .8rem;
+    padding: .2rem 1.6rem .2rem .5rem;
+    border: 1px solid var(--otec-line);
+    border-radius: 7px;
+    color: var(--otec-text);
+    background-color: #fff;
+    min-width: 130px;
+}
+
+/* ===== Ficha de datos ===== */
+.otec-datos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 1rem 1.5rem;
+}
+.otec-dato__label {
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--otec-muted);
+    font-weight: 600;
+    margin-bottom: .15rem;
+}
+.otec-dato__valor {
+    font-size: .9rem;
+    color: var(--otec-text);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ===== Grillas de calendario (Gantt y Zoom) ===== */
+.otec-grid-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--otec-line);
+    border-radius: var(--otec-radius);
+    background: var(--otec-surface);
+}
+.otec-grid {
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: .75rem;
+    white-space: nowrap;
+}
+/* La primera columna acompaña el scroll horizontal. */
+.otec-grid th.otec-grid__lead,
+.otec-grid td.otec-grid__lead {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--otec-surface);
+    border-right: 1px solid var(--otec-line);
+    text-align: left;
+    white-space: normal;
+    min-width: 230px;
+    max-width: 230px;
+    padding: .5rem .75rem;
+}
+.otec-grid thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--otec-bg-soft);
+    color: var(--otec-muted);
+    font-weight: 600;
+    font-size: .68rem;
+    padding: .35rem .2rem;
+    border-bottom: 1px solid var(--otec-line);
+    text-align: center;
+}
+.otec-grid thead th.otec-grid__lead { z-index: 3; }
+.otec-grid thead th.mes {
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    border-left: 1px solid var(--otec-line);
+}
+.otec-grid td {
+    padding: 0;
+    border-bottom: 1px solid var(--otec-bg-soft);
+    text-align: center;
+}
+.otec-grid tbody tr:hover td.otec-grid__lead { background: var(--otec-bg-soft); }
+
+.otec-celda {
+    width: 22px;
+    height: 26px;
+    display: block;
+}
+.otec-celda--e { background: var(--otec-primary); }
+.otec-celda--c { background: #94a3b8; }
+/* Estimado desde las fechas del curso: contorno, no relleno, para que no se
+   confunda con un día realmente calendarizado. */
+.otec-celda--estimado {
+    background: rgba(42, 120, 214, .10);
+    border: 1px dashed var(--otec-primary);
+    border-radius: 2px;
+    width: 22px;
+    height: 26px;
+}
+.otec-celda--feriado {
+    background: repeating-linear-gradient(
+        45deg, transparent, transparent 3px, var(--otec-line) 3px, var(--otec-line) 6px
+    );
+}
+.otec-fin-semana { background: var(--otec-bg-soft); }
+
+.otec-leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.1rem;
+    align-items: center;
+    margin-top: .9rem;
+    font-size: .78rem;
+    color: var(--otec-muted);
+}
+.otec-leyenda span { display: inline-flex; align-items: center; gap: .4rem; }
+.otec-leyenda i {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+/* Fila de carga (actividades en paralelo) */
+.otec-carga {
+    display: block;
+    width: 22px;
+    background: var(--otec-primary);
+    opacity: .18;
+    margin: 0 auto;
+}
+.otec-carga--alta { opacity: .55; }
+
+/* ===== Calendario Zoom ===== */
+.otec-zoom__hora {
+    font-variant-numeric: tabular-nums;
+    color: var(--otec-muted);
+    font-size: .7rem;
+    text-align: right !important;
+    min-width: 92px !important;
+    max-width: 92px !important;
+    padding: .2rem .6rem !important;
+}
+.otec-zoom td.slot {
+    border-left: 1px solid var(--otec-bg-soft);
+    height: 24px;
+    min-width: 150px;
+    vertical-align: top;
+}
+.otec-zoom .bloque {
+    display: block;
+    height: 100%;
+    padding: 0 .4rem;
+    font-size: .72rem;
+    line-height: 1.5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--otec-text);
+    border-left: 3px solid var(--otec-primary);
+}
+.otec-zoom .bloque--inicio {
+    font-weight: 600;
+    border-top: 1px solid rgba(0, 0, 0, .06);
+}
+/* Paleta categórica validada (ver otec/graficos.py): banda de luminosidad, piso
+   de croma, separación bajo daltonismo y piso de visión normal. El ORDEN es el
+   mecanismo de seguridad — no reordenar ni ciclar. El nombre del curso va
+   siempre escrito en el bloque, así que el color nunca carga solo el sentido. */
+.tono-0 { background: rgba(42, 120, 214, .14);  border-left-color: #2a78d6; }
+.tono-1 { background: rgba(235, 104, 52, .14);  border-left-color: #eb6834; }
+.tono-2 { background: rgba(27, 175, 122, .14);  border-left-color: #1baf7a; }
+.tono-3 { background: rgba(237, 161, 0, .16);   border-left-color: #eda100; }
+.tono-4 { background: rgba(232, 123, 164, .16); border-left-color: #e87ba4; }
+.tono-5 { background: rgba(0, 131, 0, .13);     border-left-color: #008300; }
+.tono-6 { background: rgba(74, 58, 167, .13);   border-left-color: #4a3aa7; }
+.tono-7 { background: rgba(227, 73, 72, .13);   border-left-color: #e34948; }
+
+.otec-zoom .feriado {
+    background: repeating-linear-gradient(
+        45deg, transparent, transparent 4px, var(--otec-bg-soft) 4px, var(--otec-bg-soft) 8px
+    );
+}
+
+/* ===== Formularios ===== */
+.otec-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .9rem 1rem;
+}
+.otec-form-grid .span-2 { grid-column: 1 / -1; }
+@media (max-width: 575px) {
+    .otec-form-grid { grid-template-columns: 1fr; }
+    .otec-form-grid .span-2 { grid-column: auto; }
+}
+
+.otec-campo__label {
+    display: block;
+    font-size: .74rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--otec-muted);
+    margin-bottom: .25rem;
+}
+.otec-campo__req { color: var(--otec-danger); }
+.otec-campo .form-control,
+.otec-campo .form-select {
+    font-size: .875rem;
+    border-color: var(--otec-line);
+    border-radius: 8px;
+}
+.otec-campo__ayuda {
+    font-size: .72rem;
+    color: var(--otec-faint);
+    margin-top: .2rem;
+}
+.otec-campo__error {
+    font-size: .76rem;
+    color: var(--otec-danger);
+    margin-top: .2rem;
+}
+.otec-campo:has(.otec-campo__error) .form-control,
+.otec-campo:has(.otec-campo__error) .form-select {
+    border-color: var(--otec-danger);
+}
+
+.otec-opcional {
+    margin-left: .5rem;
+    padding: .1rem .45rem;
+    border: 1px solid var(--otec-line);
+    border-radius: 999px;
+    font-size: .66rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--otec-faint);
+}
+
+/* ===== Horario de clases ===== */
+.otec-fila {
+    border: 1px solid var(--otec-line);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: .8rem;
+    background: var(--otec-bg-soft);
+}
+.otec-fila__grid {
+    display: grid;
+    grid-template-columns: auto repeat(4, minmax(110px, 1fr)) auto;
+    gap: .8rem 1rem;
+    align-items: start;
+}
+@media (max-width: 991px) {
+    .otec-fila__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.otec-dias { display: flex; gap: .35rem; }
+.otec-dia {
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+}
+.otec-dia input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.otec-dia span {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--otec-line);
+    border-radius: 8px;
+    background: var(--otec-surface);
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--otec-muted);
+    transition: all .15s ease;
+}
+.otec-dia input:checked + span {
+    background: var(--otec-primary);
+    border-color: var(--otec-primary);
+    color: #fff;
+}
+.otec-dia input:focus-visible + span {
+    box-shadow: 0 0 0 3px rgba(0, 159, 227, .25);
+}
+
+.otec-quitar {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .8rem;
+    color: var(--otec-muted);
+    cursor: pointer;
+    padding-top: .4rem;
+}
+
+/* Sesión derivada del horario: se distingue de la que trajo el Excel. */
+.otec-zoom .bloque--derivada {
+    background-image: repeating-linear-gradient(
+        135deg, transparent, transparent 5px,
+        rgba(255, 255, 255, .55) 5px, rgba(255, 255, 255, .55) 10px
+    );
+}
+
+/* Acción discreta dentro de una fila de tabla. */
+.otec-accion {
+    font-size: .78rem;
+    color: var(--otec-muted);
+    text-decoration: none;
+    white-space: nowrap;
+    border-bottom: 1px solid transparent;
+}
+.otec-accion:hover {
+    color: var(--otec-primary);
+    border-bottom-color: var(--otec-primary);
+}
+
+.otec-acciones {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    margin-top: 1.5rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--otec-line);
+}
+
+/* ===== Vacío ===== */
+.otec-vacio {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--otec-muted);
+    font-size: .9rem;
+}

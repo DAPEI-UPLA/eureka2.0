@@ -1,0 +1,54 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+{% comment %}
+Sirve a los cuatro formularios del flujo (supuestos, meta, línea de ingreso con
+sus costos, costo transversal). Cada uno llega como un bloque con su título; el
+ancho de cada campo lo declara el propio formulario en `ANCHOS`.
+{% endcomment %}
+<div class="otec-header">
+    <div>
+        <h2>{{ titulo }}</h2>
+        <p>{{ descripcion }}</p>
+    </div>
+    <a href="{{ volver }}" class="btn-volver"><span class="arrow">←</span> Flujo de caja</a>
+</div>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+
+    {% for bloque in bloques %}
+        {% if bloque.form.non_field_errors %}
+        <div class="otec-card mb-3" style="border-color: var(--otec-danger)">
+            <div class="otec-card__body">
+                {% for e in bloque.form.non_field_errors %}<div class="otec-campo__error">{{ e }}</div>{% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    {% endfor %}
+
+    {% for bloque in bloques %}
+    <div class="otec-card mb-3"><div class="otec-card__body">
+        <h6 class="otec-card__title">{{ bloque.titulo }}</h6>
+        {% if bloque.nota %}<p class="otec-codigo mb-3">{{ bloque.nota }}</p>{% endif %}
+        <div class="otec-form-grid">
+            {% for campo, ancho in bloque.form.campos %}
+            {% include "otec/partials/campo.html" with campo=campo clase=ancho %}
+            {% endfor %}
+        </div>
+    </div></div>
+    {% endfor %}
+
+    <div class="otec-acciones">
+        <button class="btn btn-sm" style="background: var(--otec-primary); color:#fff">
+            Guardar cambios
+        </button>
+        <a href="{{ volver }}" class="btn btn-sm btn-link text-muted">Cancelar</a>
+    </div>
+</form>
+
+{% endblock %}

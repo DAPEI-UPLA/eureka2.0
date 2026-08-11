@@ -1,0 +1,285 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% load l10n %}
+{% block title %}Indicadores y carga laboral{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        <h2>Seguimiento de indicadores y carga laboral</h2>
+        <p>Indicadores de gestión {{ anio|unlocalize }} y reparto del trabajo entre el equipo.</p>
+    </div>
+    <a href="{% url 'otec:home' %}" class="btn-volver"><span class="arrow">←</span> OTEC</a>
+</div>
+
+<!-- ===== Indicadores ===== -->
+<h6 class="otec-seccion">Indicadores de gestión</h6>
+<div class="otec-indicadores">
+    {% for i in indicadores %}
+    <div class="otec-card"><div class="otec-card__body">
+        <div class="otec-kpi">
+            <span class="otec-kpi__label">{{ i.nombre }}</span>
+            <span class="otec-kpi__value">{{ i.valor }}</span>
+            <span class="otec-kpi__hint">{{ i.detalle }}</span>
+        </div>
+        {% if i.pct is not None %}
+        <div class="otec-progress mt-2">
+            <div class="otec-progress__fill" style="width: {{ i.pct|floatformat:0 }}%"></div>
+        </div>
+        {% endif %}
+    </div></div>
+    {% endfor %}
+</div>
+
+<!-- ===== Carga laboral del equipo ===== -->
+<h6 class="otec-seccion">Carga laboral del equipo OTEC</h6>
+
+{% if not hay_equipo %}
+<div class="otec-card" style="border-color: var(--otec-warn)"><div class="otec-card__body">
+    <span class="otec-dot otec-dot--warn">
+        Todavía no hay nadie en los grupos «{{ grupo_encargado }}» ni «{{ grupo_profesional }}».
+    </span>
+    <p class="mt-2 mb-0" style="font-size:.86rem">
+        Los grupos ya están creados. Para que aparezca la carga laboral hay que
+        crear los usuarios y agregarlos al grupo que corresponda desde el
+        administrador de Django, y luego asignarlos como responsables de cada actividad.
+    </p>
+    {% if sin_usuario %}
+    <p class="mt-3 mb-1" style="font-size:.86rem"><strong>Nombres que la planilla menciona y aún no tienen usuario:</strong></p>
+    <ul class="mb-0" style="font-size:.85rem">
+        {% for nombre, n in sin_usuario %}
+        <li>{{ nombre }} — aparece en {{ n }} actividad{{ n|pluralize:"es" }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div></div>
+{% else %}
+
+<div class="otec-card"><div class="otec-tabla-wrap">
+    <table class="otec-tabla">
+        <thead>
+            <tr>
+                <th>Persona</th>
+                <th>Rol</th>
+                <th class="num">Actividades</th>
+                <th class="num">En paralelo</th>
+                <th class="num">Horas</th>
+                <th class="num">Participantes</th>
+                <th class="num">Con críticos</th>
+                <th>Período</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in equipo %}
+            <tr>
+                <td>
+                    <span class="otec-nombre">{{ p.nombre }}</span>
+                    {% if p.actividades %}
+                    <span class="otec-codigo">
+                        {% for a in p.actividades|slice:":2" %}{{ a.nombre|truncatechars:32 }}{% if not forloop.last %} · {% endif %}{% endfor %}{% if p.n > 2 %} · +{{ p.n|add:"-2" }} más{% endif %}
+                    </span>
+                    {% else %}
+                    <span class="otec-codigo">sin actividades asignadas</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="otec-dot otec-dot--{% if p.rol == 'Encargado' %}info{% endif %}">{{ p.rol }}</span>
+                </td>
+                <td class="num">{{ p.n }}</td>
+                <td class="num">{{ p.simultaneas }}</td>
+                <td class="num">{{ p.horas }}</td>
+                <td class="num">{{ p.participantes }}</td>
+                <td class="num">
+                    {% if p.criticos %}
+                    <span class="otec-dot otec-dot--danger">{{ p.criticos }}</span>
+                    {% else %}—{% endif %}
+                </td>
+                <td>
+                    {% if p.desde %}<span class="otec-codigo">{{ p.desde|date:"d M" }} – {{ p.hasta|date:"d M Y" }}</span>
+                    {% else %}<span class="text-muted small">sin fechas</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div></div>
+
+<p class="otec-codigo mt-2">
+    «En paralelo» es el máximo de actividades que la persona lleva a la vez.
+</p>
+
+{% if sin_usuario %}
+<div class="otec-card mt-3"><div class="otec-card__body">
+    <h6 class="otec-card__title">Nombres de la planilla sin usuario en el sistema</h6>
+    {% for nombre, n in sin_usuario %}
+    <div class="d-flex justify-content-between align-items-baseline py-1" style="font-size:.85rem">
+        <span>{{ nombre }}</span>
+        <span class="otec-codigo">{{ n }} actividad{{ n|pluralize:"es" }}</span>
+    </div>
+    {% endfor %}
+    <p class="otec-codigo mt-2 mb-0">
+        No suman a la carga laboral hasta que tengan usuario en un grupo de OTEC.
+        Puede tratarse de unidades y no de personas, como «Jurídica».
+    </p>
+</div></div>
+{% endif %}
+{% endif %}
+
+{% if sin_responsable %}
+<div class="otec-card mt-3"><div class="otec-card__body">
+    <h6 class="otec-card__title">Actividades sin responsable asignado ({{ sin_responsable|length }})</h6>
+    {% for a in sin_responsable|slice:":10" %}
+    <div class="d-flex justify-content-between align-items-baseline py-1">
+        <a href="{% url 'otec:editar_actividad' a.pk %}" class="otec-nombre" style="font-size:.85rem">
+            {{ a.nombre|truncatechars:58 }}
+        </a>
+        <span class="otec-codigo">
+            {% if a.responsable_seguimiento %}planilla: {{ a.responsable_seguimiento|truncatechars:34 }}{% else %}sin dato{% endif %}
+        </span>
+    </div>
+    {% endfor %}
+    {% if sin_responsable|length > 10 %}
+    <p class="otec-codigo mt-2 mb-0">y {{ sin_responsable|length|add:"-10" }} más.</p>
+    {% endif %}
+</div></div>
+{% endif %}
+
+<div class="row g-3 mt-1">
+    <div class="col-12 col-lg-7">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <h6 class="otec-card__title">Actividades activas y personas asignadas por mes</h6>
+            <div class="otec-chart" style="height: 250px"><canvas id="chartCarga"></canvas></div>
+            <p class="otec-codigo mb-0">
+                Una actividad cuenta como activa en todo mes que toque su período.
+            </p>
+        </div></div>
+    </div>
+
+    <div class="col-12">
+        <div class="otec-card"><div class="otec-card__body">
+            <h6 class="otec-card__title">Horas de capacitación que se inician cada mes</h6>
+            <div class="otec-chart" style="height: 230px"><canvas id="chartHoras"></canvas></div>
+        </div></div>
+    </div>
+</div>
+
+{{ g_carga|json_script:"dCarga" }}
+{{ g_horas|json_script:"dHoras" }}
+{{ tinta|json_script:"dTinta" }}
+
+<style>
+.otec-seccion {
+    font-size: .8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--otec-muted);
+    margin: 2rem 0 .9rem;
+}
+.otec-seccion:first-of-type { margin-top: 0; }
+.otec-indicadores {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 1rem;
+}
+.otec-chart { position: relative; }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    const tinta = JSON.parse(document.getElementById('dTinta').textContent);
+    const leer = id => JSON.parse(document.getElementById(id).textContent);
+
+    Chart.defaults.font.family = "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif";
+    Chart.defaults.font.size = 11;
+    Chart.defaults.color = tinta.apagada;
+
+    const ejeValor = {
+        grid: { color: tinta.grilla, drawTicks: false },
+        border: { display: false },
+        ticks: { color: tinta.apagada, padding: 6, precision: 0 },
+        beginAtZero: true,
+    };
+    const ejeCategoria = {
+        grid: { display: false },
+        border: { color: tinta.eje },
+        ticks: { color: tinta.secundaria, padding: 4 },
+    };
+    const tooltip = {
+        backgroundColor: '#0b0b0b', padding: 10, cornerRadius: 8,
+        boxWidth: 8, boxHeight: 8, titleFont: { weight: '600' },
+    };
+    const barra = {
+        borderRadius: 4, borderSkipped: false,
+        borderWidth: 2, borderColor: '#ffffff',
+        barPercentage: 0.72, categoryPercentage: 0.82,
+    };
+
+    // Dos series: la leyenda es obligatoria.
+    const dCarga = leer('dCarga');
+    new Chart(document.getElementById('chartCarga'), {
+        type: 'bar',
+        data: {
+            labels: dCarga.labels,
+            datasets: [
+                { label: 'Actividades activas', data: dCarga.activas,
+                  backgroundColor: '#2a78d6', ...barra },
+                { label: 'Personas asignadas', data: dCarga.personas,
+                  backgroundColor: '#eb6834', ...barra },
+            ],
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true, position: 'top', align: 'end',
+                    labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true,
+                              pointStyle: 'rectRounded', color: tinta.secundaria, padding: 12 },
+                },
+                tooltip: tooltip,
+            },
+            scales: { x: ejeCategoria, y: ejeValor },
+        },
+    });
+
+    // Una sola serie: sin leyenda, con el valor escrito sobre la barra.
+    const dHoras = leer('dHoras');
+    new Chart(document.getElementById('chartHoras'), {
+        type: 'bar',
+        data: {
+            labels: dHoras.labels,
+            datasets: [{ data: dHoras.data, backgroundColor: '#2a78d6', ...barra }],
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            layout: { padding: { top: 20 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...tooltip, callbacks: { label: c => c.parsed.y + ' horas' } },
+            },
+            scales: { x: ejeCategoria, y: ejeValor },
+        },
+        plugins: [{
+            id: 'valorHoras',
+            afterDatasetsDraw(chart) {
+                const {ctx} = chart;
+                ctx.save();
+                ctx.font = '600 11px ' + Chart.defaults.font.family;
+                ctx.fillStyle = tinta.secundaria;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                chart.getDatasetMeta(0).data.forEach((b, i) => {
+                    const v = chart.data.datasets[0].data[i];
+                    if (v) ctx.fillText(v, b.x, b.y - 4);
+                });
+                ctx.restore();
+            },
+        }],
+    });
+})();
+</script>
+
+{% endblock %}

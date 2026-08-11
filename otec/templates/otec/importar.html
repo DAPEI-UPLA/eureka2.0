@@ -1,0 +1,223 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Cargar Tablero OTEC{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        <h2>Cargar Tablero Maestro</h2>
+        <p>
+            Suba el Excel tal como está. El sistema reconoce lo que ya tiene cargado
+            y solo aplica las diferencias — no hace falta agregarle ninguna columna.
+        </p>
+    </div>
+    <a href="{% url 'otec:panel_gestion' %}" class="btn-volver"><span class="arrow">←</span> Gestión</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-5">
+        <div class="otec-card"><div class="otec-card__body">
+            <h6 class="otec-card__title">Archivo</h6>
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                {{ form.archivo }}
+                {% if form.archivo.errors %}
+                <div class="text-danger small mt-1">{{ form.archivo.errors.0 }}</div>
+                {% endif %}
+
+                <div class="form-check mt-3">
+                    {{ form.separar_conflictos }}
+                    <label class="form-check-label" for="{{ form.separar_conflictos.id_for_label }}" style="font-size:.85rem">
+                        {{ form.separar_conflictos.label }}
+                    </label>
+                    <div class="otec-codigo mt-1">{{ form.separar_conflictos.help_text }}</div>
+                </div>
+
+                <div class="form-check mt-3">
+                    {{ form.sobrescribir_ediciones }}
+                    <label class="form-check-label" for="{{ form.sobrescribir_ediciones.id_for_label }}" style="font-size:.85rem">
+                        {{ form.sobrescribir_ediciones.label }}
+                    </label>
+                    <div class="otec-codigo mt-1">{{ form.sobrescribir_ediciones.help_text }}</div>
+                </div>
+
+                <button class="btn btn-sm btn-outline-secondary mt-3">Analizar archivo</button>
+            </form>
+        </div></div>
+
+        <div class="otec-card mt-3"><div class="otec-card__body">
+            <h6 class="otec-card__title">Cómo evita duplicar</h6>
+            <div style="font-size:.83rem; line-height:1.65">
+                <p class="mb-2">La identidad se deduce de datos que la planilla ya trae:</p>
+                <ul class="mb-2 ps-3">
+                    <li>la propuesta, por su <strong>ID Propuesta</strong>;</li>
+                    <li>el curso, por su <strong>nombre dentro de esa propuesta</strong>;</li>
+                    <li>institución y relator/a, por <strong>nombre</strong>, ignorando tildes y mayúsculas.</li>
+                </ul>
+                <p class="mb-0 text-muted">
+                    Si le corrigen la redacción a un curso, se detecta como el mismo
+                    y conserva su checklist en vez de crear uno nuevo.
+                </p>
+            </div>
+        </div></div>
+    </div>
+
+    <div class="col-12 col-lg-7">
+        {% if salida_flujo %}
+        <div class="otec-card mb-3"><div class="otec-card__body">
+            <h6 class="otec-card__title">
+                Flujo de caja {% if previsualizacion %}· vista previa{% else %}· cargado{% endif %}
+                {% if archivo_original %}· {{ archivo_original }}{% endif %}
+            </h6>
+            <p class="mb-2" style="font-size:.85rem">
+                Se reconoció como el archivo de <strong>flujo de caja</strong> por sus hojas.
+                Reemplaza por completo las líneas de ingreso, sus costos y los supuestos:
+                el sistema recalcula el flujo a partir de ellos.
+            </p>
+            <pre class="otec-codigo mb-0" style="white-space: pre-wrap">{{ salida_flujo }}</pre>
+
+            {% if previsualizacion %}
+            <form method="post" class="mt-3">
+                {% csrf_token %}
+                <input type="hidden" name="confirmar" value="1">
+                <button class="btn btn-sm" style="background: var(--otec-primary); color:#fff">
+                    Cargar el flujo de caja
+                </button>
+                <span class="otec-codigo ms-2">Nada se ha guardado todavía.</span>
+            </form>
+            {% endif %}
+        </div></div>
+        {% endif %}
+
+        {% if resultado %}
+
+        {% if aplicado %}
+        <div class="otec-card mb-3" style="border-color: var(--otec-ok)">
+            <div class="otec-card__body">
+                <h6 class="otec-card__title" style="color: var(--otec-ok)">Cambios aplicados</h6>
+                <p class="mb-0" style="font-size:.88rem">
+                    {% if resultado.hay_cambios %}
+                    Se guardaron {{ resultado.relevantes|length }} cambios.
+                    {% else %}
+                    El archivo ya estaba reflejado en el sistema: no hubo nada que cambiar.
+                    {% endif %}
+                </p>
+                {% if calendario %}
+                <p class="otec-codigo mt-2 mb-0" style="white-space: pre-line">{{ calendario }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Resumen -->
+        <div class="otec-card mb-3"><div class="otec-card__body">
+            <h6 class="otec-card__title">
+                {% if previsualizacion %}Vista previa{% else %}Resumen{% endif %}
+                {% if archivo_original %}· {{ archivo_original }}{% endif %}
+            </h6>
+
+            <div class="otec-tabla-wrap">
+                <table class="otec-tabla">
+                    <thead>
+                        <tr>
+                            <th>Registro</th>
+                            <th class="num">Nuevos</th>
+                            <th class="num">Actualizados</th>
+                            <th class="num">Renombrados</th>
+                            <th class="num">Eliminados</th>
+                            <th class="num">Conservados</th>
+                            <th class="num">Sin cambios</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fila in resultado.resumen_por_entidad %}
+                        <tr>
+                            <td><strong>{{ fila.entidad }}</strong></td>
+                            <td class="num">{% if fila.nuevos %}{{ fila.nuevos }}{% else %}—{% endif %}</td>
+                            <td class="num">{% if fila.actualizados %}{{ fila.actualizados }}{% else %}—{% endif %}</td>
+                            <td class="num">{% if fila.renombrados %}{{ fila.renombrados }}{% else %}—{% endif %}</td>
+                            <td class="num">{% if fila.eliminados %}{{ fila.eliminados }}{% else %}—{% endif %}</td>
+                            <td class="num">{% if fila.conservados %}{{ fila.conservados }}{% else %}—{% endif %}</td>
+                            <td class="num text-muted">{{ fila.iguales }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if previsualizacion %}
+            <form method="post" class="mt-3">
+                {% csrf_token %}
+                <input type="hidden" name="confirmar" value="1">
+                {% if resultado.hay_cambios %}
+                <button class="btn btn-sm" style="background: var(--otec-primary); color:#fff">
+                    Aplicar {{ resultado.relevantes|length }} cambios
+                </button>
+                <span class="otec-codigo ms-2">Nada se ha guardado todavía.</span>
+                {% else %}
+                <p class="mb-0" style="font-size:.88rem">
+                    <strong>No hay nada que aplicar.</strong>
+                    El archivo coincide con lo que ya está en el sistema.
+                </p>
+                {% endif %}
+            </form>
+            {% endif %}
+        </div></div>
+
+        <!-- Avisos -->
+        {% if resultado.avisos or resultado.descartadas %}
+        <div class="otec-card mb-3"><div class="otec-card__body">
+            <h6 class="otec-card__title">Revisar</h6>
+            {% for aviso in resultado.avisos %}
+            <div class="otec-dot otec-dot--warn mb-2" style="align-items:flex-start">{{ aviso }}</div>
+            {% endfor %}
+            {% for linea in resultado.descartadas %}
+            <div class="otec-dot otec-dot--danger mb-2" style="align-items:flex-start">{{ linea }}</div>
+            {% endfor %}
+        </div></div>
+        {% endif %}
+
+        <!-- Detalle -->
+        {% if resultado.relevantes %}
+        <div class="otec-card"><div class="otec-card__body">
+            <h6 class="otec-card__title">Detalle de los cambios</h6>
+            <div class="otec-tabla-wrap" style="max-height: 420px; overflow-y: auto">
+                <table class="otec-tabla">
+                    <tbody>
+                        {% for c in resultado.relevantes %}
+                        <tr>
+                            <td style="width:110px">
+                                <span class="otec-dot otec-dot--{% if c.accion == 'crear' %}ok{% elif c.accion == 'eliminar' %}danger{% elif c.accion == 'renombrar' or c.accion == 'conservado' %}info{% else %}warn{% endif %}">
+                                    {{ c.accion|capfirst }}
+                                </span>
+                            </td>
+                            <td style="width:100px"><span class="otec-codigo">{{ c.entidad }}</span></td>
+                            <td>
+                                {{ c.nombre|truncatechars:64 }}
+                                {% if c.detalle %}<span class="otec-item__detalle">{{ c.detalle|truncatechars:90 }}</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div></div>
+        {% endif %}
+
+        {% elif not salida_flujo %}
+        <div class="otec-card h-100"><div class="otec-vacio">
+            Elija un archivo y presione <strong>Analizar</strong>.<br>
+            <span class="otec-codigo">
+                Sirven tanto el Tablero Maestro como el archivo de flujo de caja:
+                se reconocen solos. Verá qué cambiaría antes de guardar nada.
+            </span>
+        </div></div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

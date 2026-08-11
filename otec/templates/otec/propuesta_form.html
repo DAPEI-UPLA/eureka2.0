@@ -1,0 +1,101 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        <h2>{{ titulo }}</h2>
+        <p>Datos comerciales y de tramitación. Los cursos se agregan después, dentro de la propuesta.</p>
+    </div>
+    <a href="{{ volver }}" class="btn-volver"><span class="arrow">←</span> Volver</a>
+</div>
+
+{% if propuesta and propuesta.origen == "IMPORTADO" %}
+<div class="otec-card mb-3" style="border-color: #eda100">
+    <div class="otec-card__body" style="padding: .8rem 1.15rem">
+        <span class="otec-dot otec-dot--warn">
+            Esta propuesta vino del Excel. Si vuelve a subir el archivo, los campos que
+            la planilla trae se sobrescriben con lo que diga ella.
+        </span>
+    </div>
+</div>
+{% endif %}
+
+<form method="post" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="otec-card mb-3" style="border-color: var(--otec-danger)">
+        <div class="otec-card__body">
+            {% for e in form.non_field_errors %}<div class="otec-campo__error">{{ e }}</div>{% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-6">
+            <div class="otec-card h-100"><div class="otec-card__body">
+                <h6 class="otec-card__title">Identificación</h6>
+                <div class="otec-form-grid">
+                    {% include "otec/partials/campo.html" with campo=form.codigo clase="span-2" %}
+
+                    <div class="otec-campo span-2">
+                        <label for="{{ form.institucion.id_for_label }}" class="otec-campo__label">
+                            {{ form.institucion.label }} <span class="otec-campo__req">*</span>
+                        </label>
+                        <select name="institucion" id="{{ form.institucion.id_for_label }}"
+                                class="form-select"
+                                hx-get="{% url 'otec:contactos_opciones' %}"
+                                hx-target="#{{ form.contacto.id_for_label }}"
+                                hx-trigger="change"
+                                hx-include="this">
+                            <option value="">---------</option>
+                            {% for opcion in form.institucion.field.queryset %}
+                            <option value="{{ opcion.pk }}" {% if form.institucion.value|stringformat:"s" == opcion.pk|stringformat:"s" %}selected{% endif %}>{{ opcion.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        {% for e in form.institucion.errors %}<div class="otec-campo__error">{{ e }}</div>{% endfor %}
+                    </div>
+
+                    {% include "otec/partials/campo.html" with campo=form.contacto clase="span-2" %}
+                    {% include "otec/partials/campo.html" with campo=form.canal %}
+                    {% include "otec/partials/campo.html" with campo=form.estado_comercial %}
+                    {% include "otec/partials/campo.html" with campo=form.fecha_envio %}
+                    {% include "otec/partials/campo.html" with campo=form.anio %}
+                </div>
+            </div></div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="otec-card h-100"><div class="otec-card__body">
+                <h6 class="otec-card__title">Convenio y decretación</h6>
+                <div class="otec-form-grid">
+                    {% include "otec/partials/campo.html" with campo=form.estado_convenio %}
+                    {% include "otec/partials/campo.html" with campo=form.estado_decretacion %}
+                    {% include "otec/partials/campo.html" with campo=form.observacion_convenio clase="span-2" %}
+                    {% include "otec/partials/campo.html" with campo=form.memo_decretacion %}
+                    {% include "otec/partials/campo.html" with campo=form.fecha_memo %}
+                    {% include "otec/partials/campo.html" with campo=form.cr %}
+                    {% include "otec/partials/campo.html" with campo=form.n_decreto %}
+                    {% include "otec/partials/campo.html" with campo=form.fecha_resolucion clase="span-2" %}
+                </div>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="otec-acciones">
+        <button class="btn btn-sm" style="background: var(--otec-primary); color:#fff">
+            {% if propuesta %}Guardar cambios{% else %}Crear propuesta{% endif %}
+        </button>
+        <a href="{{ volver }}" class="btn btn-sm btn-link text-muted">Cancelar</a>
+        {% if propuesta %}
+        <a href="{% url 'otec:eliminar_propuesta' propuesta.pk %}"
+           class="btn btn-sm btn-outline-danger ms-auto">Eliminar propuesta</a>
+        {% endif %}
+    </div>
+</form>
+
+{% endblock %}

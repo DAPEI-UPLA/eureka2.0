@@ -1,0 +1,555 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% load l10n %}
+{% block title %}Flujo de caja OTEC{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        <h2>Flujo de caja {{ anio|unlocalize }}</h2>
+        <p>
+            {{ n_lineas }} líneas de ingreso, {{ n_proyeccion }} de cartera proyectada ·
+            recalculado desde los ingresos, los costos y los supuestos
+        </p>
+    </div>
+    <a href="{% url 'otec:graficos' %}" class="btn-volver"><span class="arrow">←</span> Gráficos</a>
+</div>
+
+{% if sin_datos %}
+<div class="otec-card"><div class="otec-vacio">
+    Todavía no hay líneas financieras cargadas.<br>
+    <span class="otec-codigo">Cárguelas con <code>manage.py otec_importar_flujo</code>.</span>
+</div></div>
+{% else %}
+
+<form method="get" class="otec-filtros">
+    <select name="anio" class="form-select" onchange="this.form.submit()"
+            aria-label="Año del flujo">
+        {% for a in anios %}
+        <option value="{{ a|unlocalize }}" {% if a == anio %}selected{% endif %}>{{ a|unlocalize }}</option>
+        {% endfor %}
+    </select>
+    <noscript><button class="btn btn-sm btn-outline-secondary">Ver el año</button></noscript>
+</form>
+
+<!-- Cifras de encabezado -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="otec-card h-100"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Ingresos del año</span>
+            <span class="otec-kpi__value">${{ r.total_ingresos|floatformat:0 }}</span>
+            <span class="otec-kpi__hint">{{ r.pct_asegurados|floatformat:1 }}% asegurado</span>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="otec-card h-100"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Ingresos asegurados</span>
+            <span class="otec-kpi__value">${{ r.asegurados|floatformat:0 }}</span>
+            <span class="otec-kpi__hint">cobrado más contratado en firme</span>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="otec-card h-100"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Costos operacionales</span>
+            <span class="otec-kpi__value">${{ r.costos_operacionales|floatformat:0 }}</span>
+            <span class="otec-kpi__hint">
+                ${{ r.costos_directos|floatformat:0 }} directos + ${{ r.costos_transversales|floatformat:0 }} transversales
+            </span>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="otec-card h-100"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Saldo de caja al cierre</span>
+            <span class="otec-kpi__value {% if r.meses_bajo_minimo %}otec-kpi__value--danger{% endif %}">${{ r.saldo_final|floatformat:0 }}</span>
+            <span class="otec-kpi__hint">
+                {% if r.meses_bajo_minimo %}{{ r.meses_bajo_minimo|length }} mes(es) bajo el mínimo{% else %}sin meses bajo el mínimo{% endif %}
+            </span>
+        </div></div>
+    </div>
+</div>
+
+{% comment %}
+Los supuestos van arriba y no escondidos en el admin: son los que mueven el
+saldo de los doce meses, así que hay que poder verlos y corregirlos junto al
+número que producen.
+{% endcomment %}
+<div class="otec-card mb-3"><div class="otec-card__body">
+    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+        <h6 class="otec-card__title mb-0">Supuestos con los que se calcula {{ anio|unlocalize }}</h6>
+        <a href="{% url 'otec:editar_supuestos' anio %}?anio={{ anio|unlocalize }}" class="otec-accion">Editar supuestos</a>
+    </div>
+    <div class="otec-datos">
+        <div>
+            <div class="otec-dato__label">Saldo inicial</div>
+            <div class="otec-dato__valor">${{ supuestos.saldo_inicial|floatformat:0 }}</div>
+        </div>
+        <div>
+            <div class="otec-dato__label">Fecha de corte</div>
+            <div class="otec-dato__valor">{{ supuestos.fecha_corte|date:"j \d\e F Y"|default:"Sin definir" }}</div>
+        </div>
+        <div>
+            <div class="otec-dato__label">Saldo mínimo</div>
+            <div class="otec-dato__valor">${{ supuestos.saldo_minimo|floatformat:0 }}</div>
+        </div>
+        <div>
+            <div class="otec-dato__label">Reparto UPLA / OTEC</div>
+            <div class="otec-dato__valor">
+                {% widthratio supuestos.pct_upla 1 100 %}% / {% widthratio supuestos.pct_otec 1 100 %}%
+            </div>
+        </div>
+        <div>
+            <div class="otec-dato__label">Autoaprendizaje</div>
+            <div class="otec-dato__valor">{% widthratio supuestos.pct_autoaprendizaje 1 100 %}% a cada lado</div>
+        </div>
+        <div>
+            <div class="otec-dato__label">Plazo de pago de costos</div>
+            <div class="otec-dato__valor">{{ supuestos.plazo_pago_costos_dias }} días</div>
+        </div>
+    </div>
+    {% if not supuestos.pk %}
+    <p class="otec-codigo mt-3 mb-0">
+        Todavía no hay supuestos guardados para {{ anio|unlocalize }}: se está calculando con los
+        valores por defecto.
+    </p>
+    {% endif %}
+</div></div>
+
+<div class="row g-3">
+
+    <!-- Ingresos por certeza -->
+    <div class="col-12 col-lg-7">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <h6 class="otec-card__title">Ingresos por mes según qué tan firmes son</h6>
+            <div class="otec-chart" style="height: 290px"><canvas id="chartIngresos"></canvas></div>
+            <p class="otec-codigo mb-0">
+                El tono va de oscuro a claro según baja la certeza: lo oscuro está cobrado, lo claro es supuesto.
+            </p>
+        </div></div>
+    </div>
+
+    <!-- Escenarios contra la meta -->
+    <div class="col-12 col-lg-5">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+                <h6 class="otec-card__title">Escenarios contra la meta {{ anio|unlocalize }}</h6>
+                <a href="{% url 'otec:editar_meta' anio %}?anio={{ anio|unlocalize }}" class="otec-accion">
+                    {% if meta %}Editar meta{% else %}Definir meta{% endif %}
+                </a>
+            </div>
+            {% if meta %}
+            {% for e in escenarios %}
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-baseline mb-1">
+                    <span style="font-size:.82rem">Hasta {{ e.label|lower }}</span>
+                    <span class="fw-semibold" style="font-size:.85rem">{{ e.pct|floatformat:1 }}%</span>
+                </div>
+                <div class="otec-progress">
+                    <div class="otec-progress__fill" style="width: {{ e.pct|floatformat:0 }}%; background: {{ e.color }}"></div>
+                </div>
+                <span class="otec-codigo">${{ e.acumulado|floatformat:0 }}</span>
+            </div>
+            {% endfor %}
+            <p class="otec-codigo mb-0">Meta {{ anio|unlocalize }}: ${{ meta.monto|floatformat:0 }}</p>
+            {% else %}
+            <div class="otec-vacio">No hay meta cargada para {{ anio|unlocalize }}.</div>
+            {% endif %}
+        </div></div>
+    </div>
+
+    <!-- Saldo de caja -->
+    <div class="col-12 col-lg-7">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <h6 class="otec-card__title">Saldo de caja proyectado</h6>
+            <div class="otec-chart" style="height: 260px"><canvas id="chartSaldo"></canvas></div>
+        </div></div>
+    </div>
+
+    <!-- Estructura de costos -->
+    <div class="col-12 col-lg-5">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <h6 class="otec-card__title">En qué se van los costos</h6>
+            <div class="otec-chart" style="height: 260px"><canvas id="chartCostos"></canvas></div>
+        </div></div>
+    </div>
+
+    <!-- Resultado por línea -->
+    <div class="col-12">
+        <div class="otec-card"><div class="otec-card__body">
+            <h6 class="otec-card__title">Resultado después de costos, por línea</h6>
+            <div class="otec-chart" style="height: 340px"><canvas id="chartResultado"></canvas></div>
+        </div></div>
+    </div>
+
+    <!-- Tabla mensual -->
+    <div class="col-12">
+        <div class="otec-card"><div class="otec-card__body">
+            <h6 class="otec-card__title">Detalle mes a mes</h6>
+            <div class="otec-tabla-wrap">
+                <table class="otec-tabla">
+                    <thead>
+                        <tr>
+                            <th>Mes</th>
+                            <th class="num">Ingresos</th>
+                            <th class="num">Costos directos</th>
+                            <th class="num">Transversales</th>
+                            <th class="num">UPLA</th>
+                            <th class="num">OTEC</th>
+                            <th class="num">Flujo neto</th>
+                            <th class="num">Saldo final</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for f in filas %}
+                        <tr>
+                            <td>{{ f.nombre }}{% if not f.proyectado %}<span class="otec-codigo">previo al corte</span>{% endif %}</td>
+                            <td class="num">${{ f.total_ingresos|floatformat:0 }}</td>
+                            <td class="num">${{ f.costos_directos|floatformat:0 }}</td>
+                            <td class="num">${{ f.costos_transversales|floatformat:0 }}</td>
+                            <td class="num">${{ f.upla|floatformat:0 }}</td>
+                            <td class="num">${{ f.otec|floatformat:0 }}</td>
+                            <td class="num">${{ f.neto|floatformat:0 }}</td>
+                            <td class="num">
+                                {% if f.saldo_final is not None %}
+                                    <span class="otec-dot otec-dot--{% if f.bajo_minimo %}danger{% else %}ok{% endif %}">${{ f.saldo_final|floatformat:0 }}</span>
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div></div>
+    </div>
+
+    {% comment %}
+    Las dos tablas de abajo son el dato en bruto del que salen todos los
+    gráficos de arriba. Se listan completas, incluidas las líneas que no caen
+    en el año elegido: una línea sin fecha de pago no entra en ningún mes, y es
+    justamente la que hay que poder corregir.
+    {% endcomment %}
+    <div class="col-12">
+        <div class="otec-card"><div class="otec-card__body">
+            <h6 class="otec-card__title">Líneas de ingreso</h6>
+            <div class="otec-tabla-wrap">
+                <table class="otec-tabla">
+                    <thead>
+                        <tr>
+                            <th>Línea</th>
+                            <th>Certeza</th>
+                            <th>Pago</th>
+                            <th class="num">Ingreso</th>
+                            <th class="num">Costos</th>
+                            <th class="num">Resultado</th>
+                            <th class="num">Margen</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for x in detalle_lineas %}
+                        <tr>
+                            <td style="min-width:280px">
+                                <span class="otec-codigo">{{ x.linea.codigo }}</span>
+                                <span class="otec-nombre">{{ x.linea.descripcion|truncatechars:70 }}</span>
+                                <span class="otec-codigo">
+                                    {{ x.linea.institucion.nombre|truncatechars:40 }}
+                                    {% if x.linea.autoaprendizaje %} · autoaprendizaje{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="otec-dot otec-dot--{% if x.linea.es_proyeccion %}warn{% else %}ok{% endif %}">
+                                    {{ x.linea.get_certeza_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if x.linea.fecha_ingreso %}
+                                    {{ x.linea.fecha_ingreso|date:"d/m/Y" }}
+                                    {% if not x.en_el_anio %}<br><span class="otec-codigo">fuera de {{ anio|unlocalize }}</span>{% endif %}
+                                {% else %}
+                                    <span class="otec-dot otec-dot--warn">Sin fecha</span>
+                                    <br><span class="otec-codigo">no entra en ningún mes</span>
+                                {% endif %}
+                            </td>
+                            <td class="num">${{ x.ingreso|floatformat:0 }}</td>
+                            <td class="num">${{ x.costos|floatformat:0 }}</td>
+                            <td class="num">${{ x.resultado|floatformat:0 }}</td>
+                            <td class="num">
+                                {% if x.margen is not None %}{% widthratio x.margen 1 100 %}%{% else %}—{% endif %}
+                            </td>
+                            <td class="num">
+                                <a href="{% url 'otec:editar_linea' x.linea.pk %}?anio={{ anio|unlocalize }}"
+                                   class="otec-accion" title="Editar {{ x.linea.codigo }}">Editar</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="8"><div class="otec-vacio">No hay líneas de ingreso cargadas.</div></td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div></div>
+    </div>
+
+    <div class="col-12">
+        <div class="otec-card"><div class="otec-card__body">
+            <h6 class="otec-card__title">Costos transversales</h6>
+            <p class="otec-codigo mb-3">Los que no cuelgan de ningún curso: personal, plataformas, difusión.</p>
+            <div class="otec-tabla-wrap">
+                <table class="otec-tabla">
+                    <thead>
+                        <tr>
+                            <th>Costo</th>
+                            <th>Área</th>
+                            <th>Fecha de pago</th>
+                            <th class="num">Monto</th>
+                            <th>En el flujo</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for t in transversales %}
+                        <tr>
+                            <td style="min-width:260px">
+                                <span class="otec-codigo">{{ t.costo.codigo }}{% if t.costo.tipo %} · {{ t.costo.tipo }}{% endif %}</span>
+                                <span class="otec-nombre">{{ t.costo.descripcion|truncatechars:70 }}</span>
+                            </td>
+                            <td>{{ t.costo.area|default:"—" }}</td>
+                            <td>
+                                {% if t.costo.fecha_pago %}
+                                    {{ t.costo.fecha_pago|date:"d/m/Y" }}
+                                    {% if not t.en_el_anio %}<br><span class="otec-codigo">fuera de {{ anio|unlocalize }}</span>{% endif %}
+                                {% else %}
+                                    <span class="otec-dot otec-dot--warn">Sin fecha</span>
+                                {% endif %}
+                            </td>
+                            <td class="num">${{ t.costo.monto|floatformat:0 }}</td>
+                            <td>
+                                <span class="otec-dot otec-dot--{% if t.costo.incluir_en_flujo %}ok{% else %}danger{% endif %}">
+                                    {% if t.costo.incluir_en_flujo %}Sí{% else %}Excluido{% endif %}
+                                </span>
+                            </td>
+                            <td class="num">
+                                <a href="{% url 'otec:editar_costo_transversal' t.costo.pk %}?anio={{ anio|unlocalize }}"
+                                   class="otec-accion" title="Editar {{ t.costo.codigo }}">Editar</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="6"><div class="otec-vacio">No hay costos transversales cargados.</div></td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div></div>
+    </div>
+
+</div>
+
+{{ g_ingresos|json_script:"dIngresos" }}
+{{ g_saldo|json_script:"dSaldo" }}
+{{ g_costos|json_script:"dCostos" }}
+{{ g_resultado|json_script:"dResultado" }}
+{{ tinta|json_script:"dTinta" }}
+
+<style>
+.otec-chart { position: relative; }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    const tinta = JSON.parse(document.getElementById('dTinta').textContent);
+    const leer = id => JSON.parse(document.getElementById(id).textContent);
+    const pesos = v => '$' + new Intl.NumberFormat('es-CL').format(Math.round(v));
+    const corto = v => new Intl.NumberFormat('es-CL', {notation: 'compact'}).format(v);
+
+    Chart.defaults.font.family = "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif";
+    Chart.defaults.font.size = 11;
+    Chart.defaults.color = tinta.apagada;
+
+    const ejeValor = fmt => ({
+        grid: { color: tinta.grilla, drawTicks: false },
+        border: { display: false },
+        ticks: { color: tinta.apagada, padding: 6, callback: fmt },
+    });
+    const ejeCategoria = {
+        grid: { display: false },
+        border: { color: tinta.eje },
+        ticks: { color: tinta.secundaria, padding: 4 },
+    };
+    const tooltip = {
+        backgroundColor: '#0b0b0b', padding: 10, cornerRadius: 8,
+        boxWidth: 8, boxHeight: 8, titleFont: { weight: '600' },
+    };
+    const leyenda = {
+        display: true, position: 'top', align: 'end',
+        labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true,
+                  pointStyle: 'rectRounded', color: tinta.secundaria, padding: 12 },
+    };
+    // 2px de superficie entre segmentos apilados y entre barras vecinas.
+    const barra = {
+        borderRadius: 4, borderSkipped: false,
+        borderWidth: 2, borderColor: '#ffffff',
+        barPercentage: 0.72, categoryPercentage: 0.82,
+    };
+
+    // ---- Ingresos por mes apilados por certeza ----
+    const dIng = leer('dIngresos');
+    new Chart(document.getElementById('chartIngresos'), {
+        type: 'bar',
+        data: {
+            labels: dIng.labels,
+            datasets: dIng.series.map(s => ({
+                label: s.label, data: s.data, backgroundColor: s.color, ...barra,
+            })),
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: leyenda,
+                tooltip: { ...tooltip, callbacks: {
+                    label: c => c.dataset.label + ': ' + pesos(c.parsed.y),
+                    footer: items => 'Total: ' + pesos(items.reduce((a, i) => a + i.parsed.y, 0)),
+                } },
+            },
+            scales: {
+                x: { ...ejeCategoria, stacked: true },
+                y: { ...ejeValor(corto), stacked: true, beginAtZero: true },
+            },
+        },
+    });
+
+    // ---- Saldo de caja proyectado ----
+    const dSaldo = leer('dSaldo');
+    new Chart(document.getElementById('chartSaldo'), {
+        type: 'line',
+        data: {
+            labels: dSaldo.labels,
+            datasets: [{
+                label: 'Saldo de caja',
+                data: dSaldo.data,
+                borderColor: '#2a78d6',
+                backgroundColor: 'rgba(42,120,214,.10)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#2a78d6',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                fill: true,
+                tension: 0.25,
+            }],
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...tooltip, callbacks: {
+                    label: c => 'Saldo: ' + pesos(c.parsed.y),
+                    afterLabel: c => 'Flujo del mes: ' + pesos(dSaldo.neto[c.dataIndex]),
+                } },
+            },
+            scales: {
+                x: ejeCategoria,
+                y: { ...ejeValor(corto), beginAtZero: true },
+            },
+        },
+    });
+
+    // ---- Estructura de costos ----
+    const dCostos = leer('dCostos');
+    new Chart(document.getElementById('chartCostos'), {
+        type: 'bar',
+        data: {
+            labels: dCostos.labels,
+            datasets: [{ data: dCostos.data, backgroundColor: '#2a78d6', ...barra }],
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            layout: { padding: { right: 70 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...tooltip, callbacks: { label: c => pesos(c.parsed.x) } },
+            },
+            scales: {
+                x: { ...ejeValor(corto), beginAtZero: true },
+                y: { ...ejeCategoria, ticks: { ...ejeCategoria.ticks, callback: function (v) {
+                    const t = this.getLabelForValue(v);
+                    return t.length > 24 ? t.slice(0, 23) + '…' : t;
+                } } },
+            },
+        },
+        plugins: [{
+            id: 'valorCosto',
+            afterDatasetsDraw(chart) {
+                const {ctx} = chart;
+                ctx.save();
+                ctx.font = '600 11px ' + Chart.defaults.font.family;
+                ctx.fillStyle = tinta.secundaria;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                chart.getDatasetMeta(0).data.forEach((b, i) => {
+                    ctx.fillText(pesos(chart.data.datasets[0].data[i]), b.x + 6, b.y);
+                });
+                ctx.restore();
+            },
+        }],
+    });
+
+    // ---- Resultado por línea ----
+    const dRes = leer('dResultado');
+    new Chart(document.getElementById('chartResultado'), {
+        type: 'bar',
+        data: {
+            labels: dRes.labels,
+            datasets: [{
+                data: dRes.data,
+                // Lo proyectado se dibuja en el tono claro de la misma rampa:
+                // sigue siendo la misma medida, con menos certeza.
+                backgroundColor: dRes.proyeccion.map(p => p ? '#86b6ef' : '#2a78d6'),
+                ...barra,
+            }],
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            layout: { padding: { right: 96 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...tooltip, callbacks: {
+                    title: items => dRes.descripcion[items[0].dataIndex],
+                    label: c => pesos(c.parsed.x)
+                        + (dRes.margen[c.dataIndex] !== null ? ' · margen ' + dRes.margen[c.dataIndex] + '%' : '')
+                        + (dRes.proyeccion[c.dataIndex] ? ' · cartera proyectada' : ''),
+                } },
+            },
+            scales: {
+                x: { ...ejeValor(corto), beginAtZero: true },
+                y: ejeCategoria,
+            },
+        },
+        plugins: [{
+            id: 'valorResultado',
+            afterDatasetsDraw(chart) {
+                const {ctx} = chart;
+                ctx.save();
+                ctx.font = '600 11px ' + Chart.defaults.font.family;
+                ctx.textBaseline = 'middle';
+                ctx.textAlign = 'left';
+                chart.getDatasetMeta(0).data.forEach((b, i) => {
+                    ctx.fillStyle = tinta.secundaria;
+                    const txt = pesos(chart.data.datasets[0].data[i])
+                        + (dRes.proyeccion[i] ? ' (proy.)' : '');
+                    ctx.fillText(txt, b.x + 6, b.y);
+                });
+                ctx.restore();
+            },
+        }],
+    });
+})();
+</script>
+
+{% endif %}
+{% endblock %}

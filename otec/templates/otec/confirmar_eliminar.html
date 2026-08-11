@@ -1,0 +1,60 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        <h2>{{ titulo }}</h2>
+        <p>Esto no se puede deshacer.</p>
+    </div>
+    <a href="{{ volver }}" class="btn-volver"><span class="arrow">←</span> Volver</a>
+</div>
+
+<div class="row">
+<div class="col-12 col-lg-7">
+    <div class="otec-card" style="border-color: var(--otec-danger)">
+        <div class="otec-card__body">
+            <p class="mb-1" style="font-size:1rem; font-weight:600; color: var(--otec-text)">
+                {{ descripcion }}
+            </p>
+
+            {% if arrastra %}
+            <p class="mt-3 mb-2" style="font-size:.88rem">Se elimina también:</p>
+            <ul class="mb-0" style="font-size:.88rem">
+                {% for x in arrastra %}<li>{{ x }}</li>{% endfor %}
+            </ul>
+            {% endif %}
+
+            {% if detalle %}
+            <details class="otec-tabla-datos mt-3">
+                <summary>Ver las {{ detalle|length }} actividades que se eliminan</summary>
+                <ul class="mt-2 mb-0" style="font-size:.82rem; color: var(--otec-muted)">
+                    {% for x in detalle %}<li>{{ x }}</li>{% endfor %}
+                </ul>
+            </details>
+            {% endif %}
+
+            {% if nota %}
+            <p class="otec-codigo mt-3 mb-0">{{ nota }}</p>
+            {% endif %}
+
+            {% if aviso_importacion %}
+            <div class="mt-3">
+                <span class="otec-dot otec-dot--warn">{{ aviso_importacion }}</span>
+            </div>
+            {% endif %}
+
+            <form method="post" class="otec-acciones">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-danger">Sí, eliminar</button>
+                <a href="{{ volver }}" class="btn btn-sm btn-link text-muted">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+
+{% endblock %}

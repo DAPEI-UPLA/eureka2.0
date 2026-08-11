@@ -1,0 +1,140 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}{{ propuesta.codigo }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        <span class="otec-codigo">{{ propuesta.codigo }}</span>
+        <h2>{{ propuesta.institucion.nombre }}</h2>
+        <p>
+            {{ propuesta.get_canal_display }} · {{ propuesta.get_estado_comercial_display }}
+            {% if propuesta.contacto %} · contraparte: {{ propuesta.contacto.nombre }}{% endif %}
+        </p>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <a href="{% url 'otec:crear_actividad_en_propuesta' propuesta.pk %}" class="btn btn-sm"
+           style="background: var(--otec-primary); color:#fff">+ Nueva actividad</a>
+        <a href="{% url 'otec:editar_propuesta' propuesta.pk %}"
+           class="btn btn-sm btn-outline-secondary">Editar propuesta</a>
+        <a href="{% url 'otec:lista_propuestas' %}" class="btn-volver"><span class="arrow">←</span> Propuestas</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-lg-7">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <h6 class="otec-card__title">Convenio y decretación</h6>
+            <div class="otec-datos">
+                <div>
+                    <div class="otec-dato__label">Convenio</div>
+                    <div class="otec-dato__valor">{{ propuesta.get_estado_convenio_display }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Decretación</div>
+                    <div class="otec-dato__valor">{{ propuesta.get_estado_decretacion_display }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Memo</div>
+                    <div class="otec-dato__valor">{{ propuesta.memo_decretacion|default:"—" }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Fecha memo</div>
+                    <div class="otec-dato__valor">{{ propuesta.fecha_memo|date:"d M Y"|default:"—" }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">CR</div>
+                    <div class="otec-dato__valor">{{ propuesta.cr|default:"—" }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">N° decreto</div>
+                    <div class="otec-dato__valor">{{ propuesta.n_decreto|default:"—" }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Fecha resolución</div>
+                    <div class="otec-dato__valor">{{ propuesta.fecha_resolucion|date:"d M Y"|default:"—" }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Tiempo de decreto</div>
+                    <div class="otec-dato__valor">
+                        {% if propuesta.tiempo_decreto_dias is not None %}{{ propuesta.tiempo_decreto_dias }} días{% else %}—{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% if propuesta.observacion_convenio %}
+            <p class="text-muted small mt-3 mb-0">{{ propuesta.observacion_convenio }}</p>
+            {% endif %}
+        </div></div>
+    </div>
+
+    <div class="col-6 col-lg-2">
+        <div class="otec-card h-100"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Cursos</span>
+            <span class="otec-kpi__value">{{ actividades|length }}</span>
+            <span class="otec-kpi__hint">enviada {{ propuesta.fecha_envio|date:"d M Y"|default:"sin fecha" }}</span>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="otec-card h-100"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Valor ofertado</span>
+            <span class="otec-kpi__value">${{ propuesta.valor_ofertado_total|floatformat:0 }}</span>
+            <span class="otec-kpi__hint">adjudicado ${{ propuesta.monto_adjudicado_total|floatformat:0 }}</span>
+        </div></div>
+    </div>
+</div>
+
+<div class="otec-card">
+    <div class="otec-tabla-wrap">
+        <table class="otec-tabla">
+            <thead>
+                <tr>
+                    <th>Curso</th>
+                    <th>Modalidad</th>
+                    <th>Relator/a</th>
+                    <th>Inicio</th>
+                    <th class="num">Horas</th>
+                    <th class="num">Ofertado</th>
+                    <th>Avance</th>
+                    <th>Riesgo</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in actividades %}
+                <tr>
+                    <td style="min-width:260px">
+                        <a href="{% url 'otec:detalle_actividad' a.pk %}" class="otec-nombre">{{ a.nombre|truncatechars:70 }}</a>
+                        <span class="otec-codigo">{{ a.get_estado_ejecucion_display }}</span>
+                    </td>
+                    <td><span class="text-muted small">{{ a.get_modalidad_display }}</span></td>
+                    <td>{{ a.relator.nombre|default:"Por definir" }}</td>
+                    <td>{{ a.fecha_inicio|date:"d M Y"|default:"—" }}</td>
+                    <td class="num">{{ a.horas }}</td>
+                    <td class="num">${{ a.valor_ofertado|floatformat:0 }}</td>
+                    <td style="min-width:110px">
+                        {% if a.avance_checklist_pct is not None %}
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="otec-progress flex-grow-1"><div class="otec-progress__fill" style="width: {{ a.avance_checklist_pct }}%"></div></div>
+                            <span class="otec-codigo">{{ a.avance_checklist_pct }}%</span>
+                        </div>
+                        {% else %}<span class="text-muted small">—</span>{% endif %}
+                    </td>
+                    <td><span class="otec-dot otec-dot--{{ a.riesgo_clase }}">{{ a.riesgo_ejecutivo }}</span></td>
+                    <td class="num">
+                        <a href="{% url 'otec:editar_actividad' a.pk %}" class="otec-accion">Editar</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="9"><div class="otec-vacio">
+                    Esta propuesta no tiene cursos.<br>
+                    <a href="{% url 'otec:crear_actividad_en_propuesta' propuesta.pk %}">Agregar el primero</a>
+                </div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

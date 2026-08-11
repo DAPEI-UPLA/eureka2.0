@@ -1,0 +1,276 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}{{ actividad.nombre|truncatechars:50 }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        <span class="otec-codigo">{{ propuesta.codigo }} · {{ propuesta.institucion.nombre }}</span>
+        <h2>{{ actividad.nombre }}</h2>
+        <p>
+            {{ actividad.get_modalidad_display }} · {{ actividad.horas }} horas{% if actividad.horas_asincronicas %}
+            ({{ actividad.horas_asincronicas|floatformat:"-1" }} asincrónicas){% endif %} ·
+            {{ actividad.n_participantes }} participantes
+        </p>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <a href="{% url 'otec:editar_actividad' actividad.pk %}" class="btn btn-sm"
+           style="background: var(--otec-primary); color:#fff">Editar</a>
+        <a href="{% url 'otec:lista_actividades' %}" class="btn-volver"><span class="arrow">←</span> Actividades</a>
+    </div>
+</div>
+
+<!-- Estado -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="otec-card h-100"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Estado de ejecución</span>
+            <span class="otec-dot otec-dot--info mt-1" style="font-size:.95rem">{{ actividad.get_estado_ejecucion_display }}</span>
+            <span class="otec-kpi__hint">comercial: {{ propuesta.get_estado_comercial_display }}</span>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="otec-card h-100"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Riesgo ejecutivo</span>
+            <span class="otec-dot otec-dot--{{ actividad.riesgo_clase }} mt-1" style="font-size:.95rem">{{ actividad.riesgo_ejecutivo }}</span>
+            <span class="otec-kpi__hint">{{ actividad.alerta_checklist }}</span>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="otec-card h-100"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Valor ofertado</span>
+            <span class="otec-kpi__value">${{ actividad.valor_ofertado|floatformat:0 }}</span>
+            <span class="otec-kpi__hint">adjudicado ${{ actividad.monto_adjudicado|floatformat:0 }}</span>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="otec-card h-100"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Excedente estimado</span>
+            <span class="otec-kpi__value">${{ actividad.excedente_estimado|floatformat:0 }}</span>
+            <span class="otec-kpi__hint">
+                {% if actividad.margen_estimado_pct is not None %}margen {{ actividad.margen_estimado_pct }}%{% else %}sin valor ofertado{% endif %}
+            </span>
+        </div></div>
+    </div>
+</div>
+
+<div class="row g-3">
+
+    <!-- Checklist -->
+    <div class="col-12 col-lg-7">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            {% include "otec/partials/checklist.html" %}
+        </div></div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+
+        <!-- Programación y relatoría -->
+        <div class="otec-card mb-3"><div class="otec-card__body">
+            <h6 class="otec-card__title">Programación y relatoría</h6>
+            <div class="otec-datos">
+                <div>
+                    <div class="otec-dato__label">Inicio</div>
+                    <div class="otec-dato__valor">{{ actividad.fecha_inicio|date:"d M Y"|default:"—" }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Término</div>
+                    <div class="otec-dato__valor">{{ actividad.fecha_termino|date:"d M Y"|default:"—" }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Próxima fecha crítica</div>
+                    <div class="otec-dato__valor">{{ actividad.proxima_fecha_critica|date:"d M Y"|default:"—" }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Prioridad</div>
+                    <div class="otec-dato__valor">{{ actividad.get_prioridad_display }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Relator/a</div>
+                    <div class="otec-dato__valor">{{ actividad.relator.nombre|default:"Por definir" }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Tipo de relator/a</div>
+                    <div class="otec-dato__valor">{{ actividad.get_tipo_relator_display }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Confirmación</div>
+                    <div class="otec-dato__valor">{{ actividad.fecha_confirmacion_relator|date:"d M Y"|default:"—" }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Participantes en ejecución</div>
+                    <div class="otec-dato__valor">{{ actividad.n_participantes_ejecucion|default_if_none:"—" }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Becados</div>
+                    <div class="otec-dato__valor">{{ actividad.n_becados|default_if_none:"—" }}</div>
+                </div>
+            </div>
+        </div></div>
+
+        <!-- Horas -->
+        <div class="otec-card mb-3"><div class="otec-card__body">
+            <h6 class="otec-card__title">Horas del curso</h6>
+            <div class="otec-datos">
+                <div>
+                    <div class="otec-dato__label">Totales</div>
+                    <div class="otec-dato__valor">{{ actividad.horas }} h</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Asincrónicas</div>
+                    <div class="otec-dato__valor">{{ actividad.horas_asincronicas|floatformat:"-1" }} h</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">En vivo</div>
+                    <div class="otec-dato__valor">{{ actividad.horas_sincronicas|floatformat:"-1" }} h</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">En clases</div>
+                    <div class="otec-dato__valor">{{ actividad.horas_programadas|floatformat:"-1" }} h</div>
+                </div>
+            </div>
+            {% if actividad.cuadran_las_horas is False %}
+            <p class="mt-3 mb-0">
+                <span class="otec-dot otec-dot--warn">
+                    {% if actividad.horas_por_programar > 0 %}
+                    Faltan {{ actividad.horas_por_programar|floatformat:"-1" }} h por colocar en el calendario.
+                    {% else %}
+                    Hay {{ actividad.horas_por_programar|floatformat:"-1"|cut:"-" }} h de clases de más.
+                    {% endif %}
+                </span>
+            </p>
+            {% elif actividad.cuadran_las_horas %}
+            <p class="mt-3 mb-0">
+                <span class="otec-dot otec-dot--ok">Las clases cuadran con las horas en vivo.</span>
+            </p>
+            {% endif %}
+            {% if actividad.horas_asincronicas_en_gantt %}
+            <span class="otec-codigo d-block mt-2">
+                En la carta Gantt hay {{ actividad.horas_asincronicas_en_gantt|floatformat:"-1" }} h
+                asincrónicas marcadas día a día.
+            </span>
+            {% endif %}
+        </div></div>
+
+        <!-- Clases -->
+        <div class="otec-card mb-3"><div class="otec-card__body">
+            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                <h6 class="otec-card__title mb-0">Clases</h6>
+                <a href="{% url 'otec:calendario_curso' actividad.pk %}" class="otec-accion">
+                    Abrir el calendario
+                </a>
+            </div>
+            {% for s in actividad.sesiones.all %}
+            <div class="d-flex justify-content-between align-items-baseline py-1">
+                <span style="font-size:.88rem">
+                    <strong>{{ s.fecha|date:"D j M" }}</strong>
+                    {{ s.hora_inicio|time:"H:i" }}–{{ s.hora_fin|time:"H:i" }}
+                    {% if s.grupo %}<span class="otec-codigo">grupo {{ s.grupo }}</span>{% endif %}
+                </span>
+                <span class="otec-codigo">
+                    {% if s.sala %}{{ s.sala.nombre }}{% else %}sin sala{% endif %}
+                </span>
+            </div>
+            {% empty %}
+            <p class="text-muted small mb-0">
+                Todavía no hay clases cargadas: el curso no aparece en el calendario de salas.
+                <a href="{% url 'otec:calendario_curso' actividad.pk %}">Colocarlas</a>.
+            </p>
+            {% endfor %}
+        </div></div>
+
+        <!-- Desglose de costos -->
+        <div class="otec-card mb-3"><div class="otec-card__body">
+            <h6 class="otec-card__title">Desglose de costos</h6>
+            {% for linea in actividad.desglose_costos %}
+            <div class="d-flex justify-content-between align-items-baseline py-1"
+                 style="font-size:.88rem">
+                <span>{{ linea.label }}</span>
+                <span style="font-variant-numeric: tabular-nums">${{ linea.monto|floatformat:0 }}</span>
+            </div>
+            {% empty %}
+            <p class="text-muted small mb-0">
+                Sin costos cargados.
+                <a href="{% url 'otec:editar_actividad' actividad.pk %}">Desglosarlos</a>.
+            </p>
+            {% endfor %}
+            {% if actividad.costo_total %}
+            <div class="d-flex justify-content-between align-items-baseline pt-2 mt-1 fw-semibold"
+                 style="font-size:.9rem; border-top: 1px solid var(--otec-line)">
+                <span>Costo total</span>
+                <span style="font-variant-numeric: tabular-nums">${{ actividad.costo_total|floatformat:0 }}</span>
+            </div>
+            <span class="otec-codigo">
+                relatoría ${{ actividad.costo_relatoria|floatformat:0 }} ·
+                otros gastos ${{ actividad.otros_gastos|floatformat:0 }}
+            </span>
+            {% endif %}
+        </div></div>
+
+        <!-- Financiero -->
+        <div class="otec-card mb-3"><div class="otec-card__body">
+            <h6 class="otec-card__title">Facturación y pago</h6>
+            <div class="otec-datos">
+                <div>
+                    <div class="otec-dato__label">Facturado</div>
+                    <div class="otec-dato__valor">${{ actividad.monto_facturado|floatformat:0 }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Pendiente de facturar</div>
+                    <div class="otec-dato__valor">${{ actividad.pendiente_facturar|floatformat:0 }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Pagado</div>
+                    <div class="otec-dato__valor">${{ actividad.monto_pagado|floatformat:0 }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Pendiente de pago</div>
+                    <div class="otec-dato__valor">${{ actividad.pendiente_pago|floatformat:0 }}</div>
+                </div>
+            </div>
+        </div></div>
+
+        <!-- Expediente -->
+        <div class="otec-card mb-3"><div class="otec-card__body">
+            <h6 class="otec-card__title">Convenio y decretación</h6>
+            <div class="otec-datos">
+                <div>
+                    <div class="otec-dato__label">Convenio</div>
+                    <div class="otec-dato__valor">{{ propuesta.get_estado_convenio_display }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Decretación</div>
+                    <div class="otec-dato__valor">{{ propuesta.get_estado_decretacion_display }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">Memo</div>
+                    <div class="otec-dato__valor">{{ propuesta.memo_decretacion|default:"—" }}</div>
+                </div>
+                <div>
+                    <div class="otec-dato__label">N° decreto</div>
+                    <div class="otec-dato__valor">{{ propuesta.n_decreto|default:"—" }}</div>
+                </div>
+            </div>
+            {% if propuesta.observacion_convenio %}
+            <p class="text-muted small mt-3 mb-0">{{ propuesta.observacion_convenio }}</p>
+            {% endif %}
+            <a href="{% url 'otec:detalle_propuesta' propuesta.pk %}" class="btn btn-sm btn-outline-secondary mt-3">Ver propuesta</a>
+        </div></div>
+
+        <!-- Seguimiento -->
+        {% if actividad.observaciones %}
+        <div class="otec-card"><div class="otec-card__body">
+            <h6 class="otec-card__title">Observaciones / próximo paso</h6>
+            <p class="mb-2" style="font-size:.88rem">{{ actividad.observaciones|linebreaksbr }}</p>
+            <span class="otec-codigo">
+                {{ actividad.responsable_seguimiento }}{% if actividad.actualizado_al %} · actualizado al {{ actividad.actualizado_al|date:"d M Y" }}{% endif %}
+            </span>
+        </div></div>
+        {% endif %}
+
+    </div>
+</div>
+
+{% endblock %}

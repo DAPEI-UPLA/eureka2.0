@@ -1,0 +1,236 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        {% if propuesta %}<span class="otec-codigo">{{ propuesta.codigo }} · {{ propuesta.institucion.nombre }}</span>{% endif %}
+        <h2>{{ titulo }}</h2>
+        <p>El checklist se genera solo a partir del catálogo de controles.</p>
+    </div>
+    <a href="{{ volver }}" class="btn-volver"><span class="arrow">←</span> Volver</a>
+</div>
+
+{% if actividad and actividad.origen == "IMPORTADO" %}
+<div class="otec-card mb-3" style="border-color: #eda100">
+    <div class="otec-card__body" style="padding: .8rem 1.15rem">
+        <span class="otec-dot otec-dot--warn">
+            Esta actividad vino del Excel. Si vuelve a subir el archivo, estos campos
+            se sobrescriben con lo que diga la planilla — salvo los ítems del checklist
+            que haya marcado en el sistema, que sí se conservan.
+        </span>
+    </div>
+</div>
+{% endif %}
+
+<form method="post" novalidate>
+    {% csrf_token %}
+    {% if propuesta_fija %}{{ form.propuesta }}{% endif %}
+
+    {% if form.non_field_errors %}
+    <div class="otec-card mb-3" style="border-color: var(--otec-danger)">
+        <div class="otec-card__body">
+            {% for e in form.non_field_errors %}<div class="otec-campo__error">{{ e }}</div>{% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-6">
+            <div class="otec-card h-100"><div class="otec-card__body">
+                <h6 class="otec-card__title">El curso</h6>
+                <div class="otec-form-grid">
+                    {% if not propuesta_fija %}
+                        {% include "otec/partials/campo.html" with campo=form.propuesta clase="span-2" %}
+                    {% endif %}
+                    {% include "otec/partials/campo.html" with campo=form.nombre clase="span-2" %}
+                    {% include "otec/partials/campo.html" with campo=form.modalidad %}
+                    {% include "otec/partials/campo.html" with campo=form.prioridad %}
+                    {% include "otec/partials/campo.html" with campo=form.n_participantes %}
+                    {% include "otec/partials/campo.html" with campo=form.horas %}
+                    {% include "otec/partials/campo.html" with campo=form.horas_asincronicas %}
+                </div>
+                {% comment %}
+                Las asincrónicas son parte de las horas totales, no horas
+                aparte: el modelo rechaza que superen el total.
+                {% endcomment %}
+                <p class="otec-codigo mt-2 mb-0">
+                    Las horas asincrónicas se descuentan del total: lo que quede son
+                    las horas en vivo que hay que colocar como clases.
+                    {% if actividad %}
+                    <a href="{% url 'otec:calendario_curso' actividad.pk %}">Ir al calendario del curso</a>.
+                    {% else %}
+                    El calendario del curso se abre una vez creado.
+                    {% endif %}
+                </p>
+            </div></div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="otec-card h-100"><div class="otec-card__body">
+                <h6 class="otec-card__title">Relatoría</h6>
+                <div class="otec-form-grid">
+                    {% include "otec/partials/campo.html" with campo=form.tipo_relator %}
+                    {% include "otec/partials/campo.html" with campo=form.relator %}
+                    {% include "otec/partials/campo.html" with campo=form.fecha_confirmacion_relator clase="span-2" %}
+                </div>
+                <h6 class="otec-card__title mt-4">Programación</h6>
+                <div class="otec-form-grid">
+                    {% include "otec/partials/campo.html" with campo=form.estado_ejecucion clase="span-2" %}
+                    {% include "otec/partials/campo.html" with campo=form.fecha_inicio %}
+                    {% include "otec/partials/campo.html" with campo=form.fecha_termino %}
+                    {% include "otec/partials/campo.html" with campo=form.proxima_fecha_critica clase="span-2" %}
+                </div>
+            </div></div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="otec-card h-100"><div class="otec-card__body">
+                <h6 class="otec-card__title">Financiero</h6>
+                <div class="otec-form-grid">
+                    {% include "otec/partials/campo.html" with campo=form.valor_ofertado %}
+                    {% include "otec/partials/campo.html" with campo=form.monto_adjudicado %}
+                    {% include "otec/partials/campo.html" with campo=form.n_factura %}
+                    {% include "otec/partials/campo.html" with campo=form.fecha_factura %}
+                    {% include "otec/partials/campo.html" with campo=form.monto_facturado %}
+                    {% include "otec/partials/campo.html" with campo=form.fecha_pago %}
+                    {% include "otec/partials/campo.html" with campo=form.monto_pagado clase="span-2" %}
+                </div>
+                <p class="otec-codigo mt-2 mb-0">
+                    El excedente, el margen y los pendientes se calculan solos a
+                    partir de este valor y del desglose de costos.
+                </p>
+            </div></div>
+        </div>
+
+        {% comment %}
+        El desglose reemplazó a los dos casilleros que traía la planilla
+        («Costo relatoría» y «Otros gastos»), que eran totales sin detalle. Esos
+        dos siguen existiendo en las pantallas, pero calculados desde acá.
+        {% endcomment %}
+        <div class="col-12">
+            <div class="otec-card"><div class="otec-card__body">
+                <h6 class="otec-card__title">Desglose de costos</h6>
+                <p class="otec-codigo mb-3">
+                    Deje en cero lo que no aplique. Las categorías son las mismas del
+                    flujo de caja, para que un costo signifique lo mismo en las dos
+                    pantallas.
+                </p>
+
+                <div class="otec-form-grid">
+                    {% for campo in costos %}
+                    {% include "otec/partials/campo.html" with campo=campo %}
+                    {% endfor %}
+                </div>
+
+                <h6 class="otec-card__title mt-4">
+                    Gastos extras
+                    <span class="otec-opcional">opcional</span>
+                </h6>
+                <p class="otec-codigo mb-3">
+                    Para lo que no calza en ninguna categoría. Cada línea lleva su
+                    glosa, así el total se puede explicar sin abrir el respaldo.
+                </p>
+
+                {{ extras.management_form }}
+                <div id="otec-extras">
+                    {% for ef in extras %}
+                    <div class="otec-fila">
+                        {{ ef.id }}
+                        {% for e in ef.non_field_errors %}
+                        <div class="otec-campo__error mb-2">{{ e }}</div>
+                        {% endfor %}
+                        <div class="otec-fila__grid">
+                            {% include "otec/partials/campo.html" with campo=ef.descripcion %}
+                            {% include "otec/partials/campo.html" with campo=ef.monto %}
+                            {% if extras.can_delete %}
+                            <div class="otec-campo otec-fila__quitar">
+                                <label class="otec-campo__label">&nbsp;</label>
+                                <label class="otec-quitar">
+                                    {{ ef.DELETE }} <span>Quitar</span>
+                                </label>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <button type="button" id="otec-agregar-extra"
+                        class="btn btn-sm btn-outline-secondary mt-2">
+                    + Agregar otro gasto
+                </button>
+            </div></div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="otec-card h-100"><div class="otec-card__body">
+                <h6 class="otec-card__title">Ejecución</h6>
+                <div class="otec-form-grid">
+                    {% include "otec/partials/campo.html" with campo=form.n_participantes_ejecucion %}
+                    {% include "otec/partials/campo.html" with campo=form.n_becados %}
+                    {% include "otec/partials/campo.html" with campo=form.n_aprobados clase="span-2" %}
+                </div>
+                <h6 class="otec-card__title mt-4">Seguimiento</h6>
+                <div class="otec-form-grid">
+                    {% include "otec/partials/campo.html" with campo=form.responsables clase="span-2" %}
+                    {% include "otec/partials/campo.html" with campo=form.observaciones clase="span-2" %}
+                    {% include "otec/partials/campo.html" with campo=form.responsable_seguimiento %}
+                    {% include "otec/partials/campo.html" with campo=form.actualizado_al %}
+                </div>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="otec-acciones">
+        <button class="btn btn-sm" style="background: var(--otec-primary); color:#fff">
+            {% if actividad %}Guardar cambios{% else %}Crear actividad{% endif %}
+        </button>
+        <a href="{{ volver }}" class="btn btn-sm btn-link text-muted">Cancelar</a>
+        {% if actividad %}
+        <a href="{% url 'otec:eliminar_actividad' actividad.pk %}"
+           class="btn btn-sm btn-outline-danger ms-auto">Eliminar actividad</a>
+        {% endif %}
+    </div>
+</form>
+
+<template id="otec-extra-molde">
+    <div class="otec-fila">
+        <div class="otec-fila__grid">
+            {% with ef=extras.empty_form %}
+            {% include "otec/partials/campo.html" with campo=ef.descripcion %}
+            {% include "otec/partials/campo.html" with campo=ef.monto %}
+            {% endwith %}
+        </div>
+    </div>
+</template>
+
+<script>
+(function () {
+    // Agrega una fila más al formset clonando su molde y renumerando los
+    // campos: Django los distingue por el índice del prefijo.
+    function repetible(idBoton, idLista, idMolde, prefijo) {
+        const boton = document.getElementById(idBoton);
+        const lista = document.getElementById(idLista);
+        const molde = document.getElementById(idMolde);
+        const total = document.getElementById('id_' + prefijo + '-TOTAL_FORMS');
+        if (!boton || !lista || !molde || !total) return;
+
+        boton.addEventListener('click', () => {
+            const indice = parseInt(total.value, 10);
+            const html = molde.innerHTML.replace(/__prefix__/g, indice);
+            const envoltorio = document.createElement('div');
+            envoltorio.innerHTML = html.trim();
+            lista.appendChild(envoltorio.firstElementChild);
+            total.value = indice + 1;
+        });
+    }
+
+    repetible('otec-agregar-extra', 'otec-extras', 'otec-extra-molde', 'extras');
+})();
+</script>
+
+{% endblock %}

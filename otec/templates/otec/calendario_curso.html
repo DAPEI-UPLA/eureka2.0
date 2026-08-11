@@ -1,0 +1,262 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% load l10n %}
+{% block title %}Clases de {{ actividad.nombre|truncatechars:40 }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        <span class="otec-codigo">{{ propuesta.codigo }} · {{ propuesta.institucion.nombre }}</span>
+        <h2>Clases de {{ actividad.nombre|truncatechars:60 }}</h2>
+        <p>
+            Haga clic en un día para agregar la clase. Las fechas no tienen que
+            seguir ningún patrón: cada clase lleva su propio día y su hora.
+        </p>
+    </div>
+    <a href="{{ volver }}" class="btn-volver"><span class="arrow">←</span> Ficha del curso</a>
+</div>
+
+{% comment %}
+El resumen de horas va arriba porque es la pregunta que se viene a responder:
+cuántas clases faltan por colocar.
+{% endcomment %}
+<div class="otec-card mb-3"><div class="otec-card__body">
+    <div class="otec-datos">
+        <div>
+            <div class="otec-dato__label">Horas del curso</div>
+            <div class="otec-dato__valor">{{ actividad.horas }} h</div>
+        </div>
+        <div>
+            <div class="otec-dato__label">Asincrónicas</div>
+            <div class="otec-dato__valor">{{ actividad.horas_asincronicas|floatformat:"-1" }} h</div>
+        </div>
+        <div>
+            <div class="otec-dato__label">En vivo</div>
+            <div class="otec-dato__valor">{{ actividad.horas_sincronicas|floatformat:"-1" }} h</div>
+        </div>
+        <div>
+            <div class="otec-dato__label">Cargadas en clases</div>
+            <div class="otec-dato__valor">{{ actividad.horas_programadas|floatformat:"-1" }} h</div>
+        </div>
+    </div>
+    {% if actividad.cuadran_las_horas is False %}
+    <p class="mt-3 mb-0">
+        <span class="otec-dot otec-dot--warn">
+            {% if actividad.horas_por_programar > 0 %}
+            Faltan {{ actividad.horas_por_programar|floatformat:"-1" }} h por colocar.
+            {% else %}
+            Hay {{ actividad.horas_por_programar|floatformat:"-1"|cut:"-" }} h de más.
+            {% endif %}
+        </span>
+    </p>
+    {% elif actividad.cuadran_las_horas %}
+    <p class="mt-3 mb-0">
+        <span class="otec-dot otec-dot--ok">Las clases cuadran con las horas en vivo.</span>
+    </p>
+    {% endif %}
+</div></div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-8">
+        <div class="otec-card"><div class="otec-card__body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="otec-card__title mb-0">{{ mes_nombre }} {{ anio|unlocalize }}</h6>
+                <div class="d-flex gap-2">
+                    <a href="?mes={{ mes_anterior }}" class="btn btn-sm btn-outline-secondary">←</a>
+                    <a href="?mes={{ mes_siguiente }}" class="btn btn-sm btn-outline-secondary">→</a>
+                </div>
+            </div>
+
+            <table class="otec-mes">
+                <thead>
+                    <tr>
+                        <th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th>
+                        <th>Vie</th><th>Sáb</th><th>Dom</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for semana in semanas %}
+                    <tr>
+                    {% for dia in semana %}
+                        <td class="otec-mes__dia
+                                   {% if not dia.del_mes %}otec-mes__dia--fuera{% endif %}
+                                   {% if dia.feriado %}otec-mes__dia--feriado{% endif %}
+                                   {% if dia.hoy %}otec-mes__dia--hoy{% endif %}
+                                   {% if dia.en_curso %}otec-mes__dia--curso{% endif %}">
+                            <a href="?mes={{ mes_actual }}&fecha={{ dia.fecha|date:'Y-m-d' }}"
+                               class="otec-mes__numero"
+                               title="Agregar una clase el {{ dia.fecha|date:'j \d\e F' }}{% if dia.feriado %} (feriado: {{ dia.feriado }}){% endif %}">
+                                {{ dia.fecha|date:"j" }}
+                            </a>
+                            {% for s in dia.sesiones %}
+                            <a href="?mes={{ mes_actual }}&sesion={{ s.pk }}"
+                               class="otec-clase {% if s.choques_de_sala %}otec-clase--choque{% endif %}"
+                               title="{{ s.hora_inicio|time:'H:i' }}–{{ s.hora_fin|time:'H:i' }} · {{ s.duracion_horas|floatformat:'-1' }} h{% if s.sala %} · {{ s.sala.nombre }}{% endif %}{% if s.grupo %} · grupo {{ s.grupo }}{% endif %}{% if s.choques_de_sala %} · la sala choca con otro curso{% endif %}">
+                                {{ s.hora_inicio|time:"H:i" }}
+                                {% if s.grupo %}<span class="otec-clase__grupo">{{ s.grupo }}</span>{% endif %}
+                            </a>
+                            {% endfor %}
+                        </td>
+                    {% endfor %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="otec-leyenda mt-3">
+                <span><i class="otec-mes__muestra otec-mes__muestra--curso"></i> Entre el inicio y el término del curso</span>
+                <span><i class="otec-mes__muestra otec-mes__muestra--feriado"></i> Feriado</span>
+            </div>
+        </div></div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="otec-card mb-3"><div class="otec-card__body">
+            <h6 class="otec-card__title">
+                {% if editando %}Editar la clase{% else %}Agregar una clase{% endif %}
+            </h6>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="mes" value="{{ mes_actual }}">
+                {% if editando %}<input type="hidden" name="sesion" value="{{ editando.pk }}">{% endif %}
+
+                {% if form.non_field_errors %}
+                {% for e in form.non_field_errors %}<div class="otec-campo__error mb-2">{{ e }}</div>{% endfor %}
+                {% endif %}
+
+                <div class="otec-form-grid">
+                    {% include "otec/partials/campo.html" with campo=form.fecha clase="span-2" %}
+                    {% include "otec/partials/campo.html" with campo=form.hora_inicio %}
+                    {% include "otec/partials/campo.html" with campo=form.duracion_horas %}
+                    {% include "otec/partials/campo.html" with campo=form.sala clase="span-2" %}
+                    {% include "otec/partials/campo.html" with campo=form.grupo clase="span-2" %}
+                </div>
+
+                <div class="d-flex gap-2 align-items-center mt-3">
+                    <button class="btn btn-sm" style="background: var(--otec-primary); color:#fff">
+                        {% if editando %}Guardar la clase{% else %}Agregar la clase{% endif %}
+                    </button>
+                    {% if editando %}
+                    <a href="?mes={{ mes_actual }}" class="btn btn-sm btn-link text-muted">Cancelar</a>
+                    {% endif %}
+                </div>
+            </form>
+
+            {% if editando %}
+            <form method="post" action="{% url 'otec:eliminar_sesion' editando.pk %}" class="mt-2">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-outline-danger">Eliminar esta clase</button>
+            </form>
+            {% endif %}
+        </div></div>
+
+        <div class="otec-card"><div class="otec-card__body">
+            <h6 class="otec-card__title">Clases cargadas</h6>
+            {% for s in sesiones %}
+            <div class="d-flex justify-content-between align-items-baseline py-1" style="font-size:.85rem">
+                <span>
+                    <a href="?mes={{ s.fecha|date:'Y-n' }}&sesion={{ s.pk }}" class="otec-nombre" style="display:inline">
+                        {{ s.fecha|date:"D j M" }}
+                    </a>
+                    <span class="otec-codigo">
+                        {{ s.hora_inicio|time:"H:i" }}–{{ s.hora_fin|time:"H:i" }}{% if s.sala %} · {{ s.sala.nombre }}{% endif %}{% if s.grupo %} · {{ s.grupo }}{% endif %}
+                    </span>
+                </span>
+                <span style="font-variant-numeric: tabular-nums">{{ s.duracion_horas|floatformat:"-1" }} h</span>
+            </div>
+            {% for otro in s.choques_de_sala %}
+            <div class="otec-campo__error mb-1" style="margin-top:-.15rem">
+                {{ s.sala.nombre }} la comparte con «{{ otro.nombre|truncatechars:40 }}»
+                de {{ otro.hora_inicio|time:"H:i" }} a {{ otro.hora_fin|time:"H:i" }}{% if otro.es_reserva %}, según el Tablero{% endif %}.
+            </div>
+            {% endfor %}
+            {% empty %}
+            <p class="text-muted small mb-0">
+                Todavía no hay clases. Haga clic en un día del calendario.
+            </p>
+            {% endfor %}
+        </div></div>
+
+        {% if n_conflictos %}
+        <div class="otec-card mt-3" style="border-color: var(--otec-danger)">
+            <div class="otec-card__body">
+                <h6 class="otec-card__title">Salas con choque</h6>
+                <p class="otec-codigo mb-0">
+                    {{ n_conflictos }} clase{{ n_conflictos|pluralize:"s" }} de este curso
+                    comparte{{ n_conflictos|pluralize:"n" }} sala y hora con otro curso o
+                    con una reserva del Tablero. Al guardar desde acá no se permite, así
+                    que estas vienen de antes.
+                </p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+/* Calendario mensual del curso. */
+.otec-mes { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.otec-mes th {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--otec-muted);
+    font-weight: 600;
+    padding: .4rem .3rem;
+    text-align: center;
+}
+.otec-mes__dia {
+    border: 1px solid var(--otec-line);
+    vertical-align: top;
+    height: 5.2rem;
+    padding: .25rem;
+    background: #fff;
+}
+.otec-mes__dia--fuera { background: var(--otec-bg-soft); }
+.otec-mes__dia--fuera .otec-mes__numero { opacity: .35; }
+.otec-mes__dia--curso { background: rgba(42, 120, 214, .05); }
+.otec-mes__dia--feriado { background: repeating-linear-gradient(
+    45deg, transparent, transparent 5px, rgba(0,0,0,.045) 5px, rgba(0,0,0,.045) 10px); }
+.otec-mes__dia--hoy { outline: 2px solid var(--otec-primary); outline-offset: -2px; }
+.otec-mes__numero {
+    display: block;
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--otec-muted);
+    text-decoration: none;
+    padding: .1rem .2rem;
+    border-radius: 5px;
+}
+.otec-mes__numero:hover { background: var(--otec-primary); color: #fff; }
+.otec-clase {
+    display: block;
+    margin-top: .2rem;
+    padding: .12rem .3rem;
+    border-radius: 5px;
+    background: var(--otec-primary);
+    color: #fff;
+    font-size: .72rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.otec-clase:hover { filter: brightness(1.12); color: #fff; }
+.otec-clase--choque { background: var(--otec-danger); }
+.otec-clase__grupo { opacity: .8; font-weight: 500; }
+.otec-mes__muestra {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border-radius: 3px;
+    border: 1px solid var(--otec-line);
+}
+.otec-mes__muestra--curso { background: rgba(42, 120, 214, .12); }
+.otec-mes__muestra--feriado { background: repeating-linear-gradient(
+    45deg, transparent, transparent 3px, rgba(0,0,0,.12) 3px, rgba(0,0,0,.12) 6px); }
+</style>
+
+{% endblock %}

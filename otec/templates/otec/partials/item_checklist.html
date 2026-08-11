@@ -1,0 +1,17 @@
+<div class="otec-item">
+    <div>
+        <span class="otec-item__nombre otec-dot otec-dot--{{ item.clase }}">{{ item.plantilla.nombre }}</span>
+        {% if item.plantilla.critico %}<span class="otec-item__critico">CRÍTICO</span>{% endif %}
+        {% if item.detalle %}<span class="otec-item__detalle">{{ item.detalle }}</span>{% endif %}
+    </div>
+
+    <select name="estado"
+            hx-post="{% url 'otec:actualizar_item' item.pk %}"
+            hx-target="#otec-checklist"
+            hx-swap="outerHTML"
+            aria-label="Estado de {{ item.plantilla.nombre }}">
+        {% for valor, etiqueta in estados %}
+        <option value="{{ valor }}" {% if item.estado == valor %}selected{% endif %}>{{ etiqueta }}</option>
+        {% endfor %}
+    </select>
+</div>

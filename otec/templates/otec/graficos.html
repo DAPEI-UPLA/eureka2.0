@@ -1,0 +1,425 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% load l10n %}
+{% block title %}Gráficos OTEC{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        <h2>Gráficos</h2>
+        <p>Cartera {{ anio|unlocalize }} · {{ total_actividades }} actividades, {{ total_ganadas }} ganadas</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'otec:flujo_caja' %}" class="btn btn-sm btn-outline-secondary">Flujo de caja</a>
+        <a href="{% url 'otec:panel_gestion' %}" class="btn-volver"><span class="arrow">←</span> Gestión</a>
+    </div>
+</div>
+
+<!-- Avance de la meta: una cifra protagonista, no un gráfico -->
+{% if meta %}
+<div class="otec-card mb-3"><div class="otec-card__body">
+    <div class="row g-4 align-items-center">
+        <div class="col-12 col-lg-4">
+            <div class="otec-kpi">
+                <span class="otec-kpi__label">Avance de la meta {{ anio|unlocalize }}</span>
+                <span class="otec-hero">{{ avance_meta }}%</span>
+                <span class="otec-kpi__hint">
+                    ${{ adjudicado|floatformat:0 }} adjudicado de ${{ meta.monto|floatformat:0 }}
+                </span>
+            </div>
+        </div>
+        <div class="col-12 col-lg-8">
+            <div class="otec-meta-barra" role="img"
+                 aria-label="Avance de la meta: {{ avance_meta }} por ciento">
+                <div class="otec-meta-barra__fill" style="width: {{ avance_meta }}%"></div>
+            </div>
+            <div class="d-flex justify-content-between mt-2">
+                <span class="otec-codigo">Adjudicado ${{ adjudicado|floatformat:0 }}</span>
+                <span class="otec-codigo">Brecha ${{ brecha|floatformat:0 }}</span>
+            </div>
+        </div>
+    </div>
+</div></div>
+{% endif %}
+
+<div class="row g-3">
+
+    <!-- Adjudicado por institución -->
+    <div class="col-12 col-lg-6">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <h6 class="otec-card__title">Monto adjudicado por institución</h6>
+            <div class="otec-chart" style="height: 260px"><canvas id="chartInstituciones"></canvas></div>
+            <details class="otec-tabla-datos">
+                <summary>Ver los datos</summary>
+                <table class="otec-tabla">
+                    <thead><tr><th>Institución</th><th class="num">Adjudicado</th></tr></thead>
+                    <tbody>
+                    {% for nombre, monto in instituciones %}
+                        <tr><td>{{ nombre }}</td><td class="num">${{ monto|floatformat:0 }}</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </details>
+        </div></div>
+    </div>
+
+    <!-- Riesgo ejecutivo -->
+    <div class="col-12 col-lg-6">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <h6 class="otec-card__title">Actividades por riesgo ejecutivo</h6>
+            <div class="otec-chart" style="height: 260px"><canvas id="chartRiesgo"></canvas></div>
+            <p class="otec-codigo mb-0">
+                El color indica gravedad y va siempre junto a la etiqueta, nunca solo.
+            </p>
+        </div></div>
+    </div>
+
+    <!-- Avance del checklist por etapa -->
+    <div class="col-12 col-lg-6">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <h6 class="otec-card__title">Avance del checklist por etapa</h6>
+            <div class="otec-chart" style="height: 250px"><canvas id="chartEtapas"></canvas></div>
+            <details class="otec-tabla-datos">
+                <summary>Ver los datos</summary>
+                <table class="otec-tabla">
+                    <thead><tr><th>Etapa</th><th class="num">Completados</th><th class="num">%</th></tr></thead>
+                    <tbody>
+                    {% for e in etapas %}
+                        <tr><td>{{ e.label }}</td><td class="num">{{ e.completados }} / {{ e.total }}</td><td class="num">{{ e.pct }}%</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </details>
+        </div></div>
+    </div>
+
+    <!-- Estado comercial -->
+    <div class="col-12 col-lg-6">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <h6 class="otec-card__title">Actividades por estado comercial</h6>
+            <div class="otec-chart" style="height: 250px"><canvas id="chartEstados"></canvas></div>
+        </div></div>
+    </div>
+
+    <!-- Calendarización mensual -->
+    <div class="col-12 col-lg-6">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <h6 class="otec-card__title">Días de curso calendarizados por mes</h6>
+            <div class="otec-chart" style="height: 250px"><canvas id="chartMeses"></canvas></div>
+        </div></div>
+    </div>
+
+    <!-- Uso de salas Zoom -->
+    <div class="col-12 col-lg-6">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <h6 class="otec-card__title">Horas de sala Zoom por mes</h6>
+            <div class="otec-chart" style="height: 250px"><canvas id="chartZoom"></canvas></div>
+        </div></div>
+    </div>
+
+    <!-- Excedente por actividad -->
+    <div class="col-12">
+        <div class="otec-card"><div class="otec-card__body">
+            <h6 class="otec-card__title">Excedente estimado por actividad</h6>
+            <div class="otec-chart" style="height: 320px"><canvas id="chartExcedente"></canvas></div>
+        </div></div>
+    </div>
+
+</div>
+
+{{ g_instituciones|json_script:"dInstituciones" }}
+{{ g_riesgo|json_script:"dRiesgo" }}
+{{ g_etapas|json_script:"dEtapas" }}
+{{ g_estados|json_script:"dEstados" }}
+{{ g_meses|json_script:"dMeses" }}
+{{ g_zoom|json_script:"dZoom" }}
+{{ g_excedente|json_script:"dExcedente" }}
+{{ tinta|json_script:"dTinta" }}
+
+<style>
+.otec-hero {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--otec-text);
+    line-height: 1;
+}
+.otec-meta-barra {
+    height: 14px;
+    background: var(--otec-line);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.otec-meta-barra__fill {
+    height: 100%;
+    background: #2a78d6;
+    border-radius: 999px;
+}
+.otec-chart { position: relative; }
+.otec-tabla-datos { margin-top: .85rem; }
+.otec-tabla-datos summary {
+    cursor: pointer;
+    font-size: .78rem;
+    color: var(--otec-muted);
+}
+.otec-tabla-datos table { margin-top: .5rem; }
+.otec-tabla-datos th, .otec-tabla-datos td { padding: .35rem .5rem; font-size: .8rem; }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    const tinta = JSON.parse(document.getElementById('dTinta').textContent);
+    const leer = id => JSON.parse(document.getElementById(id).textContent);
+    const pesos = v => '$' + new Intl.NumberFormat('es-CL').format(Math.round(v));
+
+    Chart.defaults.font.family = "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif";
+    Chart.defaults.font.size = 11;
+    Chart.defaults.color = tinta.apagada;
+
+    // Rejilla y ejes recesivos; la tinta del texto nunca toma el color de la serie.
+    const ejeValor = (fmt) => ({
+        grid: { color: tinta.grilla, drawTicks: false },
+        border: { display: false },
+        ticks: { color: tinta.apagada, padding: 6, callback: fmt },
+    });
+    const ejeCategoria = {
+        grid: { display: false },
+        border: { color: tinta.eje },
+        ticks: { color: tinta.secundaria, padding: 4 },
+    };
+    const tooltip = {
+        backgroundColor: '#0b0b0b',
+        padding: 10,
+        cornerRadius: 8,
+        displayColors: true,
+        boxWidth: 8,
+        boxHeight: 8,
+        titleFont: { weight: '600' },
+    };
+
+    // Etiqueta directa al final de cada barra: la identidad y el valor quedan
+    // legibles aunque el color no se distinga.
+    const etiquetasBarra = (formato, horizontal) => ({
+        id: 'etiquetasBarra',
+        afterDatasetsDraw(chart) {
+            const {ctx} = chart;
+            ctx.save();
+            ctx.font = '600 11px ' + Chart.defaults.font.family;
+            ctx.fillStyle = tinta.secundaria;
+            chart.data.datasets.forEach((ds, di) => {
+                const meta = chart.getDatasetMeta(di);
+                if (meta.hidden) return;
+                meta.data.forEach((barra, i) => {
+                    const v = ds.data[i];
+                    if (v === null || v === undefined) return;
+                    const texto = formato(v, i);
+                    if (horizontal) {
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(texto, barra.x + 6, barra.y);
+                    } else {
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        ctx.fillText(texto, barra.x, barra.y - 4);
+                    }
+                });
+            });
+            ctx.restore();
+        }
+    });
+
+    // Marcas delgadas con separación de 2px entre barras y extremos redondeados.
+    const barra = {
+        borderRadius: 4,
+        borderSkipped: false,
+        borderWidth: 2,
+        borderColor: '#ffffff',
+        barPercentage: 0.72,
+        categoryPercentage: 0.82,
+    };
+
+    // ---- Adjudicado por institución (una serie: sin leyenda) ----
+    const dInst = leer('dInstituciones');
+    new Chart(document.getElementById('chartInstituciones'), {
+        type: 'bar',
+        data: {
+            labels: dInst.labels,
+            datasets: [{ data: dInst.data, backgroundColor: dInst.colors, ...barra }],
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            layout: { padding: { right: 74 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...tooltip, callbacks: { label: c => pesos(c.parsed.x) } },
+            },
+            scales: {
+                x: { ...ejeValor(v => new Intl.NumberFormat('es-CL', {notation: 'compact'}).format(v)), beginAtZero: true },
+                y: { ...ejeCategoria, ticks: { ...ejeCategoria.ticks, callback: function (v) {
+                    const t = this.getLabelForValue(v);
+                    return t.length > 26 ? t.slice(0, 25) + '…' : t;
+                } } },
+            },
+        },
+        plugins: [etiquetasBarra(v => pesos(v), true)],
+    });
+
+    // ---- Riesgo ejecutivo (paleta de estado) ----
+    const dRiesgo = leer('dRiesgo');
+    new Chart(document.getElementById('chartRiesgo'), {
+        type: 'bar',
+        data: {
+            labels: dRiesgo.labels,
+            datasets: [{ data: dRiesgo.data, backgroundColor: dRiesgo.colors, ...barra }],
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            layout: { padding: { right: 34 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...tooltip, callbacks: { label: c => c.parsed.x + ' actividades' } },
+            },
+            scales: {
+                x: { ...ejeValor(v => v), beginAtZero: true, ticks: { precision: 0, color: tinta.apagada } },
+                y: ejeCategoria,
+            },
+        },
+        plugins: [etiquetasBarra(v => v, true)],
+    });
+
+    // ---- Avance del checklist por etapa (magnitud 0–100, un solo tono) ----
+    const dEtapas = leer('dEtapas');
+    new Chart(document.getElementById('chartEtapas'), {
+        type: 'bar',
+        data: {
+            labels: dEtapas.labels,
+            datasets: [{ data: dEtapas.data, backgroundColor: '#2a78d6', ...barra }],
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            layout: { padding: { right: 52 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...tooltip, callbacks: {
+                    label: c => c.parsed.x + '% · ' + dEtapas.detalle[c.dataIndex],
+                } },
+            },
+            scales: {
+                x: { ...ejeValor(v => v + '%'), beginAtZero: true, max: 100 },
+                y: ejeCategoria,
+            },
+        },
+        plugins: [etiquetasBarra(v => v + '%', true)],
+    });
+
+    // ---- Estado comercial ----
+    const dEstados = leer('dEstados');
+    new Chart(document.getElementById('chartEstados'), {
+        type: 'bar',
+        data: {
+            labels: dEstados.labels,
+            datasets: [{ data: dEstados.data, backgroundColor: dEstados.colors, ...barra }],
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            layout: { padding: { top: 20 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...tooltip, callbacks: { label: c => c.parsed.y + ' actividades' } },
+            },
+            scales: {
+                y: { ...ejeValor(v => v), beginAtZero: true, ticks: { precision: 0, color: tinta.apagada } },
+                x: ejeCategoria,
+            },
+        },
+        plugins: [etiquetasBarra(v => v, false)],
+    });
+
+    // ---- Días calendarizados por mes ----
+    const dMeses = leer('dMeses');
+    new Chart(document.getElementById('chartMeses'), {
+        type: 'bar',
+        data: {
+            labels: dMeses.labels,
+            datasets: [{ data: dMeses.data, backgroundColor: '#2a78d6', ...barra }],
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            layout: { padding: { top: 20 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...tooltip, callbacks: { label: c => c.parsed.y + ' días de curso' } },
+            },
+            scales: {
+                y: { ...ejeValor(v => v), beginAtZero: true, ticks: { precision: 0, color: tinta.apagada } },
+                x: ejeCategoria,
+            },
+        },
+        plugins: [etiquetasBarra(v => v, false)],
+    });
+
+    // ---- Horas de Zoom por sala (dos series: leyenda presente) ----
+    const dZoom = leer('dZoom');
+    new Chart(document.getElementById('chartZoom'), {
+        type: 'bar',
+        data: {
+            labels: dZoom.labels,
+            datasets: dZoom.series.map(s => ({
+                label: s.label, data: s.data, backgroundColor: s.color, ...barra,
+            })),
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true, position: 'top', align: 'end',
+                    labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true,
+                              pointStyle: 'rectRounded', color: tinta.secundaria, padding: 14 },
+                },
+                tooltip: { ...tooltip, callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y + ' h' } },
+            },
+            scales: {
+                y: { ...ejeValor(v => v + ' h'), beginAtZero: true },
+                x: ejeCategoria,
+            },
+        },
+    });
+
+    // ---- Excedente estimado por actividad ----
+    const dExc = leer('dExcedente');
+    new Chart(document.getElementById('chartExcedente'), {
+        type: 'bar',
+        data: {
+            labels: dExc.labels,
+            datasets: [{ data: dExc.data, backgroundColor: '#2a78d6', ...barra }],
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            layout: { padding: { right: 96 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...tooltip, callbacks: {
+                    label: c => pesos(c.parsed.x) + (dExc.margen[c.dataIndex] !== null
+                        ? ' · margen ' + dExc.margen[c.dataIndex] + '%' : ''),
+                } },
+            },
+            scales: {
+                x: { ...ejeValor(v => new Intl.NumberFormat('es-CL', {notation: 'compact'}).format(v)), beginAtZero: true },
+                y: { ...ejeCategoria, ticks: { ...ejeCategoria.ticks, callback: function (v) {
+                    const t = this.getLabelForValue(v);
+                    return t.length > 34 ? t.slice(0, 33) + '…' : t;
+                } } },
+            },
+        },
+        plugins: [etiquetasBarra(v => pesos(v), true)],
+    });
+})();
+</script>
+
+{% endblock %}

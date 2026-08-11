@@ -1,0 +1,114 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Actividades OTEC{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        <h2>Registro de actividades</h2>
+        <p>{{ actividades|length }} actividad{{ actividades|length|pluralize:"es" }}{% if hay_filtros %} con los filtros aplicados{% endif %}</p>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <a href="{% url 'otec:crear_actividad' %}" class="btn btn-sm"
+           style="background: var(--otec-primary); color:#fff">+ Nueva actividad</a>
+        <a href="{% url 'otec:panel_gestion' %}" class="btn-volver"><span class="arrow">←</span> Gestión</a>
+    </div>
+</div>
+
+<form method="get" class="otec-filtros">
+    <input type="search" name="q" value="{{ filtros.q }}" class="form-control"
+           placeholder="Buscar curso, propuesta, institución o relator/a" style="min-width:280px">
+
+    <select name="estado_comercial" class="form-select">
+        <option value="">Estado comercial</option>
+        {% for valor, etiqueta in estados_comerciales %}
+        <option value="{{ valor }}" {% if filtros.estado_comercial == valor %}selected{% endif %}>{{ etiqueta }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="estado_ejecucion" class="form-select">
+        <option value="">Estado de ejecución</option>
+        {% for valor, etiqueta in estados_ejecucion %}
+        <option value="{{ valor }}" {% if filtros.estado_ejecucion == valor %}selected{% endif %}>{{ etiqueta }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="institucion" class="form-select">
+        <option value="">Institución</option>
+        {% for i in instituciones %}
+        <option value="{{ i.pk }}" {% if filtros.institucion == i.pk|stringformat:"s" %}selected{% endif %}>{{ i.nombre|truncatechars:38 }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="riesgo" class="form-select">
+        <option value="">Riesgo</option>
+        {% for r in riesgos_disponibles %}
+        <option value="{{ r }}" {% if filtros.riesgo == r %}selected{% endif %}>{{ r }}</option>
+        {% endfor %}
+    </select>
+
+    <button class="btn btn-sm btn-outline-secondary">Filtrar</button>
+    {% if hay_filtros %}
+    <a href="{% url 'otec:lista_actividades' %}" class="btn btn-sm btn-link text-muted">Limpiar</a>
+    {% endif %}
+</form>
+
+<div class="otec-card">
+    <div class="otec-tabla-wrap">
+        <table class="otec-tabla">
+            <thead>
+                <tr>
+                    <th>Actividad</th>
+                    <th>Modalidad</th>
+                    <th>Relator/a</th>
+                    <th>Inicio</th>
+                    <th class="num">Part.</th>
+                    <th class="num">Horas</th>
+                    <th class="num">Ofertado</th>
+                    <th>Avance</th>
+                    <th>Riesgo</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in actividades %}
+                <tr>
+                    <td style="min-width:280px">
+                        <span class="otec-codigo">{{ a.propuesta.codigo }}</span>
+                        <a href="{% url 'otec:detalle_actividad' a.pk %}" class="otec-nombre">{{ a.nombre|truncatechars:70 }}</a>
+                        <span class="otec-codigo">{{ a.propuesta.institucion.nombre|truncatechars:44 }}</span>
+                    </td>
+                    <td><span class="text-muted small">{{ a.get_modalidad_display }}</span></td>
+                    <td>
+                        {% if a.relator %}{{ a.relator.nombre }}<br>
+                        <span class="otec-codigo">{{ a.get_tipo_relator_display }}</span>
+                        {% else %}<span class="text-muted small">Por definir</span>{% endif %}
+                    </td>
+                    <td>{% if a.fecha_inicio %}{{ a.fecha_inicio|date:"d M Y" }}{% else %}<span class="text-muted small">—</span>{% endif %}</td>
+                    <td class="num">{{ a.n_participantes }}</td>
+                    <td class="num">{{ a.horas }}</td>
+                    <td class="num">${{ a.valor_ofertado|floatformat:0 }}</td>
+                    <td style="min-width:110px">
+                        {% if a.avance_checklist_pct is not None %}
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="otec-progress flex-grow-1"><div class="otec-progress__fill" style="width: {{ a.avance_checklist_pct }}%"></div></div>
+                            <span class="otec-codigo">{{ a.avance_checklist_pct }}%</span>
+                        </div>
+                        {% else %}<span class="text-muted small">—</span>{% endif %}
+                    </td>
+                    <td><span class="otec-dot otec-dot--{{ a.riesgo_clase }}">{{ a.riesgo_ejecutivo }}</span></td>
+                    <td class="num">
+                        <a href="{% url 'otec:editar_actividad' a.pk %}" class="otec-accion">Editar</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="10"><div class="otec-vacio">No hay actividades que coincidan con los filtros.</div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

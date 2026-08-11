@@ -1,0 +1,6 @@
+<option value="">---------</option>
+{% for c in contactos %}
+<option value="{{ c.pk }}" {% if seleccionado == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>
+{% empty %}
+<option value="" disabled>Esta institución no tiene contactos cargados</option>
+{% endfor %}

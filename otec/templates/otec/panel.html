@@ -1,0 +1,130 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Gestión de capacitación · OTEC{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        <h2>Gestión de capacitación</h2>
+        <p>{{ total_actividades }} cursos en {{ total_propuestas }} propuestas · {{ total_ganadas }} ganados</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+        <a href="{% url 'otec:lista_actividades' %}" class="btn btn-sm btn-outline-secondary">Actividades</a>
+        <a href="{% url 'otec:lista_propuestas' %}" class="btn btn-sm btn-outline-secondary">Propuestas</a>
+        <a href="{% url 'otec:graficos' %}" class="btn btn-sm btn-outline-secondary">Gráficos</a>
+        <a href="{% url 'otec:flujo_caja' %}" class="btn btn-sm btn-outline-secondary">Flujo de caja</a>
+        <a href="{% url 'otec:carta_gantt' %}" class="btn btn-sm btn-outline-secondary">Carta Gantt</a>
+        <a href="{% url 'otec:calendario_zoom' %}" class="btn btn-sm btn-outline-secondary">Salas Zoom</a>
+        <a href="{% url 'otec:importar' %}" class="btn btn-sm" style="background: var(--otec-primary); color:#fff">Cargar Excel</a>
+        <a href="{% url 'otec:home' %}" class="btn-volver"><span class="arrow">←</span> OTEC</a>
+    </div>
+</div>
+
+<!-- Cartera -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="otec-card"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Valor ofertado</span>
+            <span class="otec-kpi__value">${{ totales.valor_ofertado|floatformat:0 }}</span>
+            <span class="otec-kpi__hint">{{ total_actividades }} actividades</span>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="otec-card"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Monto adjudicado</span>
+            <span class="otec-kpi__value">${{ totales.adjudicado|floatformat:0 }}</span>
+            <span class="otec-kpi__hint">{{ total_ganadas }} cursos ganados</span>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="otec-card"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Excedente estimado</span>
+            <span class="otec-kpi__value">${{ excedente|floatformat:0 }}</span>
+            <span class="otec-kpi__hint">ofertado menos relatoría y gastos</span>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="otec-card"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Pendiente de facturar</span>
+            <span class="otec-kpi__value {% if pendiente_facturar > 0 %}otec-kpi__value--danger{% endif %}">${{ pendiente_facturar|floatformat:0 }}</span>
+            <span class="otec-kpi__hint">facturado ${{ totales.facturado|floatformat:0 }}</span>
+        </div></div>
+    </div>
+</div>
+
+<!-- Operación -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="otec-card"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Personas a capacitar</span>
+            <span class="otec-kpi__value">{{ personas_a_capacitar }}</span>
+            <span class="otec-kpi__hint">en cursos ganados</span>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="otec-card"><div class="otec-card__body otec-kpi">
+            <span class="otec-kpi__label">Horas comprometidas</span>
+            <span class="otec-kpi__value">{{ horas_totales }}</span>
+            <span class="otec-kpi__hint">cronológicas</span>
+        </div></div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <div class="otec-kpi mb-2">
+                <span class="otec-kpi__label">Avance promedio de checklist</span>
+                <span class="otec-kpi__value">{% if avance_promedio is not None %}{{ avance_promedio }}%{% else %}—{% endif %}</span>
+            </div>
+            {% if avance_promedio is not None %}
+            <div class="otec-progress"><div class="otec-progress__fill" style="width: {{ avance_promedio }}%"></div></div>
+            {% endif %}
+        </div></div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-4">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <h6 class="otec-card__title">Riesgo ejecutivo</h6>
+            {% for r in riesgos %}
+            <div class="d-flex justify-content-between align-items-center py-1">
+                <span class="otec-dot otec-dot--{{ r.clase }}">{{ r.etiqueta }}</span>
+                <span class="fw-semibold">{{ r.n }}</span>
+            </div>
+            {% empty %}
+            <p class="text-muted small mb-0">Sin actividades registradas.</p>
+            {% endfor %}
+        </div></div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <h6 class="otec-card__title">Estado del checklist</h6>
+            {% for a in alertas %}
+            <div class="d-flex justify-content-between align-items-center py-1">
+                <span class="otec-dot otec-dot--{{ a.clase }}">{{ a.etiqueta }}</span>
+                <span class="fw-semibold">{{ a.n }}</span>
+            </div>
+            {% empty %}
+            <p class="text-muted small mb-0">Sin actividades registradas.</p>
+            {% endfor %}
+        </div></div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="otec-card h-100"><div class="otec-card__body">
+            <h6 class="otec-card__title">Próximas fechas críticas</h6>
+            {% for a in proximas %}
+            <div class="py-1">
+                <a href="{% url 'otec:detalle_actividad' a.pk %}" class="otec-nombre" style="font-size:.85rem">{{ a.nombre|truncatechars:52 }}</a>
+                <span class="otec-codigo">{{ a.proxima_fecha_critica|date:"d M Y" }} · {{ a.propuesta.institucion.nombre|truncatechars:30 }}</span>
+            </div>
+            {% empty %}
+            <p class="text-muted small mb-0">Sin fechas críticas registradas.</p>
+            {% endfor %}
+        </div></div>
+    </div>
+</div>
+
+{% endblock %}

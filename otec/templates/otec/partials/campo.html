@@ -1,0 +1,9 @@
+{% comment %}Un campo de formulario con su etiqueta, ayuda y error.{% endcomment %}
+<div class="otec-campo {{ clase|default:'' }}">
+    <label for="{{ campo.id_for_label }}" class="otec-campo__label">
+        {{ campo.label }}{% if campo.field.required %} <span class="otec-campo__req">*</span>{% endif %}
+    </label>
+    {{ campo }}
+    {% if campo.help_text %}<div class="otec-campo__ayuda">{{ campo.help_text }}</div>{% endif %}
+    {% for error in campo.errors %}<div class="otec-campo__error">{{ error }}</div>{% endfor %}
+</div>

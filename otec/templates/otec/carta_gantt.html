@@ -1,0 +1,138 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Carta Gantt OTEC{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        <h2>Carta Gantt</h2>
+        <p>Calendarización de cursos por día. Los días vienen de la programación de cada actividad.</p>
+    </div>
+    <a href="{% url 'otec:panel_gestion' %}" class="btn-volver"><span class="arrow">←</span> Gestión</a>
+</div>
+
+{% if sin_datos %}
+<div class="otec-card"><div class="otec-vacio">
+    Todavía no hay días calendarizados.<br>
+    <span class="otec-codigo">Cárguelos con <code>manage.py otec_importar_calendario</code>.</span>
+</div></div>
+{% else %}
+
+{% comment %}
+Los dos filtros van en el mismo formulario para que elegir uno conserve el
+otro. Al aislar un curso la grilla se recorta a sus días, así que el
+desplegable de meses solo ofrece los meses en que ese curso corre.
+{% endcomment %}
+<form method="get" class="otec-filtros">
+    <select name="curso" class="form-select" style="max-width: 30rem"
+            onchange="this.form.submit()" aria-label="Filtrar por curso">
+        <option value="">Todos los cursos</option>
+        {% for c in cursos %}
+        <option value="{{ c.actividad.pk }}" {% if c.activo %}selected{% endif %}>
+            {{ c.actividad.nombre|truncatechars:70 }} · {{ c.actividad.propuesta.institucion.sigla|default:c.actividad.propuesta.institucion.nombre }}
+        </option>
+        {% endfor %}
+    </select>
+    <select name="mes" class="form-select" onchange="this.form.submit()"
+            aria-label="Filtrar por mes">
+        <option value="">Todos los meses</option>
+        {% for m in meses %}
+        <option value="{{ m.valor }}" {% if m.activo %}selected{% endif %}>{{ m.etiqueta }}</option>
+        {% endfor %}
+    </select>
+    <noscript><button class="btn btn-sm btn-outline-secondary">Filtrar</button></noscript>
+    {% if curso_activo %}
+    <a href="{% url 'otec:detalle_actividad' curso_activo.pk %}" class="otec-accion">Ver la ficha del curso</a>
+    {% endif %}
+    {% if hay_filtro %}
+    <a href="{% url 'otec:carta_gantt' %}" class="btn btn-sm btn-link text-muted ms-auto">Limpiar filtros</a>
+    {% endif %}
+</form>
+
+<div class="otec-grid-wrap">
+    <table class="otec-grid">
+        <thead>
+            <tr>
+                <th class="otec-grid__lead" rowspan="2">Actividad</th>
+                {% for c in cabecera %}
+                <th class="mes" colspan="{{ c.ancho }}">{{ c.mes }}</th>
+                {% endfor %}
+            </tr>
+            <tr>
+                {% for f in fechas %}
+                <th>{{ f|date:"j" }}<br><span style="opacity:.55">{{ f|date:"D"|slice:":1"|upper }}</span></th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for fila in filas %}
+            <tr>
+                <td class="otec-grid__lead">
+                    <a href="{% url 'otec:detalle_actividad' fila.actividad.pk %}" class="otec-nombre" style="font-size:.78rem">{{ fila.actividad.nombre|truncatechars:58 }}</a>
+                    <span class="otec-codigo">
+                        {{ fila.actividad.propuesta.institucion.nombre|truncatechars:26 }} ·
+                        {{ fila.total }} días{% if fila.estimada %} estimados{% endif %}
+                    </span>
+                </td>
+                {% for c in fila.celdas %}
+                <td>
+                    {% if c.dia %}
+                    <span class="otec-celda otec-celda--{{ c.dia.tipo|lower }}"
+                          title="{{ c.fecha|date:'l j \d\e F' }} · {{ c.dia.get_tipo_display }}{% if c.dia.horas_asincronicas %} · {{ c.dia.horas_asincronicas }} h asincrónicas{% endif %}"></span>
+                    {% elif c.derivado %}
+                    <span class="otec-celda otec-celda--estimado"
+                          title="{{ c.fecha|date:'l j \d\e F' }} · estimado a partir de las fechas del curso"></span>
+                    {% elif c.feriado %}
+                    <span class="otec-celda otec-celda--feriado" title="Feriado"></span>
+                    {% else %}
+                    <span class="otec-celda"></span>
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+
+            <!-- Actividades en paralelo: en la planilla era una fórmula -->
+            <tr>
+                <td class="otec-grid__lead">
+                    <span class="otec-nombre" style="font-size:.78rem">Actividades en paralelo</span>
+                    <span class="otec-codigo">
+                        {% if curso_activo %}todos los cursos · máx. {{ max_paralelo }}{% else %}máximo {{ max_paralelo }} en simultáneo{% endif %}
+                    </span>
+                </td>
+                {% for p in paralelo %}
+                <td title="{{ p.fecha|date:'j \d\e F' }}: {{ p.n }} actividad{{ p.n|pluralize:'es' }}">
+                    {% if p.n %}
+                    <span class="otec-carga {% if p.n >= 4 %}otec-carga--alta{% endif %}"
+                          style="height: {{ p.alto }}%; max-height:26px; min-height:4px"></span>
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="otec-leyenda">
+    <span><i style="background: var(--otec-primary)"></i> Ejecución</span>
+    <span><i style="background: #94a3b8"></i> Cierre administrativo</span>
+    <span><i class="otec-celda--estimado" style="display:inline-block"></i> Estimado desde las fechas del curso</span>
+    <span><i class="otec-celda--feriado" style="border:1px solid var(--otec-line)"></i> Feriado</span>
+    <span style="margin-left:auto">
+        {{ filas|length }} actividad{{ filas|length|pluralize:"es" }} · {{ fechas|length }} día{{ fechas|length|pluralize }}
+        {% if hay_filtro %} en pantalla, de {{ cursos|length }} en total{% endif %}
+    </span>
+</div>
+
+{% if n_estimadas %}
+<p class="otec-codigo mt-2">
+    {{ n_estimadas }} actividad{{ n_estimadas|pluralize:"es" }} todavía no tiene días
+    calendarizados: se muestra su tramo estimado entre la fecha de inicio y la de término,
+    saltando fines de semana y feriados.
+</p>
+{% endif %}
+
+{% endif %}
+{% endblock %}

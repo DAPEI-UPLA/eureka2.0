@@ -1,0 +1,34 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}OTEC{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="mb-3">
+    <a href="{% url 'home' %}" class="btn-volver"><span class="arrow">←</span> Volver al inicio</a>
+</div>
+
+<div class="otec-header">
+    <div>
+        <span class="otec-eyebrow">🎓 OTEC</span>
+        <h2>Organismo Técnico de Capacitación</h2>
+        <p>Elija a qué sección quiere entrar.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    {% for s in secciones %}
+    <div class="col-md-6">
+        <a href="{{ s.url }}" class="otec-tile">
+            <span class="otec-tile__icono">{{ s.icono }}</span>
+            <h5 class="otec-tile__titulo">{{ s.titulo }}</h5>
+            <p class="otec-tile__texto">{{ s.texto }}</p>
+            <span class="otec-tile__dato">{{ s.dato }}</span>
+            <span class="otec-tile__ir">Entrar →</span>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

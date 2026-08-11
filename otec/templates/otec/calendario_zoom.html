@@ -1,0 +1,135 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Salas Zoom OTEC{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        <h2>Calendario de salas Zoom</h2>
+        <p>Uso de las salas por bloques de 30 minutos, de 08:30 a 20:00.</p>
+    </div>
+    <a href="{% url 'otec:panel_gestion' %}" class="btn-volver"><span class="arrow">←</span> Gestión</a>
+</div>
+
+{% if sin_datos %}
+<div class="otec-card"><div class="otec-vacio">
+    Todavía no hay reservas de sala.<br>
+    <span class="otec-codigo">Cárguelas con <code>manage.py otec_importar_calendario</code>.</span>
+</div></div>
+{% else %}
+
+<div class="otec-filtros justify-content-between">
+    <div class="d-flex align-items-center gap-2">
+        <a href="?semana={{ semana_anterior }}" class="btn btn-sm btn-outline-secondary">← Semana anterior</a>
+        <span class="fw-semibold" style="font-size:.9rem">
+            {{ lunes|date:"j M" }} – {{ viernes|date:"j M Y" }}
+        </span>
+        <a href="?semana={{ semana_siguiente }}" class="btn btn-sm btn-outline-secondary">Semana siguiente →</a>
+    </div>
+</div>
+
+{% if choques %}
+<div class="otec-card mb-3" style="border-color: var(--otec-danger)">
+    <div class="otec-card__body">
+        <h6 class="otec-card__title" style="color: var(--otec-danger)">
+            Sala pedida por dos cursos a la vez
+        </h6>
+        {% for ch in choques %}
+        <div class="py-1" style="font-size:.85rem">
+            <span class="otec-dot otec-dot--danger">
+                {{ ch.fecha|date:"l j \d\e F" }} · {{ ch.hora|time:"H:i" }} · {{ ch.sala.nombre }}
+            </span>
+            <span class="otec-codigo ms-3">
+                {% for a in ch.actividades %}«{{ a.nombre|truncatechars:44 }}»{% if not forloop.last %} y {% endif %}{% endfor %}
+            </span>
+        </div>
+        {% endfor %}
+        <p class="otec-codigo mt-2 mb-0">
+            Cambie la sala o el horario de uno de los dos cursos.
+        </p>
+    </div>
+</div>
+{% endif %}
+
+{% for s in salas %}
+<div class="mb-4">
+    <div class="d-flex align-items-baseline justify-content-between mb-2">
+        <h6 class="otec-card__title mb-0">{{ s.sala.nombre }}</h6>
+        <span class="otec-etapa__conteo">
+            {% if s.ocupados %}{{ s.ocupados }} reserva{{ s.ocupados|pluralize }} · {{ s.horas|floatformat:1 }} h{% else %}sin uso esta semana{% endif %}
+        </span>
+    </div>
+
+    <div class="otec-grid-wrap">
+        <table class="otec-grid otec-zoom">
+            <thead>
+                <tr>
+                    <th class="otec-grid__lead otec-zoom__hora">Bloque</th>
+                    {% for d in dias_semana %}
+                    <th {% if d in feriados %}class="feriado"{% endif %}>
+                        {{ d|date:"D"|capfirst }} {{ d|date:"j" }}
+                        {% if d in feriados %}<br><span style="opacity:.6">feriado</span>{% endif %}
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in s.cuerpo %}
+                <tr>
+                    <td class="otec-grid__lead otec-zoom__hora">{{ fila.inicio|time:"H:i" }}</td>
+                    {% for c in fila.celdas %}
+                    <td class="slot {% if c.feriado %}feriado{% endif %}">
+                        {% if c.reserva %}
+                        <span class="bloque tono-{{ c.tono|default:6 }} {% if c.inicia %}bloque--inicio{% endif %} {% if c.derivada %}bloque--derivada{% endif %}"
+                              title="{{ c.reserva.etiqueta }}{% if c.reserva.actividad %} — {{ c.reserva.actividad.nombre }}{% endif %} · {{ c.reserva.hora_inicio|time:'H:i' }}-{{ c.reserva.hora_fin|time:'H:i' }}{% if c.reserva.soporte %} · soporte {{ c.reserva.soporte }}{% endif %}{% if c.derivada %} · generada desde el horario del curso{% endif %}">
+                            {% if c.inicia %}
+                                {% if c.reserva.actividad %}{{ c.reserva.actividad.nombre|truncatechars:30 }}{% else %}{{ c.reserva.etiqueta|truncatechars:30 }}{% endif %}
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if s.sin_bloque %}
+    <div class="otec-leyenda">
+        <span><strong>Sin bloque horario:</strong></span>
+        {% for r in s.sin_bloque %}
+        <span>{{ r.fecha|date:"j M" }} · {{ r.etiqueta }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+
+{% if n_derivadas %}
+<p class="otec-codigo mb-3">
+    Las sesiones con trama diagonal ({{ n_derivadas }} esta semana) se generan
+    desde el horario de cada curso; las lisas vienen del Tablero, que manda
+    donde ya trae una reserva.
+</p>
+{% endif %}
+
+{% if asincronicas %}
+<div class="otec-card"><div class="otec-card__body">
+    <h6 class="otec-card__title">Horas asincrónicas de la semana</h6>
+    {% for a in asincronicas %}
+    <div class="d-flex justify-content-between align-items-center py-1" style="font-size:.85rem">
+        <span>
+            <a href="{% url 'otec:detalle_actividad' a.actividad.pk %}" class="otec-nombre" style="display:inline">{{ a.actividad.nombre|truncatechars:60 }}</a>
+            <span class="otec-codigo">{{ a.fecha|date:"l j \d\e F" }}</span>
+        </span>
+        <span class="fw-semibold">{{ a.horas_asincronicas|floatformat:"-1" }} h</span>
+    </div>
+    {% endfor %}
+</div></div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

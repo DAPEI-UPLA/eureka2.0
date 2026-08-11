@@ -1,0 +1,38 @@
+{% comment %}
+Checklist completo de una actividad. Se re-renderiza entero en cada cambio de
+ítem para que el avance por etapa y el total no queden desfasados.
+{% endcomment %}
+<div id="otec-checklist">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h6 class="otec-card__title mb-0">Checklist de gestión</h6>
+        {% if actividad.avance_checklist_pct is not None %}
+        <span class="otec-etapa__conteo">{{ actividad.avance_checklist_pct }}% completado</span>
+        {% endif %}
+    </div>
+
+    {% if actividad.avance_checklist_pct is not None %}
+    <div class="otec-progress mb-3">
+        <div class="otec-progress__fill" style="width: {{ actividad.avance_checklist_pct }}%"></div>
+    </div>
+    {% endif %}
+
+    {% for etapa in etapas %}
+    <div class="otec-etapa">
+        <div class="otec-etapa__head">
+            <span class="otec-etapa__nombre">{{ etapa.label }}</span>
+            {% if etapa.pct is not None %}
+            <span class="otec-etapa__conteo">{{ etapa.completados }}/{{ etapa.total }} · {{ etapa.pct }}%</span>
+            {% else %}
+            <span class="otec-etapa__conteo">No aplica</span>
+            {% endif %}
+        </div>
+        {% for item in etapa.items %}
+            {% include "otec/partials/item_checklist.html" %}
+        {% endfor %}
+    </div>
+    {% empty %}
+    <div class="otec-vacio">Esta actividad todavía no tiene checklist.</div>
+    {% endfor %}
+
+</div>

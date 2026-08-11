@@ -1,0 +1,89 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Propuestas OTEC{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'otec/css/otec.css' %}">
+
+<div class="otec-header">
+    <div>
+        <h2>Propuestas</h2>
+        <p>Expediente comercial y de decretación. Cada propuesta agrupa uno o más cursos.</p>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <a href="{% url 'otec:crear_propuesta' %}" class="btn btn-sm"
+           style="background: var(--otec-primary); color:#fff">+ Nueva propuesta</a>
+        <a href="{% url 'otec:panel_gestion' %}" class="btn-volver"><span class="arrow">←</span> Gestión</a>
+    </div>
+</div>
+
+<form method="get" class="otec-filtros">
+    <select name="estado_comercial" class="form-select">
+        <option value="">Estado comercial</option>
+        {% for valor, etiqueta in estados_comerciales %}
+        <option value="{{ valor }}" {% if filtros.estado_comercial == valor %}selected{% endif %}>{{ etiqueta }}</option>
+        {% endfor %}
+    </select>
+    <button class="btn btn-sm btn-outline-secondary">Filtrar</button>
+    {% if filtros.estado_comercial %}
+    <a href="{% url 'otec:lista_propuestas' %}" class="btn btn-sm btn-link text-muted">Limpiar</a>
+    {% endif %}
+</form>
+
+<div class="otec-card">
+    <div class="otec-tabla-wrap">
+        <table class="otec-tabla">
+            <thead>
+                <tr>
+                    <th>Propuesta</th>
+                    <th>Estado comercial</th>
+                    <th>Decretación</th>
+                    <th>Memo / decreto</th>
+                    <th class="num">Cursos</th>
+                    <th class="num">Ofertado</th>
+                    <th class="num">Adjudicado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in propuestas %}
+                <tr>
+                    <td style="min-width:260px">
+                        <span class="otec-codigo">{{ p.codigo }}</span>
+                        <a href="{% url 'otec:detalle_propuesta' p.pk %}" class="otec-nombre">{{ p.institucion.nombre }}</a>
+                        <span class="otec-codigo">{{ p.contacto.nombre|default:"Sin contacto" }}</span>
+                    </td>
+                    <td>
+                        <span class="otec-dot otec-dot--{% if p.estado_comercial == 'GANADA' %}ok{% elif p.estado_comercial == 'PERDIDA' %}danger{% else %}info{% endif %}">
+                            {{ p.get_estado_comercial_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="otec-dot otec-dot--{% if p.decretada %}ok{% else %}warn{% endif %}">
+                            {{ p.get_estado_decretacion_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if p.memo_decretacion %}{{ p.memo_decretacion }}{% else %}—{% endif %}
+                        {% if p.n_decreto %}<br><span class="otec-codigo">Decreto {{ p.n_decreto }}{% if p.tiempo_decreto_dias is not None %} · {{ p.tiempo_decreto_dias }} días{% endif %}</span>{% endif %}
+                    </td>
+                    <td class="num">{{ p.n_actividades }}</td>
+                    <td class="num">${{ p.total_ofertado|default:0|floatformat:0 }}</td>
+                    <td class="num">${{ p.total_adjudicado|default:0|floatformat:0 }}</td>
+                    <td class="num">
+                        <a href="{% url 'otec:editar_propuesta' p.pk %}"
+                           class="otec-accion" title="Editar {{ p.codigo }}">Editar</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8"><div class="otec-vacio">
+                    No hay propuestas registradas.<br>
+                    <a href="{% url 'otec:crear_propuesta' %}">Crear la primera</a>
+                </div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
