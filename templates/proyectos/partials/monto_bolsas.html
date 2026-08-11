@@ -1,0 +1,26 @@
+{% load humanize %}
+{% comment %}
+Un monto con su desglose en las dos bolsas debajo. Corriente y capital no son
+intercambiables, así que un total sin decir de dónde sale esconde la mitad del
+dato; pero repetir "C $0 · K $x" cuando sólo hay una bolsa es ruido, así que en
+ese caso basta con nombrarla.
+
+    {% include "proyectos/partials/monto_bolsas.html" with total=… corriente=… capital=… %}
+{% endcomment %}
+${{ total|floatformat:0|intcomma }}
+{% comment %}
+Una bolsa por línea: en una sola, la columna es angosta y el monto se parte por
+la mitad («C $20 000 000 · K» / «$14 000 000»), que es peor que ocupar un renglón más.
+{% endcomment %}
+{% if corriente and capital %}
+    <div class="small text-muted" style="white-space:nowrap;">
+        C ${{ corriente|floatformat:0|intcomma }}
+    </div>
+    <div class="small text-muted" style="white-space:nowrap;">
+        K ${{ capital|floatformat:0|intcomma }}
+    </div>
+{% elif capital %}
+    <div class="small text-muted">capital</div>
+{% elif corriente %}
+    <div class="small text-muted">corriente</div>
+{% endif %}

@@ -1,0 +1,279 @@
+{% load humanize %}
+
+<div class="planes-card">
+    <div class="ph-header">
+        <div>
+            <h6 class="mb-0">Gastos del proyecto</h6>
+            <small class="text-muted">
+                {{ egresos|length }} registro{{ egresos|length|pluralize }}
+                {% if filtro_estado or filtro_tipo or filtro_anio %}(filtrado){% endif %}
+            </small>
+        </div>
+        {% if puede_editar %}
+        <button class="btn btn-primary btn-sm"
+                hx-get="{% url 'proyectos:crear_egreso_form' proyecto.pk %}"
+                hx-target="#modal-body"
+                hx-swap="innerHTML"
+                data-bs-toggle="modal"
+                data-bs-target="#modalPresupuesto">
+            + Nuevo gasto
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- KPIs proyecto -->
+    <div class="row g-2 px-3 py-2 border-bottom bg-light small">
+        <div class="col-md-3">
+            <div class="text-muted">Comprometido</div>
+            <div class="fw-semibold" style="color:#b45309;">
+                ${{ proyecto.gastos_comprometidos|floatformat:0|intcomma }}
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="text-muted">Pagado</div>
+            <div class="fw-semibold text-success">
+                ${{ proyecto.gastos_pagados|floatformat:0|intcomma }}
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="text-muted">Total gastado (c/IVA)</div>
+            <div class="fw-semibold">
+                ${{ proyecto.gastos_total|floatformat:0|intcomma }}
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="text-muted">Disponible</div>
+            <div class="fw-bold {% if proyecto.disponible_para_gastar < 0 %}text-danger{% else %}text-primary{% endif %}">
+                ${{ proyecto.disponible_para_gastar|floatformat:0|intcomma }}
+            </div>
+        </div>
+    </div>
+
+    {% if resumen_por_tipo %}
+    <div class="d-flex flex-wrap gap-2 px-3 py-2 border-bottom small">
+        <span class="text-muted">Por tipo:</span>
+        {% for r in resumen_por_tipo %}
+            <span class="badge bg-light text-dark border">
+                {{ r.label }}: <strong>${{ r.total|floatformat:0|intcomma }}</strong>
+            </span>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Filtros -->
+    <form class="row g-2 px-3 py-2 border-bottom align-items-end"
+          hx-get="{% url 'proyectos:listar_egresos' proyecto.pk %}"
+          hx-target="#egresos-container"
+          hx-trigger="change, submit"
+          hx-swap="innerHTML">
+        <div class="col-md-3">
+            <label class="form-label small mb-0">Estado</label>
+            <select name="estado" class="form-select form-select-sm">
+                <option value="">Todos</option>
+                {% for value, label in estados %}
+                    <option value="{{ value }}" {% if filtro_estado == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small mb-0">Tipo</label>
+            <select name="tipo" class="form-select form-select-sm">
+                <option value="">Todos</option>
+                {% for value, label in tipos %}
+                    <option value="{{ value }}" {% if filtro_tipo == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small mb-0">Año</label>
+            <select name="anio" class="form-select form-select-sm">
+                <option value="">Todos</option>
+                {% for a in anios %}
+                    <option value="{{ a }}" {% if filtro_anio|add:0 == a %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            {% if filtro_estado or filtro_tipo or filtro_anio %}
+                <a class="btn btn-outline-secondary btn-sm w-100"
+                   hx-get="{% url 'proyectos:listar_egresos' proyecto.pk %}"
+                   hx-target="#egresos-container"
+                   hx-swap="innerHTML">
+                    Limpiar filtros
+                </a>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if egresos %}
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th>Tipo</th>
+                    <th>Subtipo / Persona</th>
+                    <th>CR</th>
+                    <th>Documentos</th>
+                    <th>Plan / Gasto elegible</th>
+                    <th class="text-end">Cant. / Cuotas</th>
+                    <th class="text-end">V. unit. / Cuota</th>
+                    <th class="text-end">Pagado</th>
+                    <th class="text-end">Total</th>
+                    {% if puede_editar %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in egresos %}
+                <tr {% if e.observaciones %}title="{{ e.observaciones }}"{% endif %}>
+                    <td class="small">{{ e.fecha|date:"d/m/Y" }}</td>
+                    <td>
+                        {% if e.estado == 'PAGADO' %}
+                            <span class="badge bg-success">{{ e.get_estado_display }}</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">{{ e.get_estado_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="estado-pill estado-EN_EJECUCION">
+                            {{ e.get_tipo_display }}
+                        </span>
+                    </td>
+                    <td class="small">
+                        {% if e.tipo == 'HONORARIO' %}
+                            {{ e.nombre_completo_persona|default:"—" }}
+                            {% if e.profesion %}<div class="text-muted" style="font-size:.72rem;">{{ e.profesion }}</div>{% endif %}
+                        {% else %}
+                            {{ e.get_subtipo_compra_display|default:"—" }}
+                        {% endif %}
+                    </td>
+                    <td class="small">{{ e.centro_responsabilidad|default:"—" }}</td>
+                    {% comment %}SC → OC → Factura: se muestran los que ya
+                    tienen folio, así se ve de un vistazo dónde quedó el trámite.
+                    {% endcomment %}
+                    <td style="white-space:nowrap;">
+                        {% for sigla, folio in e.documentos %}
+                            <span class="codigo d-inline-block mb-1">{{ sigla }} {{ folio }}</span>{% if not forloop.last %}<br>{% endif %}
+                        {% empty %}
+                            <span class="text-muted small">—</span>
+                        {% endfor %}
+                    </td>
+                    <td class="breadcrumb-gasto">
+                        {% if e.plan_de_gasto %}
+                        <span class="codigo d-block">{{ e.plan_de_gasto.nombre_corto }}</span>
+                        {% endif %}
+                        <strong>{{ e.gasto_elegible.nombre|default:"—" }}</strong>
+                        {% if e.tipo == 'HONORARIO' and e.descripcion %}
+                            <div class="small text-muted text-truncate" style="max-width:240px;">
+                                {{ e.descripcion }}
+                            </div>
+                        {% elif e.observaciones %}
+                            <div class="small text-muted text-truncate" style="max-width:240px;">
+                                {{ e.observaciones }}
+                            </div>
+                        {% endif %}
+                    </td>
+                    {% if e.tipo == 'HONORARIO' %}
+                        <td class="text-end small">
+                            {{ e.cuotas_pagadas }}/{{ e.meses }}
+                            <div class="progress" style="height:4px; width:80px; margin-left:auto;">
+                                <div class="progress-bar bg-success" style="width: {{ e.progreso_cuotas_pct }}%;"></div>
+                            </div>
+                        </td>
+                        {% comment %}Las cuotas pueden ser de distinto monto:
+                        se muestra la que toca pagar.{% endcomment %}
+                        <td class="text-end" style="white-space:nowrap;">
+                            ${{ e.monto_proxima_cuota|floatformat:0|intcomma }}
+                            {% if not e.cuotas_son_iguales %}
+                            <div class="text-muted" style="font-size:.7rem;">la próxima</div>
+                            {% endif %}
+                        </td>
+                        <td class="text-end" style="white-space:nowrap;">
+                            ${{ e.monto_pagado_honorario|floatformat:0|intcomma }}
+                        </td>
+                        <td class="text-end fw-semibold text-success" style="white-space:nowrap;">
+                            ${{ e.monto_total|floatformat:0|intcomma }}
+                        </td>
+                    {% else %}
+                        <td class="text-end">{{ e.cantidad }}</td>
+                        <td class="text-end" style="white-space:nowrap;">
+                            ${{ e.valor_sin_iva|floatformat:0|intcomma }}
+                        </td>
+                        <td class="text-end" style="white-space:nowrap;">
+                            ${{ e.total_sin_iva|floatformat:0|intcomma }}
+                        </td>
+                        <td class="text-end fw-semibold text-success" style="white-space:nowrap;">
+                            ${{ e.total_con_iva|floatformat:0|intcomma }}
+                        </td>
+                    {% endif %}
+                    {% if puede_editar %}
+                    <td style="white-space:nowrap;">
+                        {% if e.tipo == 'HONORARIO' %}
+                            {% if e.cuotas_pendientes > 0 %}
+                            <button class="btn btn-soft-success btn-sm me-1"
+                                    style="font-size:.75rem; padding: .2rem .55rem;"
+                                    hx-post="{% url 'proyectos:egreso_pagar_cuota' e.pk %}"
+                                    hx-swap="none"
+                                    hx-confirm="¿Pagar cuota {{ e.cuotas_pagadas|add:1 }} de {{ e.meses }} (${{ e.monto_proxima_cuota|floatformat:0|intcomma }})?"
+                                    title="Pagar próxima cuota">
+                                Pagar cuota
+                            </button>
+                            {% endif %}
+                            {% if e.impuestos_pendientes > 0 %}
+                            <button class="btn btn-soft-primary btn-sm me-1"
+                                    style="font-size:.75rem; padding: .2rem .55rem;"
+                                    hx-post="{% url 'proyectos:egreso_pagar_impuesto' e.pk %}"
+                                    hx-swap="none"
+                                    hx-confirm="¿Pagar impuesto (15.25% = ${{ e.impuesto_por_cuota|floatformat:0|intcomma }})?"
+                                    title="Pagar impuesto retenido">
+                                Pagar imp.
+                            </button>
+                            {% endif %}
+                        {% endif %}
+                        <button class="btn btn-soft-primary btn-icon btn-sm me-1"
+                                hx-get="{% url 'proyectos:editar_egreso_form' e.pk %}"
+                                hx-target="#modal-body"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPresupuesto"
+                                title="Editar gasto">
+                            ✎
+                        </button>
+                        <button class="btn btn-soft-danger btn-icon btn-sm"
+                                hx-post="{% url 'proyectos:eliminar_egreso' e.pk %}"
+                                hx-target="closest tr"
+                                hx-swap="outerHTML"
+                                hx-confirm="¿Eliminar este gasto?"
+                                title="Eliminar gasto">
+                            ✕
+                        </button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="es-icon">🧾</div>
+        <h5>{% if filtro_estado or filtro_tipo or filtro_anio %}Sin resultados con esos filtros{% else %}Sin gastos registrados{% endif %}</h5>
+        <p class="small mb-0">
+            {% if filtro_estado or filtro_tipo or filtro_anio %}
+                Probá limpiando los filtros.
+            {% else %}
+                Aún no hay compras, honorarios ni viáticos cargados a este proyecto.
+            {% endif %}
+        </p>
+        {% if puede_editar and not filtro_estado and not filtro_tipo and not filtro_anio %}
+        <button class="btn btn-primary btn-sm mt-3"
+                hx-get="{% url 'proyectos:crear_egreso_form' proyecto.pk %}"
+                hx-target="#modal-body"
+                data-bs-toggle="modal"
+                data-bs-target="#modalPresupuesto">
+            + Cargar el primer gasto
+        </button>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>

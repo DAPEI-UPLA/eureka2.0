@@ -1,0 +1,56 @@
+{% load humanize %}
+
+<div id="planes-actividad-{{ actividad.pk }}"
+     hx-trigger="planUpdated from:body"
+     hx-get="{% url 'proyectos:listar_planes_actividad' actividad.pk %}"
+     hx-swap="outerHTML">
+
+    {% if planes %}
+    <table class="table tabla-actividades mb-0">
+        <thead>
+            <tr>
+                <th>Año</th>
+                <th>Etiqueta</th>
+                <th>Categoría</th>
+                <th>Unidad</th>
+                <th class="text-end">Monto</th>
+                {% if puede_editar %}<th class="text-center" style="width:60px;"></th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for plan in planes %}
+            <tr id="plan-{{ plan.pk }}">
+                <td>
+                    <span class="estado-pill estado-EN_EJECUCION">{{ plan.anio }}</span>
+                </td>
+                <td><span class="codigo">{{ plan.nombre_corto }}</span></td>
+                <td class="breadcrumb-gasto">
+                    <span class="d-block">{{ plan.transferencia.nombre }} › {{ plan.tipo_gasto.nombre }} › {{ plan.gasto.nombre }}</span>
+                    <strong>{{ plan.gasto_elegible.nombre }}</strong>
+                </td>
+                <td class="small">{{ plan.unidad_responsable|default:"—" }}</td>
+                <td class="text-end fw-semibold" style="white-space:nowrap;">
+                    ${{ plan.monto|floatformat:0|intcomma }}
+                </td>
+                {% if puede_editar %}
+                <td class="text-center">
+                    <button class="btn btn-soft-danger btn-icon btn-sm"
+                            hx-post="{% url 'proyectos:eliminar_plan_gasto' plan.pk %}"
+                            hx-target="#plan-{{ plan.pk }}"
+                            hx-swap="outerHTML"
+                            hx-confirm="¿Eliminar este plan de gasto?"
+                            title="Eliminar">
+                        ✕
+                    </button>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="text-muted small text-center py-3">
+        <em>No hay planes de gasto para esta actividad.</em>
+    </div>
+    {% endif %}
+</div>

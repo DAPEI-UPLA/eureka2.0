@@ -1,0 +1,4 @@
+<option value="">Seleccione</option>
+{% for r in resultados %}
+    <option value="{{ r.id }}">{{ r.descripcion|default:"(sin descripción)" }}</option>
+{% endfor %}

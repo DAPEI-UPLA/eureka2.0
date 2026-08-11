@@ -1,0 +1,123 @@
+{% load humanize %}
+
+<div class="planes-card">
+    <div class="ph-header">
+        <div>
+            <h6 class="mb-0">Planes de gasto</h6>
+            <small class="text-muted">
+                {{ planes|length }} plan{{ planes|length|pluralize:"es" }} registrado{{ planes|length|pluralize }}
+            </small>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            {% if planes %}
+            <span class="estado-pill estado-EN_EJECUCION" title="Total planificado en el POA">
+                ${{ proyecto.planificado|floatformat:0|intcomma }}
+            </span>
+            {% endif %}
+            {% if puede_editar %}
+            <button class="btn btn-soft-primary btn-sm px-3"
+                    type="button"
+                    hx-get="{% url 'proyectos:crear_plan_gasto_form' proyecto.pk %}"
+                    hx-target="#modal-body"
+                    hx-swap="innerHTML"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalPresupuesto">
+                + Plan de gasto
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if planes %}
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th style="width:80px;">Año</th>
+                    <th>Etiqueta</th>
+                    <th>Actividad</th>
+                    <th>Categoría</th>
+                    <th>Unidad</th>
+                    <th class="text-end">Planificado</th>
+                    <th class="text-end">Comprometido</th>
+                    <th class="text-end">Pagado</th>
+                    <th class="text-end">Disponible</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for plan in planes %}
+                <tr>
+                    <td>
+                        <span class="estado-pill estado-EN_EJECUCION">{{ plan.anio }}</span>
+                    </td>
+                    <td><span class="codigo">{{ plan.nombre_corto }}</span></td>
+                    <td class="small">{{ plan.actividad.nombre }}</td>
+                    <td class="breadcrumb-gasto">
+                        <span class="d-block">
+                            {{ plan.transferencia.nombre }} ›
+                            {{ plan.tipo_gasto.nombre }} ›
+                            {{ plan.gasto.nombre }}
+                        </span>
+                        <strong>{{ plan.gasto_elegible.nombre }}</strong>
+                    </td>
+                    <td class="small">{{ plan.unidad_responsable|default:"—" }}</td>
+                    <td class="text-end fw-semibold" style="white-space:nowrap;">
+                        ${{ plan.monto|floatformat:0|intcomma }}
+                    </td>
+                    <td class="text-end" style="white-space:nowrap; color:#b45309;">
+                        ${{ plan.egresos_comprometidos|floatformat:0|intcomma }}
+                    </td>
+                    <td class="text-end text-success" style="white-space:nowrap;">
+                        ${{ plan.egresos_pagados|floatformat:0|intcomma }}
+                    </td>
+                    <td class="text-end fw-semibold {% if plan.egresos_disponible < 0 %}text-danger{% endif %}" style="white-space:nowrap;">
+                        ${{ plan.egresos_disponible|floatformat:0|intcomma }}
+                    </td>
+                    <td class="text-end" style="white-space:nowrap;">
+                        <button class="btn btn-soft-primary btn-icon btn-sm me-1"
+                                hx-get="{% url 'proyectos:editar_plan_gasto_form' plan.pk %}"
+                                hx-target="#modal-body"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalPresupuesto"
+                                title="Editar plan">✎</button>
+                        <button class="btn btn-soft-danger btn-icon btn-sm"
+                                hx-post="{% url 'proyectos:eliminar_plan_gasto' plan.pk %}"
+                                hx-target="closest tr"
+                                hx-swap="outerHTML"
+                                hx-confirm="¿Eliminar este plan de gasto?"
+                                title="Eliminar plan">✕</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="ph-footer">
+        <span>{{ planes|length }} registro{{ planes|length|pluralize }}</span>
+        {% comment %}«Planificado», no «comprometido»: comprometido son los
+        gastos ya tomados, que es la columna de al lado y otra cifra.{% endcomment %}
+        <span class="total">
+            Total planificado: ${{ proyecto.planificado|floatformat:0|intcomma }}
+        </span>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="es-icon">📋</div>
+        <h5>Sin planes de gasto</h5>
+        <p class="small mb-2">Aún no hay distribución presupuestaria registrada para este proyecto.</p>
+        {% if puede_editar %}
+        <button class="btn btn-soft-primary btn-sm px-3"
+                type="button"
+                hx-get="{% url 'proyectos:crear_plan_gasto_form' proyecto.pk %}"
+                hx-target="#modal-body"
+                hx-swap="innerHTML"
+                data-bs-toggle="modal"
+                data-bs-target="#modalPresupuesto">
+            + Plan de gasto
+        </button>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>

@@ -1,0 +1,192 @@
+{% load humanize %}<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Informe · {{ proyecto.nombre }}</title>
+    <style>
+        :root { --azul:#2563eb; --gris:#64748b; --linea:#e2e8f0; --oscuro:#0f172a; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            color: var(--oscuro); margin: 0; background: #f1f5f9;
+            font-size: 13px; line-height: 1.45;
+        }
+        .hoja {
+            max-width: 900px; margin: 24px auto; background: #fff;
+            padding: 36px 44px; box-shadow: 0 4px 24px rgba(0,0,0,.08);
+        }
+        .barra {
+            position: sticky; top: 0; background: #fff; border-bottom: 1px solid var(--linea);
+            padding: 10px 16px; display: flex; gap: 8px; justify-content: flex-end;
+            box-shadow: 0 2px 8px rgba(0,0,0,.05); z-index: 5;
+        }
+        .btn {
+            border: 1px solid var(--linea); background: #fff; color: var(--oscuro);
+            padding: 7px 16px; border-radius: 8px; font-size: 13px; cursor: pointer;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-primary { background: var(--azul); color: #fff; border-color: var(--azul); }
+        .btn:hover { filter: brightness(.97); }
+
+        h1 { font-size: 22px; margin: 0 0 4px; }
+        h2 {
+            font-size: 15px; margin: 28px 0 10px; padding-bottom: 6px;
+            border-bottom: 2px solid var(--azul); color: var(--azul);
+        }
+        .encab { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+        .sub { color: var(--gris); font-size: 12px; }
+        .pill {
+            display: inline-block; padding: 2px 10px; border-radius: 999px;
+            font-size: 11px; font-weight: 600; background: #dbeafe; color: #1d4ed8;
+        }
+        .meta { margin-top: 8px; color: var(--gris); font-size: 12px; }
+        .meta b { color: var(--oscuro); }
+
+        .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 6px; }
+        .kpi { border: 1px solid var(--linea); border-radius: 10px; padding: 10px 12px; }
+        .kpi .lbl { color: var(--gris); font-size: 11px; }
+        .kpi .val { font-size: 16px; font-weight: 700; margin-top: 2px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+        th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--linea); }
+        th { background: #f8fafc; font-size: 11px; text-transform: uppercase; color: var(--gris); letter-spacing: .03em; }
+        td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+        tr.total td { font-weight: 700; border-top: 2px solid var(--oscuro); }
+
+        .barra-prog { height: 7px; background: var(--linea); border-radius: 999px; overflow: hidden; min-width: 80px; }
+        .barra-prog > span { display: block; height: 100%; background: var(--azul); }
+
+        .pie { margin-top: 30px; padding-top: 10px; border-top: 1px solid var(--linea); color: var(--gris); font-size: 11px; }
+
+        @media print {
+            body { background: #fff; font-size: 11.5px; }
+            .barra { display: none; }
+            .hoja { box-shadow: none; margin: 0; max-width: none; padding: 0; }
+            h2 { page-break-after: avoid; }
+            tr, .kpi { page-break-inside: avoid; }
+            @page { margin: 1.6cm; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="barra">
+    <a class="btn" href="{% url 'proyectos:detalle_proyecto' proyecto.pk %}">← Volver</a>
+    <a class="btn" href="{% url 'proyectos:exportar_proyecto_excel' proyecto.pk %}">⬇ Excel</a>
+    <button class="btn btn-primary" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+</div>
+
+<div class="hoja">
+
+    <div class="encab">
+        <div>
+            <h1>{{ proyecto.nombre }}</h1>
+            <div class="sub">
+                {% if proyecto.codigo %}Código {{ proyecto.codigo }} · {% endif %}
+                Informe de ejecución presupuestaria
+            </div>
+        </div>
+        <div style="text-align:right;">
+            <span class="pill">{{ proyecto.get_tipo_display }}</span>
+            <div class="sub" style="margin-top:6px;">{{ proyecto.get_estado_display }}</div>
+        </div>
+    </div>
+
+    <div class="meta">
+        <b>Responsable:</b> {{ proyecto.responsable|default:"—" }}
+        {% if proyecto.fecha_inicio %} · <b>Inicio:</b> {{ proyecto.fecha_inicio|date:"d-m-Y" }}{% endif %}
+        {% if proyecto.fecha_fin %} · <b>Fin:</b> {{ proyecto.fecha_fin|date:"d-m-Y" }}{% endif %}
+        · <b>Cumplimiento físico:</b> {{ proyecto.cumplimiento|floatformat:1 }}%
+    </div>
+
+    <h2>Resumen presupuestario</h2>
+    <div class="kpis">
+        <div class="kpi">
+            <div class="lbl">Presupuesto total</div>
+            <div class="val">${{ proyecto.presupuesto_total|floatformat:0|intcomma }}</div>
+        </div>
+        <div class="kpi">
+            <div class="lbl">Comprometido</div>
+            <div class="val">${{ proyecto.gastos_comprometidos|floatformat:0|intcomma }}</div>
+        </div>
+        <div class="kpi">
+            <div class="lbl">Pagado</div>
+            <div class="val">${{ proyecto.gastos_pagados|floatformat:0|intcomma }}</div>
+        </div>
+        <div class="kpi">
+            <div class="lbl">Disponible</div>
+            <div class="val">${{ proyecto.disponible_para_gastar|floatformat:0|intcomma }}</div>
+        </div>
+    </div>
+
+    <table style="margin-top:14px;">
+        <tbody>
+            <tr><td>Presupuesto corriente</td><td class="num">${{ proyecto.presupuesto_corriente|floatformat:0|intcomma }}</td></tr>
+            <tr><td>Presupuesto capital</td><td class="num">${{ proyecto.presupuesto_capital|floatformat:0|intcomma }}</td></tr>
+            <tr><td>Asignado a objetivos</td><td class="num">${{ proyecto.presupuesto_asignado|floatformat:0|intcomma }}</td></tr>
+            <tr><td>Gastos totales</td><td class="num">${{ proyecto.gastos_total|floatformat:0|intcomma }}</td></tr>
+            <tr class="total"><td>% ejecutado del presupuesto</td><td class="num">{{ proyecto.porcentaje_gastado|floatformat:1 }}%</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Ejecución por transferencia</h2>
+    {% if transferencias %}
+    <table>
+        <thead>
+            <tr><th>Transferencia</th><th class="num">Monto ejecutado</th></tr>
+        </thead>
+        <tbody>
+            {% for t in transferencias %}
+            <tr><td>{{ t.nombre }}</td><td class="num">${{ t.monto|floatformat:0|intcomma }}</td></tr>
+            {% endfor %}
+            <tr class="total"><td>Total</td><td class="num">${{ proyecto.gastos_total|floatformat:0|intcomma }}</td></tr>
+        </tbody>
+    </table>
+    {% else %}
+    <p class="sub">Sin egresos registrados.</p>
+    {% endif %}
+
+    <h2>Avance por objetivo</h2>
+    {% if objetivos %}
+    <table>
+        <thead>
+            <tr>
+                <th style="width:52px;">Obj.</th>
+                <th>Descripción</th>
+                <th class="num">Presupuesto</th>
+                <th style="width:150px;">Cumplimiento</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for o in objetivos %}
+            <tr>
+                <td><b>{{ o.etiqueta }}</b></td>
+                <td>{{ o.descripcion|default:"(sin descripción)" }}</td>
+                <td class="num">${{ o.presupuesto|floatformat:0|intcomma }}</td>
+                <td>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div class="barra-prog"><span style="width:{{ o.cumplimiento|floatformat:0 }}%;"></span></div>
+                        <span style="font-size:11px;">{{ o.cumplimiento|floatformat:1 }}%</span>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="sub">Sin objetivos registrados.</p>
+    {% endif %}
+
+    <div class="pie">
+        Generado el {{ generado|date:"d-m-Y H:i" }} · Sistema Prisma · {{ proyecto.nombre }}
+    </div>
+
+</div>
+
+{% if auto_print %}
+<script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script>
+{% endif %}
+
+</body>
+</html>

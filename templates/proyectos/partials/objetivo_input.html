@@ -1,0 +1,14 @@
+{% comment %}Edición en línea del objetivo: caja amplia que crece con el texto y
+   se guarda sola al salir del campo (o con Enter).{% endcomment %}
+<div class="objetivo-titulo objetivo-titulo-edicion" onclick="event.stopPropagation();">
+    <textarea name="descripcion"
+              class="form-control campo-descripcion"
+              rows="2"
+              placeholder="Escribe aquí el objetivo específico…"
+              data-autofoco="1"
+              hx-post="{% url 'proyectos:guardar_objetivo' objetivo.pk %}"
+              hx-trigger="blur"
+              hx-target="closest .objetivo-titulo"
+              hx-swap="outerHTML">{{ objetivo.descripcion }}</textarea>
+    <span class="campo-ayuda">Enter o clic fuera para guardar</span>
+</div>

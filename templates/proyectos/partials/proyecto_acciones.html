@@ -1,0 +1,44 @@
+{% load humanize %}
+<div class="dropdown d-inline-block">
+    <button class="btn btn-sm btn-light border-0 px-2"
+            type="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            title="Acciones">
+        ⋮
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+        <li>
+            <a class="dropdown-item" href="{% url 'proyectos:detalle_proyecto' proyecto.pk %}">
+                Ver detalle
+            </a>
+        </li>
+        <li>
+            <button type="button" class="dropdown-item btn-editar-proyecto"
+                    data-bs-toggle="modal"
+                    data-bs-target="#editarProyectoModal"
+                    data-action="{% url 'proyectos:editar_proyecto' proyecto.pk %}"
+                    data-nombre="{{ proyecto.nombre }}"
+                    data-codigo="{{ proyecto.codigo }}"
+                    data-descripcion="{{ proyecto.descripcion }}"
+                    data-tipo="{{ proyecto.tipo }}"
+                    data-responsable="{{ proyecto.responsable_id|default_if_none:'' }}"
+                    data-duracion="{{ proyecto.duracion_meses }}"
+                    data-prioridad="{{ proyecto.prioridad }}"
+                    data-estado="{{ proyecto.estado }}"
+                    data-total="{{ proyecto.presupuesto_total|floatformat:0 }}"
+                    data-corriente="{{ proyecto.presupuesto_corriente|floatformat:0 }}"
+                    data-capital="{{ proyecto.presupuesto_capital|floatformat:0 }}">
+                Editar
+            </button>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+            <button type="button" class="dropdown-item text-danger"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalEliminarProy{{ proyecto.id }}">
+                Eliminar
+            </button>
+        </li>
+    </ul>
+</div>

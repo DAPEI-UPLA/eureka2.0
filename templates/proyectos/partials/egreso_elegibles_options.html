@@ -1,0 +1,37 @@
+{% load humanize %}
+
+<div class="row g-2">
+    <div class="col-md-12">
+        <label class="form-label">Gasto elegible</label>
+        <select name="gasto_elegible" id="egreso-elegible" class="form-select" required
+                hx-get="{% url 'proyectos:egreso_planes_por_elegible' proyecto_id %}"
+                hx-target="#egreso-plan-wrapper"
+                hx-trigger="change"
+                hx-include="this">
+            <option value="">Seleccione un gasto elegible</option>
+            {% for ge in elegibles %}
+                <option value="{{ ge.id }}"
+                        {% if selected_elegible_id == ge.id %}selected{% endif %}>
+                    {{ ge.gasto.nombre }} › {{ ge.nombre }}
+                </option>
+            {% empty %}
+                {% if subtipo %}
+                    <option value="" disabled>Sin elegibles configurados para este subtipo</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="col-md-12" id="egreso-plan-wrapper">
+        {% if selected_elegible_id %}
+            {% include "proyectos/partials/egreso_planes_select.html" with planes=planes selected_plan_id=selected_plan_id %}
+        {% else %}
+            <label class="form-label">Plan de gasto</label>
+            <select name="plan_de_gasto" class="form-select" required disabled>
+                <option value="">Seleccione primero un gasto elegible</option>
+            </select>
+        {% endif %}
+    </div>
+</div>
+
+<div id="plan-detalle" class="mt-2"></div>

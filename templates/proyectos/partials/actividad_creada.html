@@ -1,0 +1,17 @@
+{% load humanize %}
+<div class="text-center py-4">
+    <h5 class="text-success mb-1">Actividad creada</h5>
+    <p class="small text-muted mb-1">{{ actividad.nombre }}</p>
+    <p class="small text-muted mb-4">
+        Presupuesto: <strong>${{ actividad.presupuesto|floatformat:0|intcomma }}</strong>
+    </p>
+    <div class="d-flex justify-content-center gap-2">
+        <button class="btn btn-outline-primary"
+                hx-get="{% url 'proyectos:crear_actividad_form' resultado.pk %}"
+                hx-target="#modal-body"
+                hx-swap="innerHTML">
+            + Agregar otra
+        </button>
+        <button class="btn btn-primary" data-bs-dismiss="modal">Cerrar</button>
+    </div>
+</div>

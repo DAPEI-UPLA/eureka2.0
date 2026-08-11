@@ -1,0 +1,311 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+{% block title %}Gráficos de Proyectos{% endblock %}
+
+{% block content %}
+
+<style>
+    .panel-hero {
+        background: linear-gradient(135deg, #ffffff 0%, #f1f8fd 100%);
+        border-radius: 20px;
+        padding: 1.75rem 2rem;
+        border: 1px solid #eaf1f6;
+        margin-bottom: 1.5rem;
+    }
+    .panel-hero h2 { font-weight: 700; color: #1f2937; margin: 0; }
+    .panel-hero p  { color: #6b7280; margin: .25rem 0 0; font-size: .9rem; }
+
+    .tab-switch {
+        display: inline-flex;
+        background: #fff;
+        border: 1px solid #eef2f6;
+        border-radius: 999px;
+        padding: 4px;
+        gap: 4px;
+    }
+    .tab-switch a {
+        text-decoration: none;
+        padding: .45rem 1.1rem;
+        font-size: .85rem;
+        font-weight: 500;
+        color: #6b7280;
+        border-radius: 999px;
+        transition: all .15s ease;
+    }
+    .tab-switch a:hover { color: #009fe3; }
+    .tab-switch a.active {
+        background: #009fe3;
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(0,159,227,0.25);
+    }
+
+    .kpi-tile {
+        background: #fff;
+        border: 1px solid #eef2f6;
+        border-radius: 16px;
+        padding: 1rem 1.25rem;
+        height: 100%;
+    }
+    .kpi-tile .lbl { font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; color: #6b7280; font-weight: 700; }
+    .kpi-tile .val { font-size: 1.5rem; font-weight: 700; color: #111827; margin-top: .15rem; }
+    .kpi-tile .val.sm { font-size: 1.1rem; }
+
+    .chart-card {
+        background: #fff;
+        border-radius: 18px;
+        border: 1px solid #eef2f6;
+        padding: 1.5rem;
+        height: 100%;
+        transition: all .2s ease;
+    }
+    .chart-card:hover { box-shadow: 0 10px 28px rgba(15,23,42,.06); }
+    .chart-title { font-weight: 600; color: #111827; margin: 0 0 .25rem; font-size: 1rem; }
+    .chart-subtitle { color: #6b7280; font-size: .82rem; margin: 0 0 1.25rem; }
+
+    .chart-canvas-wrap { position: relative; width: 100%; }
+    .chart-canvas-wrap.donut   { height: 280px; }
+    .chart-canvas-wrap.bar     { height: 340px; }
+    .chart-canvas-wrap.scatter { height: 340px; }
+
+    .summary-card {
+        background: #fff;
+        border-radius: 18px;
+        border: 1px solid #eef2f6;
+        padding: 1.5rem;
+        margin-top: 1rem;
+    }
+    .summary-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .summary-table th {
+        text-transform: uppercase; font-size: .7rem; font-weight: 700; color: #6b7280;
+        letter-spacing: .5px; text-align: center; padding: .65rem .5rem; border-bottom: 1px solid #eef2f6;
+    }
+    .summary-table th.left { text-align: left; }
+    .summary-table td {
+        padding: .8rem .5rem; border-bottom: 1px solid #f6f8fb; font-size: .88rem;
+        text-align: center; color: #374151;
+    }
+    .summary-table td.left { text-align: left; font-weight: 500; color:#111827; }
+    .summary-table tr:last-child td { border-bottom: none; }
+
+    .pill { display: inline-block; min-width: 28px; padding: .2rem .55rem; border-radius: 999px;
+            font-size: .78rem; font-weight: 600; }
+    .estado-PLANIFICADO  { background:#e9ecef; color:#495057; }
+    .estado-EN_EJECUCION { background:#dbeafe; color:#1d4ed8; }
+    .estado-FINALIZADO   { background:#dcfce7; color:#166534; }
+    .estado-SUSPENDIDO   { background:#fee2e2; color:#b91c1c; }
+
+    .progress-track { background: #f1f5f9; border-radius: 999px; height: 8px; width: 100%;
+        max-width: 140px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: .5rem; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #009fe3, #1d4ed8);
+        border-radius: 999px; transition: width .6s ease; }
+
+    .empty-card { background: #fff; border: 1px dashed #d8e8f3; border-radius: 20px;
+        padding: 3.5rem 2rem; text-align: center; }
+    .empty-icon { width: 72px; height: 72px; border-radius: 20px;
+        background: linear-gradient(135deg, #e0f2fe, #f1f8fd); display: inline-flex;
+        align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 1rem; }
+</style>
+
+<div class="container-fluid py-2">
+
+    <a href="{% url 'proyectos:lista_proyectos' %}" class="btn-volver mb-3">
+        <span class="arrow">←</span> Volver a proyectos
+    </a>
+
+    <!-- Hero -->
+    <div class="panel-hero d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h2>📈 Gráficos de Proyectos</h2>
+            <p>{% if es_jefe %}Seguimiento de toda la cartera de proyectos.{% else %}Seguimiento de tus proyectos asignados.{% endif %}</p>
+        </div>
+        <div class="tab-switch">
+            <a href="{% url 'proyectos:lista_proyectos' %}">Lista</a>
+            <a href="{% url 'proyectos:graficos_proyectos' %}" class="active">Gráficos</a>
+        </div>
+    </div>
+
+    {% if hay_datos %}
+
+    <!-- KPIs -->
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-2"><div class="kpi-tile"><div class="lbl">Proyectos</div><div class="val">{{ stats.total }}</div></div></div>
+        <div class="col-6 col-lg-2"><div class="kpi-tile"><div class="lbl">En ejecución</div><div class="val text-primary">{{ stats.en_ejecucion }}</div></div></div>
+        <div class="col-6 col-lg-2"><div class="kpi-tile"><div class="lbl">Finalizados</div><div class="val text-success">{{ stats.finalizados }}</div></div></div>
+        <div class="col-6 col-lg-2"><div class="kpi-tile"><div class="lbl">Atrasados</div><div class="val text-danger">{{ stats.atrasados }}</div></div></div>
+        <div class="col-6 col-lg-2"><div class="kpi-tile"><div class="lbl">Presupuesto</div><div class="val sm">${{ stats.presupuesto_total|floatformat:0|intcomma }}</div></div></div>
+        <div class="col-6 col-lg-2"><div class="kpi-tile"><div class="lbl">Ejecutado</div><div class="val sm" style="color:#b45309;">${{ stats.ejecutado_total|floatformat:0|intcomma }}</div></div></div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Donut por estado -->
+        <div class="col-lg-5">
+            <div class="chart-card">
+                <h6 class="chart-title">Proyectos por estado</h6>
+                <p class="chart-subtitle">Total: <strong>{{ stats.total }}</strong></p>
+                <div class="chart-canvas-wrap donut"><canvas id="chartEstado"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Barras por tipo -->
+        <div class="col-lg-7">
+            <div class="chart-card">
+                <h6 class="chart-title">Presupuesto vs gastado por tipo</h6>
+                <p class="chart-subtitle">Agrupado por tipo de proyecto.</p>
+                <div class="chart-canvas-wrap bar"><canvas id="chartTipo"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Barra apilada ejecución -->
+        <div class="col-lg-7">
+            <div class="chart-card">
+                <h6 class="chart-title">Ejecución presupuestaria por proyecto</h6>
+                <p class="chart-subtitle">Pagado, comprometido y disponible (hasta 12 proyectos por presupuesto).</p>
+                <div class="chart-canvas-wrap bar"><canvas id="chartEjecucion"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Scatter avance vs gasto -->
+        <div class="col-lg-5">
+            <div class="chart-card">
+                <h6 class="chart-title">Avance vs presupuesto gastado</h6>
+                <p class="chart-subtitle">Cada punto es un proyecto. Ideal: cerca de la diagonal.</p>
+                <div class="chart-canvas-wrap scatter"><canvas id="chartAvance"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen tabular -->
+    <div class="summary-card">
+        <h6 class="chart-title mb-1">Resumen por proyecto</h6>
+        <p class="chart-subtitle">Presupuesto, ejecución y avance físico.</p>
+        <div class="table-responsive">
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th class="left">Proyecto</th>
+                        <th>Estado</th>
+                        <th class="left" style="min-width:180px;">Presupuesto</th>
+                        <th class="left" style="min-width:180px;">Ejecutado</th>
+                        <th class="left" style="min-width:200px;">Avance físico</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in resumen %}
+                    <tr>
+                        <td class="left">{{ r.nombre }}{% if r.atrasado %} <span class="pill estado-SUSPENDIDO">Atrasado</span>{% endif %}</td>
+                        <td><span class="pill estado-{{ r.estado }}">{{ r.estado_label }}</span></td>
+                        <td class="left">${{ r.presupuesto|floatformat:0|intcomma }}</td>
+                        <td class="left">${{ r.ejecutado|floatformat:0|intcomma }} <span class="text-muted small">({{ r.pct_gastado }}%)</span></td>
+                        <td class="left">
+                            <span class="progress-track"><span class="progress-fill" style="width: {{ r.cumplimiento }}%;"></span></span>
+                            <span class="text-muted small">{{ r.cumplimiento }}%</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="empty-card">
+        <div class="empty-icon">📊</div>
+        <h5 class="fw-semibold mb-1">Aún no hay datos para graficar</h5>
+        <p class="text-muted mb-3">Crea proyectos para ver las estadísticas de seguimiento.</p>
+        <a href="{% url 'proyectos:lista_proyectos' %}" class="btn"
+           style="background:#009fe3; color:#fff; border-radius:999px; padding:.5rem 1.25rem;">
+            Ir a proyectos
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+
+{{ datos_estado|json_script:"datos-estado" }}
+{{ datos_tipo|json_script:"datos-tipo" }}
+{{ datos_ejecucion|json_script:"datos-ejecucion" }}
+{{ datos_avance_gasto|json_script:"datos-avance" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    if (!{{ hay_datos|yesno:"true,false" }}) return;
+
+    Chart.defaults.font.family = "Inter, sans-serif";
+    Chart.defaults.color = "#4b5563";
+
+    const money = (v) => '$' + Math.round(v).toLocaleString('es-CL');
+    const tooltipStyle = { backgroundColor: '#111827', padding: 12, cornerRadius: 8, titleFont: { weight: '600' } };
+    const legendBottom = { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 14, font: { size: 12 } } };
+
+    // ===== Donut estado =====
+    const dEstado = JSON.parse(document.getElementById('datos-estado').textContent);
+    new Chart(document.getElementById('chartEstado'), {
+        type: 'doughnut',
+        data: { labels: dEstado.labels, datasets: [{ data: dEstado.data, backgroundColor: dEstado.colors, borderColor: '#fff', borderWidth: 3, hoverOffset: 8 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '65%',
+            plugins: {
+                legend: legendBottom,
+                tooltip: { ...tooltipStyle, callbacks: { label: (ctx) => {
+                    const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+                    const pct = total ? Math.round(ctx.parsed/total*100) : 0;
+                    return ` ${ctx.parsed} proyecto(s) (${pct}%)`;
+                }}}
+            }
+        }
+    });
+
+    // ===== Barras por tipo =====
+    const dTipo = JSON.parse(document.getElementById('datos-tipo').textContent);
+    new Chart(document.getElementById('chartTipo'), {
+        type: 'bar', data: dTipo,
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { callback: money, font: { size: 10 } } }
+            },
+            plugins: { legend: legendBottom, tooltip: { ...tooltipStyle, callbacks: { label: (c) => ` ${c.dataset.label}: ${money(c.parsed.y)}` } } }
+        }
+    });
+
+    // ===== Barra apilada ejecución =====
+    const dEjec = JSON.parse(document.getElementById('datos-ejecucion').textContent);
+    new Chart(document.getElementById('chartEjecucion'), {
+        type: 'bar', data: dEjec,
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 40, minRotation: 0 } },
+                y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { callback: money, font: { size: 10 } } }
+            },
+            plugins: { legend: legendBottom, tooltip: { ...tooltipStyle, callbacks: { label: (c) => ` ${c.dataset.label}: ${money(c.parsed.y)}` } } }
+        }
+    });
+
+    // ===== Scatter avance vs gasto =====
+    const dAvance = JSON.parse(document.getElementById('datos-avance').textContent);
+    new Chart(document.getElementById('chartAvance'), {
+        type: 'scatter', data: dAvance,
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { title: { display: true, text: 'Avance físico (%)' }, min: 0, max: 100, grid: { color: '#f1f5f9' } },
+                y: { title: { display: true, text: 'Presupuesto gastado (%)' }, min: 0, max: 100, grid: { color: '#f1f5f9' } }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...tooltipStyle, callbacks: { label: (c) => {
+                    const p = c.raw;
+                    return ` ${p.nombre}: avance ${p.x}% / gasto ${p.y}%`;
+                }}}
+            }
+        }
+    });
+})();
+</script>
+
+{% endblock %}

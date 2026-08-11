@@ -1,0 +1,21 @@
+{% load humanize %}
+<label class="form-label">Plan de gasto</label>
+<select name="plan_de_gasto" id="egreso-plan" class="form-select" required
+        hx-get="{% url 'proyectos:egreso_plan_detalle' %}"
+        hx-target="#plan-detalle"
+        hx-trigger="change"
+        hx-include="this">
+    <option value="">Seleccione un plan</option>
+    {% for p in planes %}
+        {% comment %}Se muestra lo disponible, no el monto del plan: el monto
+        no dice cuánto cabe todavía, que es lo que se está por decidir.
+        {% endcomment %}
+        <option value="{{ p.id }}"
+                {% if selected_plan_id == p.id %}selected{% endif %}>
+            {{ p.nombre_corto }} — quedan ${{ p.egresos_disponible|floatformat:0|intcomma }}
+            de ${{ p.monto|floatformat:0|intcomma }}
+        </option>
+    {% empty %}
+        <option value="" disabled>Sin planes registrados con este gasto elegible</option>
+    {% endfor %}
+</select>

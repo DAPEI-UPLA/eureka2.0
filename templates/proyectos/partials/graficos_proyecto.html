@@ -1,0 +1,166 @@
+{% load humanize %}
+
+<style>
+    .g-proj-card {
+        background: #fff;
+        border-radius: 16px;
+        border: 1px solid #eef2f6;
+        padding: 1.25rem 1.4rem;
+        height: 100%;
+    }
+    .g-proj-card h6 { font-weight: 600; color: #111827; font-size: .95rem; margin: 0 0 .15rem; }
+    .g-proj-card .sub { color: #6b7280; font-size: .78rem; margin: 0 0 1rem; }
+    .g-canvas { position: relative; width: 100%; }
+    .g-canvas.h-cascada { height: 230px; }
+    .g-canvas.h-donut   { height: 210px; }
+    .g-canvas.h-bar     { height: 300px; }
+</style>
+
+<div class="row g-3">
+    <!-- Cascada de presupuesto -->
+    <div class="col-lg-7">
+        <div class="g-proj-card">
+            <h6>Cascada de presupuesto</h6>
+            <p class="sub">Del total asignado a lo ejecutado y disponible.</p>
+            <div class="g-canvas h-cascada"><canvas id="gpCascada"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Comprometido vs pagado -->
+    <div class="col-lg-5">
+        <div class="g-proj-card">
+            <h6>Gastos: comprometido vs pagado</h6>
+            <p class="sub">Estado de los egresos del proyecto.</p>
+            <div class="g-canvas h-donut"><canvas id="gpCompPag"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Corriente -->
+    <div class="col-md-6 col-lg-3">
+        <div class="g-proj-card">
+            <h6>Subvención corriente</h6>
+            <p class="sub">Asignado a objetivos vs disponible.</p>
+            <div class="g-canvas h-donut"><canvas id="gpCorriente"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Capital -->
+    <div class="col-md-6 col-lg-3">
+        <div class="g-proj-card">
+            <h6>Subvención capital</h6>
+            <p class="sub">Asignado a objetivos vs disponible.</p>
+            <div class="g-canvas h-donut"><canvas id="gpCapital"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Avance por objetivo -->
+    <div class="col-lg-6">
+        <div class="g-proj-card">
+            <h6>Avance físico por objetivo</h6>
+            <p class="sub">Cumplimiento ponderado por presupuesto.</p>
+            <div class="g-canvas h-bar"><canvas id="gpObjetivos"></canvas></div>
+        </div>
+    </div>
+
+    {% if hay_gastos %}
+    <!-- Gastos por transferencia -->
+    <div class="col-12">
+        <div class="g-proj-card">
+            <h6>Gastos por transferencia</h6>
+            <p class="sub">Distribución de los egresos por fuente.</p>
+            <div class="g-canvas h-bar"><canvas id="gpTransferencia"></canvas></div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{{ cascada|json_script:"gp-cascada" }}
+{{ comprometido_pagado|json_script:"gp-comppag" }}
+{{ corriente_capital|json_script:"gp-corrcap" }}
+{{ avance_objetivos|json_script:"gp-objetivos" }}
+{{ gastos_transferencia|json_script:"gp-transferencia" }}
+
+<script>
+(function() {
+    // Chart.js se carga en la página padre (detalle_proyecto.html). Si por algún
+    // motivo aún no está, salimos silenciosamente.
+    if (typeof Chart === 'undefined') return;
+
+    Chart.defaults.font.family = "Inter, sans-serif";
+    Chart.defaults.color = "#4b5563";
+
+    const money = (v) => '$' + Math.round(v).toLocaleString('es-CL');
+    const tt = { backgroundColor: '#111827', padding: 10, cornerRadius: 8 };
+    const legendBottom = { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 11 } } };
+
+    // Re-render seguro: destruye la instancia previa sobre el mismo canvas.
+    function build(id, config) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const prev = Chart.getChart(el);
+        if (prev) prev.destroy();
+        new Chart(el, config);
+    }
+
+    const read = (id) => { const n = document.getElementById(id); return n ? JSON.parse(n.textContent) : null; };
+
+    // ===== Cascada (barras horizontales) =====
+    const cascada = read('gp-cascada');
+    if (cascada) build('gpCascada', {
+        type: 'bar',
+        data: { labels: cascada.labels, datasets: [{ data: cascada.data, backgroundColor: cascada.colors, borderRadius: 6, maxBarThickness: 34 }] },
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            scales: { x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { callback: money, font: { size: 10 } } }, y: { grid: { display: false } } },
+            plugins: { legend: { display: false }, tooltip: { ...tt, callbacks: { label: (c) => ' ' + money(c.parsed.x) } } }
+        }
+    });
+
+    // ===== Comprometido vs pagado =====
+    const cp = read('gp-comppag');
+    if (cp) build('gpCompPag', {
+        type: 'doughnut',
+        data: { labels: cp.labels, datasets: [{ data: cp.data, backgroundColor: cp.colors, borderColor: '#fff', borderWidth: 3, hoverOffset: 6 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
+            plugins: { legend: legendBottom, tooltip: { ...tt, callbacks: { label: (c) => ' ' + c.label + ': ' + money(c.parsed) } } } }
+    });
+
+    // ===== Corriente / Capital =====
+    const cc = read('gp-corrcap');
+    const donutUso = (id, d) => build(id, {
+        type: 'doughnut',
+        data: { labels: d.labels, datasets: [{ data: d.data, backgroundColor: d.colors, borderColor: '#fff', borderWidth: 3, hoverOffset: 6 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
+            plugins: { legend: legendBottom, tooltip: { ...tt, callbacks: { label: (c) => ' ' + c.label + ': ' + money(c.parsed) } } } }
+    });
+    if (cc) { donutUso('gpCorriente', cc.corriente); donutUso('gpCapital', cc.capital); }
+
+    // ===== Avance por objetivo =====
+    const obj = read('gp-objetivos');
+    if (obj) build('gpObjetivos', {
+        type: 'bar',
+        data: { labels: obj.labels, datasets: [{
+            label: 'Avance (%)', data: obj.avance,
+            backgroundColor: obj.avance.map(v => v >= 75 ? '#198754' : v >= 40 ? '#009fe3' : v > 0 ? '#f59e0b' : '#94a3b8'),
+            borderRadius: 6, maxBarThickness: 40,
+        }] },
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            scales: { x: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' }, ticks: { callback: (v) => v + '%', font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } },
+            plugins: { legend: { display: false }, tooltip: { ...tt, callbacks: { label: (c) => ' Avance: ' + c.parsed.x + '%  ·  Presup: ' + money(obj.presupuesto[c.dataIndex]) } } }
+        }
+    });
+
+    // ===== Gastos por transferencia =====
+    const tr = read('gp-transferencia');
+    if (tr && tr.labels && tr.labels.length) build('gpTransferencia', {
+        type: 'bar',
+        data: { labels: tr.labels, datasets: [{ label: 'Gasto', data: tr.data, backgroundColor: '#009fe3', borderRadius: 6, maxBarThickness: 46 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { callback: money, font: { size: 10 } } } },
+            plugins: { legend: { display: false }, tooltip: { ...tt, callbacks: { label: (c) => ' ' + money(c.parsed.y) } } }
+        }
+    });
+})();
+</script>

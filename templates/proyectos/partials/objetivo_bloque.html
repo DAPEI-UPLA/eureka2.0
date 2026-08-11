@@ -1,0 +1,95 @@
+{% load humanize %}
+
+<div class="objetivo-grupo" id="objetivo-{{ objetivo.pk }}">
+
+    <div class="objetivo-header"
+         data-objetivo-id="{{ objetivo.pk }}"
+         onclick="toggleObjetivo({{ objetivo.pk }})">
+
+        <span class="toggle-icon" id="icono-{{ objetivo.pk }}">▼</span>
+
+        {% if nuevo_objetivo_id == objetivo.pk %}
+            {% include "proyectos/partials/objetivo_input.html" %}
+        {% else %}
+            {% include "proyectos/partials/objetivo_texto.html" %}
+        {% endif %}
+
+        <div class="objetivo-meta" onclick="event.stopPropagation();">
+
+            <div id="objetivo-meta-{{ objetivo.pk }}"
+                 class="objetivo-meta-datos"
+                 hx-get="{% url 'proyectos:meta_objetivo' objetivo.pk %}"
+                 hx-trigger="objetivoActualizado[event.detail.objetivo_id=={{ objetivo.pk }}] from:body"
+                 hx-target="this"
+                 hx-swap="innerHTML">
+                {% include "proyectos/partials/objetivo_meta.html" %}
+            </div>
+
+            {% if es_encargado %}
+            <div class="orden-botones" title="Cambiar el orden de este objetivo">
+                <button class="btn-orden" type="button"
+                        hx-post="{% url 'proyectos:mover_objetivo' objetivo.pk 'subir' %}"
+                        hx-target="#contenedor-objetivos"
+                        hx-swap="innerHTML"
+                        aria-label="Subir objetivo">▲</button>
+                <button class="btn-orden" type="button"
+                        hx-post="{% url 'proyectos:mover_objetivo' objetivo.pk 'bajar' %}"
+                        hx-target="#contenedor-objetivos"
+                        hx-swap="innerHTML"
+                        aria-label="Bajar objetivo">▼</button>
+            </div>
+
+            <button class="btn btn-soft-danger btn-icon btn-sm"
+                    type="button"
+                    hx-post="{% url 'proyectos:eliminar_objetivo' objetivo.pk %}"
+                    hx-swap="none"
+                    hx-confirm="¿Eliminar este objetivo y todo su contenido?"
+                    title="Eliminar objetivo">
+                ✕
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="grupo-{{ objetivo.pk }}">
+        <div class="table-responsive">
+            <table class="table tabla-resultados align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-start">Resultado</th>
+                        <th class="text-start">Responsable</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-end">Presupuesto</th>
+                        <th class="text-end">Ejecutado</th>
+                        <th class="text-end">Comprometido</th>
+                        <th class="text-end">Saldo</th>
+                        <th class="text-center">Avance</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                {% comment %}También escucha egresoUpdated: desde que el
+                ejecutado sale de los gastos, cargar uno cambia estas filas y
+                antes había que recargar la página para verlo.{% endcomment %}
+                <tbody id="resultados-{{ objetivo.pk }}"
+                       hx-get="{% url 'proyectos:listar_resultados' objetivo.pk %}"
+                       hx-trigger="resultadosActualizados[event.detail.objetivo_id=={{ objetivo.pk }}] from:body, egresoUpdated from:body"
+                       hx-target="this"
+                       hx-swap="innerHTML">
+                    {% include "proyectos/partials/resultados_lista.html" %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if es_encargado %}
+        <div class="objetivo-footer">
+            <button class="btn btn-soft-primary btn-sm px-3"
+                    hx-post="{% url 'proyectos:crear_resultado' objetivo.pk %}"
+                    hx-target="#resultados-{{ objetivo.pk }}"
+                    hx-swap="innerHTML">
+                + Agregar resultado
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+</div>

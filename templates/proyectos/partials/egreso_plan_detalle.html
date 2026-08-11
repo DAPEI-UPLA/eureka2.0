@@ -1,0 +1,20 @@
+{% load humanize %}
+<div class="alert alert-light border small mb-0">
+    <div class="row g-2">
+        <div class="col-md-4">
+            <div class="text-muted">Gasto</div>
+            <strong>{{ plan.gasto.nombre }}</strong>
+        </div>
+        <div class="col-md-4">
+            <div class="text-muted">Gasto elegible</div>
+            <strong>{{ plan.gasto_elegible.nombre }}</strong>
+        </div>
+        <div class="col-md-4">
+            <div class="text-muted">Disponible en el plan</div>
+            <strong class="{% if plan.egresos_disponible <= 0 %}text-danger{% endif %}">
+                ${{ plan.egresos_disponible|floatformat:0|intcomma }}
+            </strong>
+            <div class="text-muted">de ${{ plan.monto|floatformat:0|intcomma }}</div>
+        </div>
+    </div>
+</div>

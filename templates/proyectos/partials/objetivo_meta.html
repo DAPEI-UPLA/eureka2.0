@@ -1,0 +1,7 @@
+{% comment %}Contadores y presupuesto de la cabecera del objetivo. Se refresca solo
+   cuando cambian sus resultados o actividades.{% endcomment %}
+<span class="pill-resultados">
+    {{ objetivo.resultados.count }} resultado{{ objetivo.resultados.count|pluralize }}
+</span>
+
+{% include "proyectos/partials/objetivo_presupuesto.html" %}

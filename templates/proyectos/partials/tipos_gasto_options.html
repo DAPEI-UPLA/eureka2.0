@@ -1,0 +1,4 @@
+<option value="">Seleccione</option>
+{% for tg in tipos_gasto %}
+    <option value="{{ tg.id }}">{{ tg.nombre }}</option>
+{% endfor %}

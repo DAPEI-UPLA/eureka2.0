@@ -1,0 +1,91 @@
+{% load humanize %}
+
+<div class="row g-3 dashboard-presupuesto">
+
+    <div class="col-md-6 col-lg-3">
+        <div class="kpi-card kpi-total">
+            <span class="kpi-icon">$</span>
+            <div class="kpi-label">Presupuesto total</div>
+            <div class="kpi-value">${{ proyecto.presupuesto_total|floatformat:0|intcomma }}</div>
+            <div class="kpi-sub">
+                <span>Corriente</span>
+                <span class="v">${{ proyecto.presupuesto_corriente|floatformat:0|intcomma }}</span>
+            </div>
+            <div class="kpi-sub">
+                <span>Capital</span>
+                <span class="v">${{ proyecto.presupuesto_capital|floatformat:0|intcomma }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="kpi-card kpi-asign">
+            <span class="kpi-icon">◐</span>
+            <div class="kpi-label">Asignado a objetivos</div>
+            <div class="kpi-value">${{ proyecto.presupuesto_asignado|floatformat:0|intcomma }}</div>
+            <div class="kpi-progress">
+                <div style="width: {{ proyecto.porcentaje_asignado|floatformat:0 }}%; background: #1d4ed8;"></div>
+            </div>
+            <div class="kpi-sub mt-2">
+                <span>{{ proyecto.porcentaje_asignado|floatformat:0 }}% del total</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="kpi-card kpi-comp">
+            <span class="kpi-icon">⏱</span>
+            <div class="kpi-label">Gastos ejecutados</div>
+            <div class="kpi-value">${{ proyecto.gastos_total|floatformat:0|intcomma }}</div>
+            <div class="kpi-sub">
+                <span>Comprometido</span>
+                <span class="v" style="color:#b45309;">${{ proyecto.gastos_comprometidos|floatformat:0|intcomma }}</span>
+            </div>
+            <div class="kpi-sub">
+                <span>Pagado</span>
+                <span class="v text-success">${{ proyecto.gastos_pagados|floatformat:0|intcomma }}</span>
+            </div>
+            {% if proyecto.presupuesto_total %}
+            <div class="kpi-progress">
+                <div style="width: {% widthratio proyecto.gastos_total proyecto.presupuesto_total 100 %}%; background: #b45309;"></div>
+            </div>
+            <div class="kpi-sub mt-1">
+                <span>{{ proyecto.porcentaje_gastado|floatformat:1 }}% del presupuesto</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="kpi-card kpi-disp">
+            <span class="kpi-icon">{% if proyecto.disponible_para_gastar < 0 %}⚠{% else %}✓{% endif %}</span>
+            <div class="kpi-label">Disponible para gastar</div>
+            <div class="kpi-value {% if proyecto.disponible_para_gastar < 0 %}text-danger{% else %}text-success{% endif %}">
+                ${{ proyecto.disponible_para_gastar|floatformat:0|intcomma }}
+            </div>
+            {% if proyecto.disponible_para_gastar < 0 %}
+            <div class="alert alert-danger small mt-2 mb-0 py-1 px-2">
+                Sobregiro: los gastos superan el presupuesto.
+            </div>
+            {% else %}
+            <div class="kpi-sub">
+                <span>Sin asignar a objetivos</span>
+                <span class="v">${{ proyecto.presupuesto_disponible_real|floatformat:0|intcomma }}</span>
+            </div>
+            {% comment %}
+            Un objetivo recibe corriente y capital por separado, así que el
+            total sin asignar no basta para saber qué se puede repartir.
+            {% endcomment %}
+            <div class="kpi-sub kpi-sub-detalle">
+                <span>Corriente</span>
+                <span class="v">${{ proyecto.corriente_disponible|floatformat:0|intcomma }}</span>
+            </div>
+            <div class="kpi-sub kpi-sub-detalle">
+                <span>Capital</span>
+                <span class="v">${{ proyecto.capital_disponible|floatformat:0|intcomma }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>

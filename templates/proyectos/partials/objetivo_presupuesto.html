@@ -1,0 +1,33 @@
+{% load humanize %}
+
+<div id="presupuesto-obj-{{ objetivo.pk }}" class="presupuesto-mini">
+
+    <div class="pm-row corriente">
+        <span>Corriente:</span>
+        <span class="v"
+              hx-get="{% url 'proyectos:editar_presupuesto_objetivo' objetivo.pk %}"
+              hx-trigger="click"
+              hx-target="#presupuesto-obj-{{ objetivo.pk }}"
+              hx-swap="outerHTML"
+              title="Click para editar">
+            ${{ objetivo.presupuesto_corriente|floatformat:0|intcomma }}
+        </span>
+    </div>
+
+    <div class="pm-row capital">
+        <span>Capital:</span>
+        <span class="v"
+              hx-get="{% url 'proyectos:editar_presupuesto_objetivo' objetivo.pk %}"
+              hx-trigger="click"
+              hx-target="#presupuesto-obj-{{ objetivo.pk }}"
+              hx-swap="outerHTML"
+              title="Click para editar">
+            ${{ objetivo.presupuesto_capital|floatformat:0|intcomma }}
+        </span>
+    </div>
+
+    <span class="pm-disponible">
+        Disponible ${{ objetivo.presupuesto_disponible|floatformat:0|intcomma }}
+    </span>
+
+</div>

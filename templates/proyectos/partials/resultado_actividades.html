@@ -1,0 +1,49 @@
+{# Fila desplegable con la tabla de actividades del resultado. #}
+<tr id="actividades-row-{{ resultado.pk }}" class="d-none">
+    <td colspan="9" class="p-0">
+        <div class="px-4 py-3" style="background:#f8fafc; border-top: 1px solid #eef0f2;">
+
+            <table class="table tabla-actividades mb-0">
+                <thead>
+                    <tr>
+                        <th>Actividad</th>
+                        <th>Responsable</th>
+                        <th>Fecha límite</th>
+                        <th>Fecha efectiva</th>
+                        <th>Desvío</th>
+                        <th class="text-end">Presupuesto</th>
+                        <th class="text-end">Saldo</th>
+                        <th class="text-center">Avance</th>
+                        <th class="text-center">Planes</th>
+                        <th></th>
+                    </tr>
+                </thead>
+
+                <tbody id="actividades-{{ resultado.pk }}"
+                       data-resultado-id="{{ resultado.pk }}"
+                       hx-get="{% url 'proyectos:listar_actividades' resultado.pk %}"
+                       hx-trigger="revealed, cargarActividades, actividadActualizada[event.detail.resultado_id=={{ resultado.pk }}] from:body"
+                       hx-target="this"
+                       hx-swap="innerHTML">
+                    <tr>
+                        <td colspan="10" class="text-center text-muted py-3">
+                            <em>Cargando actividades...</em>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="mt-2">
+                <button class="btn btn-soft-primary btn-sm px-3"
+                        hx-get="{% url 'proyectos:crear_actividad_form' resultado.pk %}"
+                        hx-target="#modal-body"
+                        hx-swap="innerHTML"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalPresupuesto">
+                    + Agregar actividad
+                </button>
+            </div>
+
+        </div>
+    </td>
+</tr>

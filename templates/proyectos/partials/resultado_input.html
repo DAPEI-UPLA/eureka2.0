@@ -1,0 +1,15 @@
+{# Edición en línea del resultado: ocupa toda la fila y se guarda al salir. #}
+<tr id="resultado-{{ resultado.pk }}" class="fila-edicion">
+    <td colspan="9">
+        <textarea name="descripcion"
+                  class="form-control campo-descripcion"
+                  rows="2"
+                  placeholder="Escribe aquí el resultado esperado…"
+                  data-autofoco="1"
+                  hx-post="{% url 'proyectos:guardar_resultado' resultado.pk %}"
+                  hx-trigger="blur"
+                  hx-target="closest tr"
+                  hx-swap="outerHTML">{{ resultado.descripcion }}</textarea>
+        <span class="campo-ayuda">Enter o clic fuera para guardar</span>
+    </td>
+</tr>

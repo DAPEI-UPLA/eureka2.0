@@ -1,0 +1,21 @@
+{% for objetivo in proyecto.objetivos.all %}
+    {% include "proyectos/partials/objetivo_bloque.html" %}
+{% empty %}
+<div class="objetivo-grupo">
+    <div class="empty-state">
+        <div class="es-icon">🎯</div>
+        <h5>Aún no hay objetivos</h5>
+        {% if es_encargado %}
+        <p class="small mb-3">Crea el primer objetivo específico para empezar a planificar.</p>
+        <button class="btn btn-primary btn-sm px-4"
+                hx-post="{% url 'proyectos:crear_objetivo' proyecto.pk %}"
+                hx-target="#contenedor-objetivos"
+                hx-swap="innerHTML">
+            + Crear primer objetivo
+        </button>
+        {% else %}
+        <p class="small mb-0">El responsable aún no ha definido objetivos.</p>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}

@@ -1,0 +1,137 @@
+{% load humanize %}
+
+<tr id="actividad-{{ actividad.pk }}">
+
+    <!-- NOMBRE -->
+    <td class="fw-semibold">
+        {{ actividad.nombre }}
+    </td>
+
+    <!-- RESPONSABLE -->
+    <td>
+        {{ actividad.responsable|default:"—" }}
+    </td>
+
+    <!-- FECHA LÍMITE -->
+    <td>
+        {{ actividad.fecha_limite|date:"d-m-Y"|default:"—" }}
+    </td>
+
+    <!-- FECHA EFECTIVA -->
+    <td>
+        {% if actividad.fecha_efectiva %}
+            {{ actividad.fecha_efectiva|date:"d-m-Y" }}
+        {% else %}
+            <span class="text-muted">—</span>
+        {% endif %}
+    </td>
+
+    {% comment %}
+    Cerrada la actividad manda la desviación real contra la fecha límite; mientras
+    sigue abierta, lo útil es cuánto plazo queda.
+    {% endcomment %}
+    <td>
+        {% if actividad.desviacion_dias is not None %}
+            {% if actividad.desviacion_dias > 0 %}
+                <span class="text-danger fw-semibold">+{{ actividad.desviacion_dias }} días</span>
+            {% elif actividad.desviacion_dias == 0 %}
+                <span class="text-success fw-semibold">A tiempo</span>
+            {% else %}
+                <span class="text-success fw-semibold">{{ actividad.desviacion_dias }} días</span>
+            {% endif %}
+        {% elif actividad.dias_restantes is not None %}
+            {% if actividad.dias_restantes < 0 %}
+                <span class="text-danger fw-semibold">Vencido</span>
+            {% elif actividad.dias_restantes == 0 %}
+                <span class="text-warning fw-semibold">Hoy</span>
+            {% else %}
+                {{ actividad.dias_restantes }} días
+            {% endif %}
+        {% else %}
+            —
+        {% endif %}
+    </td>
+
+    <!-- PRESUPUESTO -->
+    <td class="text-end">
+        {% include "proyectos/partials/monto_bolsas.html" with total=actividad.presupuesto corriente=actividad.presupuesto_corriente capital=actividad.presupuesto_capital %}
+    </td>
+
+    <!-- SALDO -->
+    <td class="text-end fw-semibold
+        {% if actividad.saldo < 0 %}text-danger{% else %}text-success{% endif %}">
+        ${{ actividad.saldo|floatformat:0|intcomma }}
+    </td>
+
+    <!-- AVANCE -->
+    <td class="text-center">
+        <div class="d-flex align-items-center justify-content-center gap-2">
+            <input type="number"
+                name="cumplimiento"
+                value="{{ actividad.cumplimiento|floatformat:0 }}"
+                min="0"
+                max="100"
+                step="1"
+                class="form-control form-control-sm text-center"
+                style="width:70px;"
+                hx-post="{% url 'proyectos:guardar_actividad' actividad.pk %}"
+                hx-trigger="change"
+                hx-target="#actividad-{{ actividad.pk }}"
+                hx-swap="outerHTML">
+
+            <div class="progress" style="height: 18px; width:120px;">
+                <div class="progress-bar
+                    {% if actividad.cumplimiento < 30 %}bg-danger
+                    {% elif actividad.cumplimiento < 70 %}bg-warning
+                    {% else %}bg-success
+                    {% endif %}"
+                    style="width: {{ actividad.cumplimiento|floatformat:0 }}%">
+                </div>
+            </div>
+        </div>
+    </td>
+
+    <!-- PLANES TOGGLE -->
+    <td class="text-center">
+        <button class="btn btn-sm btn-outline-primary"
+                type="button"
+                onclick="togglePlanes({{ actividad.pk }})"
+                title="Ver planes de gasto">
+            <span id="planes-icon-{{ actividad.pk }}">▶</span>
+            <span class="badge bg-primary ms-1">{{ actividad.planes_gasto.count }}</span>
+        </button>
+    </td>
+
+    <!-- ORDEN + ELIMINAR -->
+    <td class="text-center" style="white-space:nowrap;">
+        <div class="orden-botones d-inline-flex align-middle me-1"
+             title="Cambiar el orden de esta actividad">
+            <button class="btn-orden" type="button"
+                    hx-post="{% url 'proyectos:mover_actividad' actividad.pk 'subir' %}"
+                    hx-target="#actividades-{{ actividad.resultado_id }}"
+                    hx-swap="innerHTML"
+                    aria-label="Subir actividad">▲</button>
+            <button class="btn-orden" type="button"
+                    hx-post="{% url 'proyectos:mover_actividad' actividad.pk 'bajar' %}"
+                    hx-target="#actividades-{{ actividad.resultado_id }}"
+                    hx-swap="innerHTML"
+                    aria-label="Bajar actividad">▼</button>
+        </div>
+        <button class="btn btn-sm btn-outline-secondary me-1"
+                type="button"
+                title="Editar actividad"
+                hx-get="{% url 'proyectos:editar_actividad_form' actividad.pk %}"
+                hx-target="#modal-body"
+                hx-swap="innerHTML"
+                data-bs-toggle="modal"
+                data-bs-target="#modalPresupuesto">
+            ✎
+        </button>
+        <button class="btn btn-sm btn-outline-danger"
+                hx-delete="{% url 'proyectos:eliminar_actividad' actividad.pk %}"
+                hx-swap="none"
+                hx-confirm="¿Eliminar esta actividad?">
+            ✕
+        </button>
+    </td>
+</tr>

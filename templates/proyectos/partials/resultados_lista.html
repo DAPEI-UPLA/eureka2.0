@@ -1,0 +1,14 @@
+{% for resultado in objetivo.resultados.all %}
+    {% if nuevo_resultado_id == resultado.pk %}
+        {% include "proyectos/partials/resultado_input.html" %}
+        {% include "proyectos/partials/resultado_actividades.html" %}
+    {% else %}
+        {% include "proyectos/partials/resultado_row.html" %}
+    {% endif %}
+{% empty %}
+<tr>
+    <td colspan="9" class="text-center text-muted py-4">
+        <em>Sin resultados aún</em>
+    </td>
+</tr>
+{% endfor %}

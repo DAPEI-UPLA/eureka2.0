@@ -1,0 +1,110 @@
+{% load humanize %}
+
+{% comment %}Fila principal del resultado. Se recarga sola cuando cambian sus
+   actividades o su presupuesto, así los totales quedan al día sin F5.{% endcomment %}
+<tr id="resultado-{{ resultado.pk }}" class="hover-row"
+    hx-get="{% url 'proyectos:fila_resultado' resultado.pk %}"
+    hx-trigger="resultadoActualizado[event.detail.resultado_id=={{ resultado.pk }}] from:body"
+    hx-target="this"
+    hx-swap="outerHTML">
+
+    <td class="fw-semibold text-start celda-resultado">
+        <span class="toggle-icon" id="icono-res-{{ resultado.pk }}"
+              style="cursor:pointer;"
+              onclick="toggleActividades({{ resultado.pk }})"
+              title="Ver actividades">▶</span>
+        <span class="texto-resultado"
+              hx-get="{% url 'proyectos:editar_resultado_form' resultado.pk %}"
+              hx-trigger="click"
+              hx-target="closest tr"
+              hx-swap="outerHTML"
+              title="Clic para editar la descripción">
+            {% if resultado.descripcion %}
+                {{ resultado.descripcion }}
+            {% else %}
+                <span class="texto-vacio">Sin descripción — clic para escribirla</span>
+            {% endif %}
+            <span class="editar-hint" aria-hidden="true">✎</span>
+        </span>
+    </td>
+
+    <td class="text-start small">
+        {{ resultado.responsable.username|default:"—" }}
+    </td>
+
+    <td class="text-center">
+        <span class="estado-pill estado-{{ resultado.estado }}">
+            {{ resultado.get_estado_display }}
+        </span>
+    </td>
+
+    {% comment %}hx-swap explícito: la fila declara outerHTML para recargarse y
+    HTMX lo heredaría en estos botones, borrando el cuerpo del modal.{% endcomment %}
+    <td class="fw-semibold text-end"
+        style="cursor:pointer;"
+        hx-get="{% url 'proyectos:detalle_presupuesto_resultado' resultado.pk %}"
+        hx-target="#modal-body"
+        hx-swap="innerHTML"
+        data-bs-toggle="modal"
+        data-bs-target="#modalPresupuesto"
+        title="Ver detalle">
+        {% include "proyectos/partials/monto_bolsas.html" with total=resultado.presupuesto_asignado corriente=resultado.presupuesto_corriente capital=resultado.presupuesto_capital %}
+    </td>
+
+    {% comment %}Ejecutado, comprometido y saldo salen de los gastos cargados a
+    los planes del resultado, con el mismo desglose por bolsa que el presupuesto
+    — si no, no hay cómo saber cuál de las dos se está agotando.{% endcomment %}
+    <td class="text-end small">
+        {% include "proyectos/partials/monto_bolsas.html" with total=resultado.ejecutado corriente=resultado.ejecutado_corriente capital=resultado.ejecutado_capital %}
+    </td>
+
+    <td class="text-end small">
+        {% include "proyectos/partials/monto_bolsas.html" with total=resultado.comprometido corriente=resultado.comprometido_corriente capital=resultado.comprometido_capital %}
+    </td>
+
+    <td class="text-end fw-semibold {% if resultado.saldo < 0 %}text-danger{% else %}text-success{% endif %}">
+        {% include "proyectos/partials/monto_bolsas.html" with total=resultado.saldo corriente=resultado.saldo_corriente capital=resultado.saldo_capital %}
+    </td>
+
+    <td class="text-center">
+        <div class="d-flex align-items-center justify-content-center gap-2">
+            <small class="text-muted" style="width:30px; text-align:right;">{{ resultado.cumplimiento|floatformat:0 }}%</small>
+            <div class="progress-mini">
+                <div style="width: {{ resultado.cumplimiento|floatformat:0 }}%;
+                    {% if resultado.cumplimiento >= 75 %}background:#198754;
+                    {% elif resultado.cumplimiento >= 40 %}background:#0dcaf0;
+                    {% elif resultado.cumplimiento > 0 %}background:#ffc107;
+                    {% else %}background:#adb5bd;{% endif %}"></div>
+            </div>
+        </div>
+    </td>
+
+    <td class="text-end" style="white-space:nowrap;">
+        <div class="orden-botones d-inline-flex align-middle me-1"
+             title="Cambiar el orden de este resultado">
+            <button class="btn-orden" type="button"
+                    hx-post="{% url 'proyectos:mover_resultado' resultado.pk 'subir' %}"
+                    hx-target="#resultados-{{ resultado.objetivo_id }}"
+                    hx-swap="innerHTML"
+                    aria-label="Subir resultado">▲</button>
+            <button class="btn-orden" type="button"
+                    hx-post="{% url 'proyectos:mover_resultado' resultado.pk 'bajar' %}"
+                    hx-target="#resultados-{{ resultado.objetivo_id }}"
+                    hx-swap="innerHTML"
+                    aria-label="Bajar resultado">▼</button>
+        </div>
+        <button class="btn btn-soft-success btn-icon btn-sm me-1"
+                hx-get="{% url 'proyectos:crear_actividad_form' resultado.pk %}"
+                hx-target="#modal-body"
+                hx-swap="innerHTML"
+                data-bs-toggle="modal"
+                data-bs-target="#modalPresupuesto"
+                title="Agregar actividad">+</button>
+        <button class="btn btn-soft-danger btn-icon btn-sm"
+                hx-delete="{% url 'proyectos:eliminar_resultado' resultado.pk %}"
+                hx-swap="none"
+                hx-confirm="¿Eliminar este resultado y sus actividades?"
+                title="Eliminar">✕</button>
+    </td>
+
+</tr>

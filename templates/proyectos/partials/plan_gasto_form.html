@@ -1,0 +1,182 @@
+{% load humanize %}
+{% if plan %}
+<form hx-post="{% url 'proyectos:editar_plan_gasto' plan.pk %}"
+      hx-target="#modal-body"
+      hx-swap="innerHTML">
+{% else %}
+<form hx-post="{% url 'proyectos:crear_plan_gasto' proyecto.pk %}"
+      hx-target="#modal-body"
+      hx-swap="innerHTML">
+{% endif %}
+    {% csrf_token %}
+
+    <h5 class="mb-3">{% if plan %}Editar plan de gasto{% else %}Nuevo plan de gasto{% endif %}</h5>
+
+    <div class="row g-2">
+        <div class="col-md-3">
+            <label class="form-label">Año</label>
+            <input type="number" name="anio" class="form-control" required min="2000" max="2100"
+                   value="{{ plan.anio|default:'' }}">
+        </div>
+
+        <div class="col-md-9">
+            <label class="form-label">Monto (CLP)</label>
+            <input type="number" name="monto" class="form-control" required min="1" step="1"
+                   value="{{ plan.monto|stringformat:'d'|default:'' }}">
+        </div>
+    </div>
+
+    <hr class="my-3">
+    <div class="text-muted small mb-2">Asignación al proyecto</div>
+
+    <div class="row g-2">
+        <div class="col-md-4">
+            <label class="form-label">Objetivo</label>
+            <select name="objetivo" class="form-select" required
+                    hx-get="{% url 'proyectos:cargar_resultados' %}"
+                    hx-target="#resultado-select"
+                    hx-trigger="change">
+                <option value="">Seleccione</option>
+                {% for o in objetivos %}
+                    <option value="{{ o.id }}"
+                            {% if actividad_sel and actividad_sel.resultado.objetivo_id == o.id %}selected{% endif %}>
+                        {{ o.descripcion }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Resultado</label>
+            <select name="resultado" id="resultado-select" class="form-select" required
+                    hx-get="{% url 'proyectos:cargar_actividades' %}"
+                    hx-target="#actividad-select"
+                    hx-trigger="change">
+                {% if actividad_sel %}
+                    <option value="">Seleccione</option>
+                    {% for r in resultados %}
+                        <option value="{{ r.id }}"
+                                {% if actividad_sel and actividad_sel.resultado_id == r.id %}selected{% endif %}>
+                            {{ r.descripcion }}
+                        </option>
+                    {% endfor %}
+                {% else %}
+                    <option value="">Seleccione objetivo primero</option>
+                {% endif %}
+            </select>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Actividad</label>
+            <select name="actividad" id="actividad-select" class="form-select" required>
+                {% if actividad_sel %}
+                    <option value="">Seleccione</option>
+                    {% for a in actividades %}
+                        <option value="{{ a.id }}"
+                                {% if actividad_sel and actividad_sel.pk == a.id %}selected{% endif %}>
+                            {{ a.nombre }}
+                        </option>
+                    {% endfor %}
+                {% else %}
+                    <option value="">Seleccione resultado primero</option>
+                {% endif %}
+            </select>
+        </div>
+    </div>
+
+    <hr class="my-3">
+    <div class="text-muted small mb-2">Etiqueta presupuestaria</div>
+
+    <div class="row g-2">
+        <div class="col-md-6">
+            <label class="form-label">Transferencia</label>
+            <select name="transferencia" class="form-select" required
+                    hx-get="{% url 'proyectos:cargar_tipos_gasto' %}"
+                    hx-target="#tipo-gasto-select"
+                    hx-trigger="change">
+                <option value="">Seleccione</option>
+                {% for t in transferencias %}
+                    <option value="{{ t.id }}"
+                            {% if plan and plan.gasto_elegible.gasto.tipo_gasto.transferencia_id == t.id %}selected{% endif %}>
+                        {{ t.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Tipo de gasto</label>
+            <select name="tipo_gasto" id="tipo-gasto-select" class="form-select" required
+                    hx-get="{% url 'proyectos:cargar_gastos' %}"
+                    hx-target="#gasto-select"
+                    hx-trigger="change">
+                {% if plan %}
+                    <option value="">Seleccione</option>
+                    {% for tg in tipos_gasto %}
+                        <option value="{{ tg.id }}"
+                                {% if plan.gasto_elegible.gasto.tipo_gasto_id == tg.id %}selected{% endif %}>
+                            {{ tg.nombre }}
+                        </option>
+                    {% endfor %}
+                {% else %}
+                    <option value="">Seleccione transferencia primero</option>
+                {% endif %}
+            </select>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Gasto</label>
+            <select name="gasto" id="gasto-select" class="form-select" required
+                    hx-get="{% url 'proyectos:cargar_gastos_elegibles' %}"
+                    hx-target="#gasto-elegible-select"
+                    hx-trigger="change">
+                {% if plan %}
+                    <option value="">Seleccione</option>
+                    {% for g in gastos %}
+                        <option value="{{ g.id }}"
+                                {% if plan.gasto_elegible.gasto_id == g.id %}selected{% endif %}>
+                            {{ g.nombre }}
+                        </option>
+                    {% endfor %}
+                {% else %}
+                    <option value="">Seleccione tipo de gasto primero</option>
+                {% endif %}
+            </select>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Gasto elegible</label>
+            <select name="gasto_elegible" id="gasto-elegible-select" class="form-select" required>
+                {% if plan %}
+                    <option value="">Seleccione</option>
+                    {% for ge in gastos_elegibles %}
+                        <option value="{{ ge.id }}"
+                                {% if plan.gasto_elegible_id == ge.id %}selected{% endif %}>
+                            {{ ge.nombre }}
+                        </option>
+                    {% endfor %}
+                {% else %}
+                    <option value="">Seleccione gasto primero</option>
+                {% endif %}
+            </select>
+        </div>
+
+        <div class="col-md-12">
+            <label class="form-label">Unidad responsable</label>
+            <select name="unidad_responsable" class="form-select">
+                <option value="">— sin asignar —</option>
+                {% for u in unidades %}
+                    <option value="{{ u.id }}"
+                            {% if plan and plan.unidad_responsable_id == u.id %}selected{% endif %}>
+                        {{ u }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="text-end mt-3">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-success">{% if plan %}Actualizar plan{% else %}Guardar plan{% endif %}</button>
+    </div>
+</form>

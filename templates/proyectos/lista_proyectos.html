@@ -1,0 +1,786 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+
+{% block title %}Proyectos{% endblock %}
+
+{% block content %}
+
+<style>
+.proyecto-card {
+    transition: all 0.2s ease-in-out;
+    border: 1px solid #e9ecef !important;
+    border-left: 4px solid #adb5bd !important;
+}
+.proyecto-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.07) !important;
+}
+.proyecto-card.borde-planificado  { border-left-color: #6c757d !important; }
+.proyecto-card.borde-ejecucion    { border-left-color: #0d6efd !important; }
+.proyecto-card.borde-finalizado   { border-left-color: #198754 !important; }
+.proyecto-card.borde-suspendido   { border-left-color: #dc3545 !important; }
+.proyecto-card.proyecto-atrasado  { border-left-color: #dc3545 !important; }
+
+.card-title-link { color: inherit; text-decoration: none; }
+.card-title-link:hover { color: #0d6efd; }
+
+/* Código como título; nombre debajo. El nombre puede ser largo: se recorta a
+   2 líneas y se reserva su alto para que la grilla no quede despareja. */
+.proy-codigo { font-size: 1.05rem; letter-spacing: .01em; }
+.proy-nombre {
+    font-size: .9rem;
+    line-height: 1.3;
+    color: #475569;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.34rem;   /* 2 líneas: mantiene las tarjetas alineadas */
+}
+/* Cuando no hay código, el nombre es el título: también a 2 líneas máx. */
+.proy-nombre-solo a {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+/* Vista tabla: nombre bajo el código, recortado para no ensanchar la columna. */
+.proy-nombre-tabla {
+    max-width: 340px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: .1rem;
+}
+
+.badge-tipo { background-color: #f1f3f5; color: #495057; font-weight: 500; }
+/* Prioridad neutra con punto de color: mantiene el significado sin sumar otro
+   pill de color junto al estado. */
+.badge-prioridad-ALTA,
+.badge-prioridad-MEDIA,
+.badge-prioridad-BAJA { background:#f1f5f9; color:#475569; display:inline-flex; align-items:center; gap:.4em; }
+.badge-prioridad-ALTA::before,
+.badge-prioridad-MEDIA::before,
+.badge-prioridad-BAJA::before { content:""; width:.5em; height:.5em; border-radius:50%; flex-shrink:0; }
+.badge-prioridad-ALTA::before  { background:#dc2626; }
+.badge-prioridad-MEDIA::before { background:#d97706; }
+.badge-prioridad-BAJA::before  { background:#94a3b8; }
+.estado-PLANIFICADO   { background:#e9ecef; color:#495057; }
+.estado-EN_EJECUCION  { background:#dbeafe; color:#1d4ed8; }
+.estado-FINALIZADO    { background:#dcfce7; color:#166534; }
+.estado-SUSPENDIDO    { background:#fee2e2; color:#b91c1c; }
+.badge-atrasado       { background:#fee2e2; color:#b91c1c; }
+
+.kpi-box { background:#f8f9fa; border-radius: .75rem; padding: .75rem .9rem; }
+.form-select, .form-control { border-radius: .75rem; }
+
+.proy-table tbody tr { vertical-align: middle; }
+.proy-table .progress { height: 6px; border-radius: 50px; }
+</style>
+
+<div class="container-fluid">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="fw-semibold mb-0">Proyectos</h2>
+            <small class="text-muted">
+                {% if es_jefe %}Visualizando todos los proyectos{% else %}Visualizando tus proyectos asignados{% endif %}
+                · <span id="proy-count">{{ proyectos|length }}</span> visible{{ proyectos|length|pluralize }}
+                {% if page_obj.paginator.count != proyectos|length %}
+                  de {{ page_obj.paginator.count }}
+                {% endif %}
+            </small>
+        </div>
+
+        <div class="d-flex gap-2">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Vista">
+                <a href="?vista=tarjetas{% if request.GET.page %}&page={{ request.GET.page }}{% endif %}"
+                   class="btn btn-outline-secondary {% if vista != 'tabla' %}active{% endif %}">
+                    Tarjetas
+                </a>
+                <a href="?vista=tabla{% if request.GET.page %}&page={{ request.GET.page }}{% endif %}"
+                   class="btn btn-outline-secondary {% if vista == 'tabla' %}active{% endif %}">
+                    Tabla
+                </a>
+            </div>
+
+            <a href="{% url 'proyectos:graficos_proyectos' %}"
+               class="btn btn-outline-secondary btn-sm">
+                📈 Gráficos
+            </a>
+
+            <a href="{% url 'proyectos:exportar_cartera_excel' %}"
+               class="btn btn-outline-secondary btn-sm">
+                ⬇ Exportar Excel
+            </a>
+
+            {% if es_jefe %}
+            <button class="btn btn-primary px-4 shadow-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#crearProyectoModal">
+                + Crear Proyecto
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    {% if proyectos %}
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="kpi-box">
+                <div class="small text-muted">Total visibles</div>
+                <div class="fs-5 fw-bold">{{ proyectos|length }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-box">
+                <div class="small text-muted">En ejecución</div>
+                <div class="fs-5 fw-bold text-primary" id="kpi-ejecucion">0</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-box">
+                <div class="small text-muted">Finalizados</div>
+                <div class="fs-5 fw-bold text-success" id="kpi-finalizado">0</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-box">
+                <div class="small text-muted">Atrasados</div>
+                <div class="fs-5 fw-bold text-danger" id="kpi-atrasado">0</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- FILTROS -->
+    <div class="d-flex gap-2 mb-3 flex-wrap">
+        <input id="proy-search" type="search" class="form-control form-control-sm"
+               placeholder="Buscar proyecto..." style="max-width: 320px;">
+        <select id="proy-estado" class="form-select form-select-sm" style="max-width: 180px;">
+            <option value="">Todos los estados</option>
+            <option value="PLANIFICADO">Planificado</option>
+            <option value="EN_EJECUCION">En ejecución</option>
+            <option value="FINALIZADO">Finalizado</option>
+            <option value="SUSPENDIDO">Suspendido</option>
+        </select>
+        <select id="proy-tipo" class="form-select form-select-sm" style="max-width: 180px;">
+            <option value="">Todos los tipos</option>
+            <option value="PACE">Pace</option>
+            <option value="FORT">Fortalecimiento</option>
+            <option value="REG">Regionales</option>
+            <option value="ADAIN">Adain</option>
+            <option value="GORE">Gore</option>
+            <option value="RED">RED</option>
+        </select>
+        <select id="proy-prioridad" class="form-select form-select-sm" style="max-width: 180px;">
+            <option value="">Todas las prioridades</option>
+            <option value="ALTA">Alta</option>
+            <option value="MEDIA">Media</option>
+            <option value="BAJA">Baja</option>
+        </select>
+    </div>
+
+    {% if vista == 'tabla' %}
+    <!-- VISTA TABLA -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="table-responsive">
+            <table class="table proy-table align-middle mb-0">
+                <thead class="table-light small text-muted">
+                    <tr>
+                        <th>Proyecto</th>
+                        <th>Tipo</th>
+                        <th>Estado</th>
+                        <th>Responsable</th>
+                        <th class="text-end">Presupuesto</th>
+                        <th class="text-end">Disponible</th>
+                        <th class="text-center" style="width:160px;">Avance</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for proyecto in proyectos %}
+                    <tr class="proy-item"
+                        data-search="{{ proyecto.nombre|lower }} {{ proyecto.descripcion|lower }} {{ proyecto.responsable|lower }}"
+                        data-estado="{{ proyecto.estado }}"
+                        data-tipo="{{ proyecto.tipo }}"
+                        data-prioridad="{{ proyecto.prioridad }}"
+                        data-atrasado="{% if proyecto.atrasado %}1{% else %}0{% endif %}">
+                        <td class="fw-semibold">
+                            {% if proyecto.codigo %}
+                            <a href="{% url 'proyectos:detalle_proyecto' proyecto.pk %}" class="card-title-link">
+                                {{ proyecto.codigo }}
+                            </a>
+                            {% if proyecto.atrasado %}
+                                <span class="badge badge-atrasado ms-1">Atrasado</span>
+                            {% endif %}
+                            <div class="small text-muted fw-normal proy-nombre-tabla" title="{{ proyecto.nombre }}">
+                                {{ proyecto.nombre }}
+                            </div>
+                            {% else %}
+                            <a href="{% url 'proyectos:detalle_proyecto' proyecto.pk %}" class="card-title-link">
+                                {{ proyecto.nombre }}
+                            </a>
+                            {% if proyecto.atrasado %}
+                                <span class="badge badge-atrasado ms-1">Atrasado</span>
+                            {% endif %}
+                            {% endif %}
+                        </td>
+                        <td><span class="badge badge-tipo">{{ proyecto.get_tipo_display }}</span></td>
+                        <td><span class="badge estado-{{ proyecto.estado }}">{{ proyecto.get_estado_display }}</span></td>
+                        <td class="small">{{ proyecto.responsable|default:"—" }}</td>
+                        <td class="text-end small">${{ proyecto.presupuesto_total|floatformat:0|intcomma }}</td>
+                        <td class="text-end small text-success">${{ proyecto.presupuesto_disponible_real|floatformat:0|intcomma }}</td>
+                        <td class="text-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1">
+                                    <div class="progress-bar
+                                        {% if proyecto.cumplimiento >= 75 %}bg-success
+                                        {% elif proyecto.cumplimiento >= 40 %}bg-info
+                                        {% elif proyecto.cumplimiento > 0 %}bg-warning
+                                        {% else %}bg-secondary{% endif %}"
+                                        style="width: {{ proyecto.cumplimiento|floatformat:0 }}%;"></div>
+                                </div>
+                                <small class="text-muted">{{ proyecto.cumplimiento|floatformat:0 }}%</small>
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            {% include "proyectos/partials/proyecto_acciones.html" with proyecto=proyecto %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center text-muted py-4">No hay proyectos.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <!-- VISTA TARJETAS -->
+    <div class="row g-4" id="proy-grid">
+        {% for proyecto in proyectos %}
+        <div class="col-md-6 col-lg-4 proy-item"
+             data-search="{{ proyecto.nombre|lower }} {{ proyecto.descripcion|lower }} {{ proyecto.responsable|lower }}"
+             data-estado="{{ proyecto.estado }}"
+             data-tipo="{{ proyecto.tipo }}"
+             data-prioridad="{{ proyecto.prioridad }}"
+             data-atrasado="{% if proyecto.atrasado %}1{% else %}0{% endif %}">
+
+            <div class="card proyecto-card rounded-4 h-100 border-0 shadow-sm
+                        {{ proyecto.clase_borde }}
+                        {% if proyecto.atrasado %}proyecto-atrasado{% endif %}">
+                <div class="card-body d-flex flex-column">
+
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge badge-tipo rounded-pill px-3 py-2">
+                            {{ proyecto.get_tipo_display }}
+                        </span>
+
+                        <div class="d-flex gap-1 align-items-center">
+                            {% if proyecto.atrasado %}
+                            <span class="badge badge-atrasado rounded-pill px-3 py-2"
+                                  title="Fecha fin: {{ proyecto.fecha_fin|date:'d-m-Y' }}">
+                                Atrasado
+                            </span>
+                            {% endif %}
+                            <span class="badge rounded-pill px-3 py-2 estado-{{ proyecto.estado }}">
+                                {{ proyecto.get_estado_display }}
+                            </span>
+                            {% if es_jefe %}
+                            {% include "proyectos/partials/proyecto_acciones.html" with proyecto=proyecto compact=True %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if proyecto.codigo %}
+                    <h5 class="fw-bold mb-1 proy-codigo">
+                        <a href="{% url 'proyectos:detalle_proyecto' proyecto.pk %}" class="card-title-link">
+                            {{ proyecto.codigo }}
+                        </a>
+                    </h5>
+                    <div class="proy-nombre mb-2" title="{{ proyecto.nombre }}">
+                        {{ proyecto.nombre }}
+                    </div>
+                    {% else %}
+                    <h5 class="fw-bold mb-2 proy-nombre-solo" title="{{ proyecto.nombre }}">
+                        <a href="{% url 'proyectos:detalle_proyecto' proyecto.pk %}" class="card-title-link">
+                            {{ proyecto.nombre }}
+                        </a>
+                    </h5>
+                    {% endif %}
+
+                    <p class="text-muted small mb-3">
+                        {{ proyecto.responsable|default:"Sin responsable" }}
+                        {% if proyecto.fecha_fin %}
+                            · {% if proyecto.atrasado %}vencido{% else %}{{ proyecto.dias_restantes }} días restantes{% endif %}
+                        {% elif proyecto.duracion_meses %}
+                            · {{ proyecto.duracion_meses }} mes{{ proyecto.duracion_meses|pluralize:"es" }}
+                        {% endif %}
+                    </p>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span class="text-muted">Cumplimiento</span>
+                            <span class="fw-semibold">{{ proyecto.cumplimiento|floatformat:0 }}%</span>
+                        </div>
+                        <div class="progress" style="height:6px; border-radius: 50px;">
+                            <div class="progress-bar
+                                {% if proyecto.cumplimiento >= 75 %}bg-success
+                                {% elif proyecto.cumplimiento >= 40 %}bg-info
+                                {% elif proyecto.cumplimiento > 0 %}bg-warning
+                                {% else %}bg-secondary{% endif %}"
+                                style="width: {{ proyecto.cumplimiento|floatformat:0 }}%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-box mb-3">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span class="text-muted">Presupuesto total</span>
+                            <span class="fw-semibold">${{ proyecto.presupuesto_total|floatformat:0|intcomma }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between small">
+                            <span class="text-muted">Disponible</span>
+                            <span class="fw-semibold text-success">${{ proyecto.presupuesto_disponible_real|floatformat:0|intcomma }}</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-auto d-flex justify-content-between align-items-center">
+                        <span class="badge rounded-pill px-3 py-2 badge-prioridad-{{ proyecto.prioridad }}">
+                            {{ proyecto.get_prioridad_display }}
+                        </span>
+                        <a href="{% url 'proyectos:detalle_proyecto' proyecto.pk %}"
+                           class="btn btn-sm btn-outline-primary">
+                            Ver detalle →
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center text-muted py-5">
+                <h5 class="fw-semibold mb-1">Aún no hay proyectos</h5>
+                <p class="small mb-0">
+                    {% if es_jefe %}Crea el primer proyecto con el botón superior.
+                    {% else %}No tienes proyectos asignados todavía.{% endif %}
+                </p>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="col-12 d-none" id="proy-empty-filter">
+            <div class="text-center text-muted py-4">
+                <p class="mb-0">No hay proyectos que coincidan con los filtros.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PAGINACIÓN -->
+    {% if page_obj.has_other_pages %}
+    <nav class="mt-4">
+        <ul class="pagination pagination-sm justify-content-center">
+            <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                <a class="page-link"
+                   href="?vista={{ vista }}{% if page_obj.has_previous %}&page={{ page_obj.previous_page_number }}{% endif %}">
+                    ‹
+                </a>
+            </li>
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                <li class="page-item"><a class="page-link" href="?vista={{ vista }}&page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                <a class="page-link"
+                   href="?vista={{ vista }}{% if page_obj.has_next %}&page={{ page_obj.next_page_number }}{% endif %}">
+                    ›
+                </a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+
+</div>
+
+<!-- ================= MODALES ELIMINAR ================= -->
+{% if es_jefe %}
+{% for proyecto in proyectos %}
+<div class="modal fade" id="modalEliminarProy{{ proyecto.id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-body text-center p-4">
+                <h6 class="mb-3">¿Eliminar este proyecto?</h6>
+                <p class="text-muted small mb-4">
+                    "{{ proyecto.nombre }}" se ocultará de los listados. Los datos asociados se conservan.
+                </p>
+                <div class="d-flex justify-content-center gap-2">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <form method="post" action="{% url 'proyectos:eliminar_proyecto' proyecto.id %}" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- ================= MODAL CREAR PROYECTO ================= -->
+{% if es_jefe %}
+<div class="modal fade" id="crearProyectoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <form method="POST">
+                {% csrf_token %}
+
+                <div class="modal-header border-0 pb-0 px-4 pt-4">
+                    <div>
+                        <h5 class="modal-title fw-semibold mb-1">Nuevo Proyecto</h5>
+                        <small class="text-muted">Registra un nuevo proyecto y define su presupuesto.</small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <hr class="mt-3 mb-0">
+
+                <div class="modal-body p-4">
+                    {% if form.non_field_errors or form.errors %}
+                    <div class="alert alert-danger py-2 small">
+                        {% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}
+                        {% for field in form %}
+                            {% for err in field.errors %}<div>{{ field.label }}: {{ err }}</div>{% endfor %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">Nombre del Proyecto</label>
+                            {{ form.nombre }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted">Código de proyecto</label>
+                            {{ form.codigo }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted">Tipo</label>
+                            {{ form.tipo }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small text-muted">Descripción</label>
+                            {{ form.descripcion }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Responsable</label>
+                            {{ form.responsable }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Duración (meses)</label>
+                            {{ form.duracion_meses }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Prioridad</label>
+                            {{ form.prioridad }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">Estado</label>
+                            {{ form.estado }}
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-light border small mb-0 py-2">
+                                💡 El presupuesto es <strong>opcional</strong>: puedes crear el proyecto sin definirlo y asignarlo después.
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">Presupuesto Total (CLP)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.presupuesto_total }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">Modo de distribución</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="modo_presupuesto"
+                                       id="modo_porcentaje" value="porcentaje" checked onchange="toggleModo()">
+                                <label class="form-check-label" for="modo_porcentaje">Por porcentaje</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="modo_presupuesto"
+                                       id="modo_monto" value="monto" onchange="toggleModo()">
+                                <label class="form-check-label" for="modo_monto">Por monto directo</label>
+                            </div>
+                        </div>
+                        <div id="bloque-porcentaje" class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">Corriente (%)</label>
+                                {{ form.porcentaje_corriente }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">Capital (%)</label>
+                                {{ form.porcentaje_capital }}
+                            </div>
+                        </div>
+                        <div id="bloque-monto" class="row g-3 d-none">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">Corriente ($)</label>
+                                {{ form.presupuesto_corriente }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">Capital ($)</label>
+                                {{ form.presupuesto_capital }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 pt-0 pb-4 px-4">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4">Crear Proyecto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ================= MODAL EDITAR PROYECTO ================= -->
+{% if es_jefe %}
+<div class="modal fade" id="editarProyectoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <form method="POST" id="editarProyectoForm">
+                {% csrf_token %}
+
+                <div class="modal-header border-0 pb-0 px-4 pt-4">
+                    <div>
+                        <h5 class="modal-title fw-semibold mb-1">Editar Proyecto</h5>
+                        <small class="text-muted">Modifica los datos del proyecto.</small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <hr class="mt-3 mb-0">
+
+                <div class="modal-body p-4">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">Nombre del Proyecto</label>
+                            {{ edit_form.nombre }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted">Código de proyecto</label>
+                            {{ edit_form.codigo }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted">Tipo</label>
+                            {{ edit_form.tipo }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small text-muted">Descripción</label>
+                            {{ edit_form.descripcion }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Responsable</label>
+                            {{ edit_form.responsable }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Duración (meses)</label>
+                            {{ edit_form.duracion_meses }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Prioridad</label>
+                            {{ edit_form.prioridad }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">Estado</label>
+                            {{ edit_form.estado }}
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-light border small mb-0 py-2">
+                                💡 El presupuesto es <strong>opcional</strong>: déjalo en blanco para mantener el actual. Solo se actualiza si completas el total y su distribución.
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">Presupuesto Total (CLP)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ edit_form.presupuesto_total }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">Modo de distribución</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="modo_presupuesto"
+                                       id="edit_modo_porcentaje" value="porcentaje" onchange="toggleModoEdit()">
+                                <label class="form-check-label" for="edit_modo_porcentaje">Por porcentaje</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="modo_presupuesto"
+                                       id="edit_modo_monto" value="monto" checked onchange="toggleModoEdit()">
+                                <label class="form-check-label" for="edit_modo_monto">Por monto directo</label>
+                            </div>
+                        </div>
+                        <div id="edit-bloque-porcentaje" class="row g-3 d-none">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">Corriente (%)</label>
+                                {{ edit_form.porcentaje_corriente }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">Capital (%)</label>
+                                {{ edit_form.porcentaje_capital }}
+                            </div>
+                        </div>
+                        <div id="edit-bloque-monto" class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">Corriente ($)</label>
+                                {{ edit_form.presupuesto_corriente }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">Capital ($)</label>
+                                {{ edit_form.presupuesto_capital }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 pt-0 pb-4 px-4">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4">Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function toggleModo() {
+    const porcentaje = document.getElementById("modo_porcentaje").checked;
+    document.getElementById("bloque-porcentaje").classList.toggle("d-none", !porcentaje);
+    document.getElementById("bloque-monto").classList.toggle("d-none", porcentaje);
+}
+
+function toggleModoEdit() {
+    const porcentaje = document.getElementById("edit_modo_porcentaje").checked;
+    document.getElementById("edit-bloque-porcentaje").classList.toggle("d-none", !porcentaje);
+    document.getElementById("edit-bloque-monto").classList.toggle("d-none", porcentaje);
+}
+
+// ---- MODAL CREAR: limpiar campos al cerrar (X / Cancelar) ----
+(function () {
+    const modal = document.getElementById('crearProyectoModal');
+    if (!modal) return;
+    const form = modal.querySelector('form');
+    const hadErrors = {% if abrir_crear %}true{% else %}false{% endif %};
+
+    // Al cerrar (X / Cancelar) limpiamos los campos del modal.
+    modal.addEventListener('hidden.bs.modal', () => {
+        form.reset();
+        const pct = document.getElementById('modo_porcentaje');
+        if (pct) pct.checked = true;
+        toggleModo();
+        const alert = modal.querySelector('.alert-danger');
+        if (alert) alert.remove();
+    });
+
+    // Reabrir automáticamente si el servidor devolvió errores de validación
+    // (antes la página recargaba en silencio y parecía que "no respondía").
+    if (hadErrors) {
+        bootstrap.Modal.getOrCreateInstance(modal).show();
+    }
+})();
+
+// ---- MODAL EDITAR: poblar desde el botón y limpiar al cerrar ----
+(function () {
+    const modal = document.getElementById('editarProyectoModal');
+    if (!modal) return;
+    const form = document.getElementById('editarProyectoForm');
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+
+    modal.addEventListener('show.bs.modal', (event) => {
+        const btn = event.relatedTarget;
+        if (!btn) return;
+        const d = btn.dataset;
+        form.action = d.action;
+        setVal('edit_id_nombre', d.nombre || '');
+        setVal('edit_id_codigo', d.codigo || '');
+        setVal('edit_id_descripcion', d.descripcion || '');
+        setVal('edit_id_tipo', d.tipo || '');
+        setVal('edit_id_responsable', d.responsable || '');
+        setVal('edit_id_duracion_meses', d.duracion || '');
+        setVal('edit_id_prioridad', d.prioridad || '');
+        setVal('edit_id_estado', d.estado || '');
+        // El presupuesto es opcional al editar: dejamos los campos vacíos y
+        // mostramos el valor actual como referencia. Si no se tocan, se mantiene.
+        const ph = (id, v) => { const el = document.getElementById(id); if (el) { el.value = ''; el.placeholder = v ? ('Actual: ' + v) : ''; } };
+        ph('edit_id_presupuesto_total', d.total);
+        ph('edit_id_presupuesto_corriente', d.corriente);
+        ph('edit_id_presupuesto_capital', d.capital);
+        setVal('edit_id_porcentaje_corriente', '');
+        setVal('edit_id_porcentaje_capital', '');
+        const monto = document.getElementById('edit_modo_monto');
+        if (monto) monto.checked = true;
+        toggleModoEdit();
+    });
+
+    modal.addEventListener('hidden.bs.modal', () => { form.reset(); });
+})();
+
+(function () {
+    const search = document.getElementById('proy-search');
+    const estadoSel = document.getElementById('proy-estado');
+    const tipoSel = document.getElementById('proy-tipo');
+    const prioridadSel = document.getElementById('proy-prioridad');
+    const items = document.querySelectorAll('.proy-item');
+    const empty = document.getElementById('proy-empty-filter');
+    const count = document.getElementById('proy-count');
+
+    function apply() {
+        const q = (search?.value || '').trim().toLowerCase();
+        const e = estadoSel?.value || '';
+        const t = tipoSel?.value || '';
+        const p = prioridadSel?.value || '';
+        let visibles = 0;
+
+        items.forEach(el => {
+            const matchQ = !q || el.dataset.search.includes(q);
+            const matchE = !e || el.dataset.estado === e;
+            const matchT = !t || el.dataset.tipo === t;
+            const matchP = !p || el.dataset.prioridad === p;
+            const show = matchQ && matchE && matchT && matchP;
+            el.style.display = show ? '' : 'none';
+            if (show) visibles++;
+        });
+
+        if (count) count.textContent = visibles;
+        if (empty) empty.classList.toggle('d-none', visibles > 0 || items.length === 0);
+    }
+
+    [search, estadoSel, tipoSel, prioridadSel].forEach(el => {
+        if (!el) return;
+        el.addEventListener('input', apply);
+        el.addEventListener('change', apply);
+    });
+
+    let ejec = 0, fin = 0, atras = 0;
+    items.forEach(el => {
+        if (el.dataset.estado === 'EN_EJECUCION') ejec++;
+        else if (el.dataset.estado === 'FINALIZADO') fin++;
+        if (el.dataset.atrasado === '1') atras++;
+    });
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    set('kpi-ejecucion', ejec);
+    set('kpi-finalizado', fin);
+    set('kpi-atrasado', atras);
+})();
+</script>
+
+{% endblock %}
