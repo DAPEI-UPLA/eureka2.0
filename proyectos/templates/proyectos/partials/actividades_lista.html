@@ -1,22 +1,11 @@
-<table class="table table-sm mt-2">
-    <thead class="small text-muted">
-        <tr>
-            <th>Actividad</th>
-            <th>Responsable</th>
-            <th>Fecha</th>
-            <th>Días</th>
-            <th>Presupuesto</th>
-            <th>Pagado</th>
-            <th>Comprometido</th>
-            <th>Saldo</th>
-            <th>Avance</th>
-        </tr>
-    </thead>
-    <tbody id="actividades-{{ resultado.pk }}">
-        {% for actividad in actividades %}
-            {% include "proyectos/partials/actividad_row.html" %}
-        {% empty %}
-            <tr><td colspan="9" class="text-muted">Sin actividades</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
+{% load humanize %}
+
+{% for actividad in actividades %}
+    {% include "proyectos/partials/actividad_row.html" %}
+{% empty %}
+<tr>
+    <td colspan="10" class="text-center text-muted">
+        Sin actividades
+    </td>
+</tr>
+{% endfor %}

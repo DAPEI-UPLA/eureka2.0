@@ -1,29 +1,35 @@
 {% load humanize %}
 
 <h6 class="fw-bold mb-3">
-    Asignar presupuesto
+    Presupuesto del resultado
 </h6>
 
 <!-- INFO ACTUAL -->
 <div class="mb-3 small text-muted">
 
+    {% comment %}
+    Un resultado se financia del presupuesto de su objetivo, no del total del
+    proyecto: lo que manda es cuánto le queda al objetivo por repartir.
+    {% endcomment %}
     <div>
-        <strong>Disponible proyecto:</strong>
-        ${{ resultado.objetivo.proyecto.presupuesto_disponible|floatformat:0|intcomma }}
+        <strong>Disponible en el objetivo:</strong>
+        corriente ${{ resultado.objetivo.corriente_disponible|floatformat:0|intcomma }}
+        · capital ${{ resultado.objetivo.capital_disponible|floatformat:0|intcomma }}
     </div>
 
-    <div>
-        <strong>Total asignado:</strong>
-        ${{ resultado.presupuesto_asignado|floatformat:0|intcomma }}
+    <div class="text-muted">
+        <span class="opacity-75">El objetivo recibió</span>
+        corriente ${{ resultado.objetivo.presupuesto_corriente|floatformat:0|intcomma }}
+        · capital ${{ resultado.objetivo.presupuesto_capital|floatformat:0|intcomma }}
     </div>
 
-    <div class="text-info">
-        Corriente: ${{ resultado.presupuesto_corriente|floatformat:0|intcomma }}
+    {% if resultado.presupuesto_distribuido %}
+    <div class="mt-1">
+        <strong>Ya repartido a actividades:</strong>
+        corriente ${{ resultado.corriente_distribuido|floatformat:0|intcomma }}
+        · capital ${{ resultado.capital_distribuido|floatformat:0|intcomma }}
     </div>
-
-    <div class="text-dark">
-        Capital: ${{ resultado.presupuesto_capital|floatformat:0|intcomma }}
-    </div>
+    {% endif %}
 
 </div>
 
@@ -31,29 +37,38 @@
       hx-target="#modal-body"
       hx-swap="innerHTML">
 
-    <!-- MONTO -->
+    {% comment %}
+    Los montos se editan, no se suman: antes solo se podía agregar y un monto
+    puesto de más no había cómo bajarlo desde la pantalla.
+    {% endcomment %}
     <div class="mb-3">
-        <label class="form-label">Monto</label>
-        <input type="number"
-               name="monto"
-               class="form-control"
-               min="1"
-               step="1"
-               placeholder="Ej: 100000"
-               required>
+        <label class="form-label">Corriente</label>
+        <div class="input-group">
+            <span class="input-group-text">$</span>
+            <input type="text"
+                   name="presupuesto_corriente"
+                   class="form-control"
+                   value="{{ resultado.presupuesto_corriente|floatformat:0 }}"
+                   inputmode="numeric">
+        </div>
     </div>
 
-    <!-- TIPO -->
     <div class="mb-3">
-        <label class="form-label">Tipo de gasto</label>
-        <select name="tipo_gasto" class="form-select" required>
-            <option value="">Seleccione...</option>
-            <option value="COR">Corriente</option>
-            <option value="CAP">Capital</option>
-        </select>
+        <label class="form-label">Capital</label>
+        <div class="input-group">
+            <span class="input-group-text">$</span>
+            <input type="text"
+                   name="presupuesto_capital"
+                   class="form-control"
+                   value="{{ resultado.presupuesto_capital|floatformat:0 }}"
+                   inputmode="numeric">
+        </div>
     </div>
 
-    <!-- BOTÓN -->
+    <div class="form-text mb-3">
+        Deja un monto en 0 para quitarle ese tipo de presupuesto al resultado.
+    </div>
+
     <button class="btn btn-success w-100">
         Guardar
     </button>

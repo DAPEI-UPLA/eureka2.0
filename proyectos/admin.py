@@ -1,5 +1,15 @@
 from django.contrib import admin
-from .models import Proyecto, Transferencia, TipoGasto, Gasto, GastoElegible
+from .models import (
+    Actividad,
+    Egreso,
+    Gasto,
+    GastoElegible,
+    PlanDeGasto,
+    Proyecto,
+    TipoGasto,
+    Transferencia,
+    Unidad,
+)
 
 
 @admin.register(Proyecto)
@@ -12,7 +22,8 @@ class ProyectoAdmin(admin.ModelAdmin):
         'prioridad',
         'responsable',
         'presupuesto_total',
-        'presupuesto_disponible',
+        'presupuesto_disponible_real',
+        'eliminado',
         'fecha_creacion',
     )
 
@@ -20,11 +31,13 @@ class ProyectoAdmin(admin.ModelAdmin):
         'tipo',
         'estado',
         'prioridad',
+        'eliminado',
         'fecha_creacion',
     )
 
     search_fields = (
         'nombre',
+        'codigo',
         'descripcion',
     )
 
@@ -34,40 +47,37 @@ class ProyectoAdmin(admin.ModelAdmin):
 
     readonly_fields = (
         'fecha_creacion',
-        'presupuesto_disponible',
+        'actualizado_en',
+        'presupuesto_disponible_real',
         'creado_por',
+        'actualizado_por',
     )
 
     fieldsets = (
         ("Información General", {
-            "fields": (
-                'nombre',
-                'descripcion',
-                'tipo',
-            )
+            "fields": ('nombre', 'codigo', 'descripcion', 'tipo'),
         }),
         ("Gestión", {
             "fields": (
                 'responsable',
                 'creado_por',
+                'actualizado_por',
                 'duracion_meses',
                 'estado',
                 'prioridad',
-                'cumplimiento',
-            )
-        }),
-        ("Presupuesto (CLP)", {
-            "fields": (
-                'presupuesto_total',
-                'presupuesto_disponible',
-            )
+                'eliminado',
+            ),
         }),
         ("Fechas", {
-            "fields": (
-                'fecha_creacion',
-            )
+            "fields": ('fecha_inicio', 'fecha_fin', 'fecha_creacion', 'actualizado_en'),
+        }),
+        ("Presupuesto (CLP)", {
+            "fields": ('presupuesto_total', 'presupuesto_disponible_real'),
         }),
     )
+
+    def get_queryset(self, request):
+        return Proyecto.all_objects.all()
 
     def save_model(self, request, obj, form, change):
         if not obj.creado_por:
@@ -105,7 +115,8 @@ class TipoGastoInline(admin.TabularInline):
 # =========================
 @admin.register(Transferencia)
 class TransferenciaAdmin(admin.ModelAdmin):
-    list_display = ("id", "nombre", "creado_por", "creado_en")
+    list_display = ("id", "nombre", "naturaleza", "creado_por", "creado_en")
+    list_filter = ("naturaleza",)
     search_fields = ("nombre",)
 
     inlines = [TipoGastoInline]
@@ -143,3 +154,64 @@ class GastoElegibleAdmin(admin.ModelAdmin):
     list_display = ("id", "nombre", "gasto")
     list_filter = ("gasto",)
     search_fields = ("nombre",)
+
+
+@admin.register(Actividad)
+class ActividadAdmin(admin.ModelAdmin):
+    list_display = ("id", "nombre", "resultado", "presupuesto", "fecha_limite")
+    search_fields = ("nombre", "resultado__descripcion")
+    list_filter = ("resultado__objetivo__proyecto",)
+
+
+@admin.register(Unidad)
+class UnidadAdmin(admin.ModelAdmin):
+    list_display = ("id", "codigo", "nombre")
+    search_fields = ("nombre", "codigo")
+    ordering = ("nombre",)
+
+
+@admin.register(PlanDeGasto)
+class PlanDeGastoAdmin(admin.ModelAdmin):
+    list_display = (
+        "id", "anio", "actividad", "gasto_elegible",
+        "unidad_responsable", "monto", "creado_en",
+    )
+    list_filter = ("anio", "unidad_responsable")
+    search_fields = (
+        "actividad__nombre",
+        "gasto_elegible__nombre",
+        "unidad_responsable__nombre",
+    )
+    autocomplete_fields = ("actividad", "gasto_elegible", "unidad_responsable")
+    readonly_fields = ("creado_en",)
+
+
+@admin.register(Egreso)
+class EgresoAdmin(admin.ModelAdmin):
+    list_display = (
+        "id", "proyecto", "estado", "tipo", "subtipo_compra",
+        "centro_responsabilidad", "gasto_elegible",
+        "solicitud_compra", "orden_compra", "factura",
+        "cantidad", "valor_sin_iva", "total_sin_iva", "fecha",
+    )
+    list_filter = ("estado", "tipo", "subtipo_compra", "proyecto", "fecha", "eliminado")
+    search_fields = (
+        "proyecto__nombre",
+        "centro_responsabilidad",
+        "gasto__nombre",
+        "gasto_elegible__nombre",
+        "solicitud_compra",
+        "orden_compra",
+        "factura",
+    )
+    autocomplete_fields = ("proyecto",)
+    readonly_fields = ("creado_en", "actualizado_en", "creado_por", "actualizado_por")
+
+    def get_queryset(self, request):
+        return Egreso.all_objects.all()
+
+    def save_model(self, request, obj, form, change):
+        if not obj.creado_por:
+            obj.creado_por = request.user
+        obj.actualizado_por = request.user
+        super().save_model(request, obj, form, change)
