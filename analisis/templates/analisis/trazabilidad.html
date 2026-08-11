@@ -1,0 +1,16 @@
+{% extends "core/base.html" %}
+{% block title %}Trazabilidad — {{ informe.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 760px;">
+    <a href="{% url 'analisis:panel_informes' %}" class="btn-volver mb-3">
+        <span class="arrow">←</span> Volver al panel
+    </a>
+    <div class="card border-0 shadow-sm" style="border-radius:18px;">
+        <div class="card-body p-4 p-md-5">
+            <h3 class="fw-bold mb-3">Trazabilidad</h3>
+            {% include "analisis/_trazabilidad.html" %}
+        </div>
+    </div>
+</div>
+{% endblock %}

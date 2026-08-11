@@ -1,0 +1,25 @@
+{% extends "core/base.html" %}
+{% block title %}
+{% if modo == "editar" %}Editar informe{% else %}Nuevo informe{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 720px;">
+    <a href="{% url 'analisis:panel_informes' %}" class="btn-volver mb-3">
+        <span class="arrow">←</span> Volver al panel
+    </a>
+    <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+        <div class="card-body p-4 p-md-5">
+            <h3 class="fw-bold mb-1">
+                {% if modo == "editar" %}Editar informe{% else %}Nuevo informe{% endif %}
+            </h3>
+            <p class="text-muted mb-4">
+                Completa los datos del informe para el panel de control.
+            </p>
+            <div id="informe-form-wrapper">
+                {% include "analisis/_informe_form.html" %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

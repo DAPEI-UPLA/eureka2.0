@@ -1,0 +1,1122 @@
+{% extends "core/base.html" %}
+{% block title %}Panel de Informes{% endblock %}
+
+{% block content %}
+
+<style>
+    :root {
+        --c-pendiente:   #94a3b8;
+        --c-proceso:     #009fe3;
+        --c-revision:    #f59e0b;
+        --c-finalizado:  #22c55e;
+        --c-suspendido:  #ef4444;
+        --soft-bg:       #f6f8fb;
+    }
+
+    /* ========== Header ========== */
+    .panel-hero {
+        background: linear-gradient(135deg, #ffffff 0%, #f1f8fd 100%);
+        border-radius: 20px;
+        padding: 1.75rem 2rem;
+        border: 1px solid #eaf1f6;
+        margin-bottom: 1.5rem;
+    }
+    .panel-hero h2 {
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0;
+    }
+    .panel-hero p {
+        color: #6b7280;
+        margin: .25rem 0 0;
+        font-size: .9rem;
+    }
+    .btn-nuevo {
+        background: #009fe3;
+        color: #fff;
+        border: none;
+        border-radius: 999px;
+        padding: .6rem 1.4rem;
+        font-weight: 500;
+        font-size: .9rem;
+        transition: all .2s ease;
+        box-shadow: 0 6px 18px rgba(0,159,227,0.25);
+    }
+    .tab-switch {
+        display: inline-flex;
+        background: #fff;
+        border: 1px solid #eef2f6;
+        border-radius: 999px;
+        padding: 4px;
+        gap: 4px;
+    }
+    .tab-switch a {
+        text-decoration: none;
+        padding: .45rem 1.1rem;
+        font-size: .85rem;
+        font-weight: 500;
+        color: #6b7280;
+        border-radius: 999px;
+        transition: all .15s ease;
+    }
+    .tab-switch a:hover { color: #009fe3; }
+    .tab-switch a.active {
+        background: #009fe3;
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(0,159,227,0.25);
+    }
+    .btn-nuevo:hover {
+        background: #007cb3;
+        color: #fff;
+        transform: translateY(-1px);
+        box-shadow: 0 10px 24px rgba(0,159,227,0.35);
+    }
+
+    /* ========== Stats ========== */
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: .85rem;
+        margin-bottom: 1.5rem;
+    }
+    .stat-card {
+        background: #fff;
+        border-radius: 14px;
+        padding: 1rem 1.1rem;
+        border: 1px solid #eef2f6;
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        transition: all .2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.04);
+    }
+    .stat-dot {
+        width: 38px; height: 38px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.15rem;
+        flex-shrink: 0;
+    }
+    .stat-label {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        color: #6b7280;
+        font-weight: 600;
+    }
+    .stat-value {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #1f2937;
+        line-height: 1;
+    }
+
+    /* ========== Filtros (chips) ========== */
+    .filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+        margin-bottom: 1.5rem;
+    }
+    .chip {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        color: #4b5563;
+        padding: .4rem .95rem;
+        border-radius: 999px;
+        font-size: .82rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all .15s ease;
+        user-select: none;
+    }
+    .chip:hover { border-color: #009fe3; color: #009fe3; }
+    .chip.active {
+        background: #009fe3;
+        color: #fff;
+        border-color: #009fe3;
+        box-shadow: 0 4px 12px rgba(0,159,227,0.25);
+    }
+    .chip .count {
+        opacity: .75;
+        margin-left: .35rem;
+        font-weight: 600;
+    }
+
+    /* ========== Tarjetas ========== */
+    .informe-card {
+        background: #fff;
+        border-radius: 18px;
+        border: 1px solid #eef2f6;
+        overflow: hidden;
+        position: relative;
+        transition: all .25s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    .informe-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 18px 36px rgba(15, 23, 42, .08);
+        border-color: #d8e8f3;
+    }
+    .informe-card::before {
+        content:"";
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 5px;
+    }
+    .informe-card.estado-PENDIENTE::before   { background: var(--c-pendiente); }
+    .informe-card.estado-EN_PROCESO::before  { background: var(--c-proceso); }
+    .informe-card.estado-EN_REVISION::before { background: var(--c-revision); }
+    .informe-card.estado-FINALIZADO::before  { background: var(--c-finalizado); }
+    .informe-card.estado-SUSPENDIDO::before  { background: var(--c-suspendido); }
+
+    .card-inner {
+        padding: 1.25rem 1.4rem;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .badge-estado {
+        font-size: .68rem;
+        font-weight: 700;
+        padding: .35em .75em;
+        border-radius: 999px;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+    }
+    .badge-estado::before {
+        content:"";
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+    .badge-PENDIENTE   { background: #f1f5f9; color: #475569; }
+    .badge-EN_PROCESO  { background: #e0f2fe; color: #0369a1; }
+    .badge-EN_REVISION { background: #fef3c7; color: #b45309; }
+    .badge-FINALIZADO  { background: #dcfce7; color: #15803d; }
+    .badge-SUSPENDIDO  { background: #fee2e2; color: #b91c1c; }
+
+    .informe-titulo {
+        font-weight: 600;
+        color: #111827;
+        margin: .65rem 0 .35rem;
+        font-size: 1.02rem;
+        line-height: 1.3;
+    }
+    .informe-desc {
+        color: #6b7280;
+        font-size: .87rem;
+        line-height: 1.5;
+        margin-bottom: 1rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .meta-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: .85rem;
+        border-top: 1px dashed #eef2f6;
+        gap: .5rem;
+        flex-wrap: wrap;
+    }
+    .meta-fecha {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        font-size: .8rem;
+        color: #4b5563;
+    }
+    .meta-fecha .icono {
+        font-size: .9rem;
+        opacity: .7;
+    }
+    .countdown {
+        font-size: .7rem;
+        font-weight: 600;
+        padding: .2rem .55rem;
+        border-radius: 999px;
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+    .countdown.urgente  { background: #fee2e2; color: #b91c1c; }
+    .countdown.proximo  { background: #fef3c7; color: #b45309; }
+    .countdown.ok       { background: #ecfdf5; color: #047857; }
+    .countdown.vencido  { background: #1f2937; color: #fff; }
+
+    .card-actions {
+        display: flex;
+        gap: .4rem;
+    }
+    .icon-btn {
+        background: #f9fafb;
+        border: 1px solid #eef2f6;
+        color: #6b7280;
+        width: 34px; height: 34px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all .15s ease;
+        font-size: .95rem;
+    }
+    .icon-btn:hover {
+        background: #009fe3;
+        color: #fff;
+        border-color: #009fe3;
+        transform: translateY(-1px);
+    }
+    .icon-btn.danger:hover {
+        background: #ef4444;
+        border-color: #ef4444;
+    }
+
+    /* ===== Acciones de revisión (encargado) ===== */
+    .review-actions {
+        display: flex;
+        gap: .5rem;
+        margin-top: .75rem;
+        padding-top: .75rem;
+        border-top: 1px dashed #fef3c7;
+    }
+    .btn-review {
+        flex: 1;
+        border: none;
+        padding: .45rem .8rem;
+        border-radius: 10px;
+        font-size: .8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .15s ease;
+    }
+    .btn-review.approve {
+        background: #dcfce7;
+        color: #15803d;
+    }
+    .btn-review.approve:hover {
+        background: #22c55e;
+        color: #fff;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 14px rgba(34,197,94,.25);
+    }
+    .btn-review.reject {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+    .btn-review.reject:hover {
+        background: #ef4444;
+        color: #fff;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 14px rgba(239,68,68,.25);
+    }
+    .btn-review.send {
+        background: #fef3c7;
+        color: #b45309;
+    }
+    .btn-review.send:hover {
+        background: #f59e0b;
+        color: #fff;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 14px rgba(245,158,11,.25);
+    }
+
+    /* ========== Empty state ========== */
+    .empty-card {
+        background: #fff;
+        border: 1px dashed #d8e8f3;
+        border-radius: 20px;
+        padding: 3.5rem 2rem;
+        text-align: center;
+    }
+    .empty-icon {
+        width: 72px; height: 72px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #e0f2fe, #f1f8fd);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    /* ========== Modales ========== */
+    .modal-content {
+        border: none;
+        border-radius: 20px;
+        box-shadow: 0 30px 60px rgba(15, 23, 42, .18);
+    }
+    .modal-header {
+        border-bottom: 1px solid #f1f5f9;
+        padding: 1.25rem 1.5rem;
+    }
+    .modal-body {
+        padding: 1.5rem;
+    }
+    .modal-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+    }
+    .modal-icon {
+        width: 42px; height: 42px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+        color: #0369a1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+    .modal-icon.danger {
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+        color: #b91c1c;
+    }
+
+    /* Form fields refinement */
+    #informe-form-wrapper .form-control,
+    #informe-form-wrapper .form-select {
+        border-radius: 10px;
+        border-color: #e5e7eb;
+        padding: .55rem .85rem;
+    }
+
+    /* ========== Trazabilidad / Timeline ========== */
+    .traz-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.1rem;
+        background: linear-gradient(135deg, #f8fafc, #ffffff);
+        border: 1px solid #eef2f6;
+        border-radius: 14px;
+    }
+    .timeline {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        position: relative;
+    }
+    .timeline::before {
+        content: "";
+        position: absolute;
+        left: 19px;
+        top: 6px;
+        bottom: 6px;
+        width: 2px;
+        background: linear-gradient(180deg, #e0f2fe 0%, #f1f5f9 100%);
+    }
+    .timeline-item {
+        position: relative;
+        padding-left: 56px;
+        padding-bottom: 1.25rem;
+    }
+    .timeline-item:last-child { padding-bottom: 0; }
+
+    .timeline-dot {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid #e0f2fe;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        box-shadow: 0 4px 10px rgba(0,159,227,0.08);
+        z-index: 1;
+    }
+    .timeline-item.tipo-CREACION .timeline-dot       { border-color: #bbf7d0; background:#f0fdf4; }
+    .timeline-item.tipo-CAMBIO_ESTADO .timeline-dot  { border-color: #bae6fd; background:#f0f9ff; }
+    .timeline-item.tipo-EDICION .timeline-dot        { border-color: #fde68a; background:#fffbeb; }
+    .timeline-item.tipo-APROBACION .timeline-dot     { border-color: #86efac; background:#ecfdf5; }
+    .timeline-item.tipo-RECHAZO .timeline-dot        { border-color: #fca5a5; background:#fef2f2; }
+
+    .timeline-body {
+        background: #fff;
+        border: 1px solid #eef2f6;
+        border-radius: 14px;
+        padding: .85rem 1rem;
+        transition: all .2s ease;
+    }
+    .timeline-body:hover {
+        border-color: #d8e8f3;
+        box-shadow: 0 6px 16px rgba(15,23,42,.05);
+    }
+    .timeline-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: .5rem;
+        margin-bottom: .45rem;
+    }
+    .timeline-tipo {
+        font-size: .68rem;
+        font-weight: 700;
+        padding: .25em .7em;
+        border-radius: 999px;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+    }
+    .tipo-pill-CREACION      { background:#dcfce7; color:#15803d; }
+    .tipo-pill-CAMBIO_ESTADO { background:#e0f2fe; color:#0369a1; }
+    .tipo-pill-EDICION       { background:#fef3c7; color:#b45309; }
+    .tipo-pill-APROBACION    { background:#86efac; color:#14532d; }
+    .tipo-pill-RECHAZO       { background:#fecaca; color:#7f1d1d; }
+
+    .timeline-fecha {
+        font-size: .78rem;
+        color: #6b7280;
+    }
+    .timeline-user {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        font-size: .88rem;
+        color: #374151;
+        margin-bottom: .35rem;
+    }
+    .user-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #009fe3, #0369a1);
+        color: #fff;
+        font-size: .72rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .estado-change {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        margin: .35rem 0;
+        flex-wrap: wrap;
+    }
+    .arrow-change {
+        color: #9ca3af;
+        font-weight: 700;
+    }
+    .timeline-detalle {
+        font-size: .85rem;
+        color: #4b5563;
+        line-height: 1.45;
+        margin-top: .3rem;
+    }
+    .timeline-meta {
+        font-size: .72rem;
+        color: #9ca3af;
+        margin-top: .35rem;
+    }
+    .timeline-doc {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        margin-top: .55rem;
+        padding: .45rem .8rem;
+        background: #f1f8fd;
+        border: 1px solid #d8e8f3;
+        border-radius: 10px;
+        text-decoration: none;
+        color: #0369a1;
+        font-size: .82rem;
+        font-weight: 500;
+        transition: all .15s ease;
+        max-width: 100%;
+    }
+    .timeline-doc:hover {
+        background: #009fe3;
+        color: #fff;
+        border-color: #009fe3;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,159,227,.2);
+    }
+    .timeline-doc .doc-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 320px;
+    }
+    .timeline-doc .doc-action {
+        font-size: .7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        opacity: .75;
+        margin-left: auto;
+        padding-left: .5rem;
+    }
+</style>
+
+<div class="container py-4">
+
+    <a href="{% url 'analisis:home' %}" class="btn-volver mb-3">
+        <span class="arrow">←</span> Volver
+    </a>
+
+    <!-- Hero -->
+    <div class="panel-hero d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h2>📊 Panel de Informes</h2>
+            <p>Seguimiento de informes con estado y fecha estimada de término.</p>
+        </div>
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div class="tab-switch">
+                <a href="{% url 'analisis:panel_informes' %}" class="active">Lista</a>
+                <a href="{% url 'analisis:graficos_informes' %}">Gráficos</a>
+            </div>
+            <button class="btn-nuevo"
+                    hx-get="{% url 'analisis:crear_informe' %}"
+                    hx-target="#informe-form-wrapper"
+                    hx-swap="innerHTML"
+                    data-bs-toggle="modal"
+                    data-bs-target="#informeModal"
+                    data-modo="crear">
+                + Nuevo informe
+            </button>
+        </div>
+    </div>
+
+    {% if informes %}
+
+    <!-- Stats -->
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-dot" style="background:#eef2f6; color:#374151;">📋</div>
+            <div>
+                <div class="stat-label">Total</div>
+                <div class="stat-value">{{ stats.total }}</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-dot" style="background:#f1f5f9; color:#475569;">⏳</div>
+            <div>
+                <div class="stat-label">Pendiente</div>
+                <div class="stat-value">{{ stats.pendiente }}</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-dot" style="background:#e0f2fe; color:#0369a1;">⚙️</div>
+            <div>
+                <div class="stat-label">En proceso</div>
+                <div class="stat-value">{{ stats.en_proceso }}</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-dot" style="background:#fef3c7; color:#b45309;">🔎</div>
+            <div>
+                <div class="stat-label">En revisión</div>
+                <div class="stat-value">{{ stats.en_revision }}</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-dot" style="background:#dcfce7; color:#15803d;">✅</div>
+            <div>
+                <div class="stat-label">Finalizado</div>
+                <div class="stat-value">{{ stats.finalizado }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-bar" id="filter-bar">
+        <span class="chip active" data-filter="ALL">Todos<span class="count">{{ stats.total }}</span></span>
+        <span class="chip" data-filter="PENDIENTE">Pendiente<span class="count">{{ stats.pendiente }}</span></span>
+        <span class="chip" data-filter="EN_PROCESO">En proceso<span class="count">{{ stats.en_proceso }}</span></span>
+        <span class="chip" data-filter="EN_REVISION">En revisión<span class="count">{{ stats.en_revision }}</span></span>
+        <span class="chip" data-filter="FINALIZADO">Finalizado<span class="count">{{ stats.finalizado }}</span></span>
+        <span class="chip" data-filter="SUSPENDIDO">Suspendido<span class="count">{{ stats.suspendido }}</span></span>
+    </div>
+
+    <!-- Cards -->
+    <div class="row g-3" id="informes-grid">
+        {% for informe in informes %}
+            <div class="col-md-6 col-lg-4 informe-col" data-estado="{{ informe.estado }}">
+                <div class="informe-card estado-{{ informe.estado }}">
+                    <div class="card-inner">
+
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="badge-estado badge-{{ informe.estado }}">
+                                {{ informe.get_estado_display }}
+                            </span>
+                            <div class="card-actions">
+                                {% if es_encargado %}
+                                <button class="icon-btn"
+                                        title="Trazabilidad"
+                                        hx-get="{% url 'analisis:trazabilidad_informe' informe.pk %}"
+                                        hx-target="#trazabilidad-wrapper"
+                                        hx-swap="innerHTML"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#trazabilidadModal">
+                                    🕘
+                                </button>
+                                {% endif %}
+                                {% if es_encargado or informe.responsable == request.user %}
+                                <button class="icon-btn"
+                                        title="Editar"
+                                        hx-get="{% url 'analisis:editar_informe' informe.pk %}"
+                                        hx-target="#informe-form-wrapper"
+                                        hx-swap="innerHTML"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#informeModal"
+                                        data-modo="editar">
+                                    ✏️
+                                </button>
+                                <button class="icon-btn danger"
+                                        title="Eliminar"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#deleteModal"
+                                        data-nombre="{{ informe.nombre|escapejs }}"
+                                        data-url="{% url 'analisis:eliminar_informe' informe.pk %}">
+                                    🗑️
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <h5 class="informe-titulo">{{ informe.nombre }}</h5>
+                        <p class="informe-desc">{{ informe.descripcion }}</p>
+
+                        <div class="meta-row">
+                            <div class="meta-fecha">
+                                <span class="icono">📅</span>
+                                {% if informe.fecha_estimada_termino %}
+                                    {{ informe.fecha_estimada_termino|date:"d M Y" }}
+                                {% else %}
+                                    <span class="text-muted">Sin fecha</span>
+                                {% endif %}
+                            </div>
+                            {% if informe.fecha_estimada_termino and informe.estado != "FINALIZADO" %}
+                                <span class="countdown"
+                                      data-fecha="{{ informe.fecha_estimada_termino|date:'Y-m-d' }}">
+                                </span>
+                            {% elif informe.estado == "FINALIZADO" %}
+                                <span class="countdown ok">Finalizado</span>
+                            {% endif %}
+                        </div>
+
+                        {% if informe.estado == "EN_PROCESO" %}
+                          {% if es_encargado or informe.responsable == request.user %}
+                        <div class="review-actions">
+                            <button class="btn-review send"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#enviarRevisionModal"
+                                    data-nombre="{{ informe.nombre|escapejs }}"
+                                    data-url="{% url 'analisis:enviar_a_revision' informe.pk %}">
+                                📤 Enviar a revisión
+                            </button>
+                        </div>
+                          {% endif %}
+                        {% endif %}
+
+                        {% if es_encargado and informe.estado == "EN_REVISION" %}
+                        <div class="review-actions">
+                            <button class="btn-review approve"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#aprobarModal"
+                                    data-nombre="{{ informe.nombre|escapejs }}"
+                                    data-url="{% url 'analisis:aprobar_informe' informe.pk %}">
+                                ✓ Aprobar
+                            </button>
+                            <button class="btn-review reject"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#rechazarModal"
+                                    data-nombre="{{ informe.nombre|escapejs }}"
+                                    data-url="{% url 'analisis:rechazar_informe' informe.pk %}">
+                                ↺ Devolver
+                            </button>
+                        </div>
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="empty-card">
+        <div class="empty-icon">📄</div>
+        <h5 class="fw-semibold mb-1">Aún no hay informes</h5>
+        <p class="text-muted mb-3">Comienza creando el primer informe del panel.</p>
+        <button class="btn-nuevo"
+                hx-get="{% url 'analisis:crear_informe' %}"
+                hx-target="#informe-form-wrapper"
+                hx-swap="innerHTML"
+                data-bs-toggle="modal"
+                data-bs-target="#informeModal">
+            + Nuevo informe
+        </button>
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL CREAR/EDITAR INFORME                   -->
+<!-- ============================================ -->
+<div class="modal fade" id="informeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <div class="modal-icon">📝</div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="informeModalTitle">Nuevo informe</h5>
+                        <small class="text-muted">Completa los datos del informe</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="informe-form-wrapper">
+                    <div class="text-center text-muted py-4">
+                        <div class="spinner-border spinner-border-sm me-2"></div>
+                        Cargando…
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if es_encargado %}
+<!-- ============================================ -->
+<!-- MODAL TRAZABILIDAD                           -->
+<!-- ============================================ -->
+<div class="modal fade" id="trazabilidadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <div class="modal-icon" style="background:linear-gradient(135deg,#fef3c7,#fde68a); color:#b45309;">🕘</div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">Trazabilidad</h5>
+                        <small class="text-muted">Historial de movimientos del informe</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="trazabilidad-wrapper">
+                    <div class="text-center text-muted py-4">
+                        <div class="spinner-border spinner-border-sm me-2"></div>
+                        Cargando historial…
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL APROBAR INFORME                        -->
+<!-- ============================================ -->
+<div class="modal fade" id="aprobarModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <div class="modal-icon" style="background:linear-gradient(135deg,#dcfce7,#bbf7d0); color:#15803d;">✓</div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">Aprobar informe</h5>
+                        <small class="text-muted">El informe pasará a Finalizado</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="aprobar-form" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p class="mb-3">
+                        ¿Confirmas la aprobación del informe
+                        <strong id="aprobar-nombre"></strong>?
+                    </p>
+                    <label class="form-label fw-semibold small text-uppercase text-muted"
+                           style="letter-spacing:.5px;">
+                        Comentario <span class="text-muted" style="text-transform:none;">(opcional)</span>
+                    </label>
+                    <textarea name="comentario" class="form-control" rows="3"
+                              placeholder="Notas sobre la aprobación…"
+                              style="border-radius:10px; border-color:#e5e7eb;"></textarea>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light"
+                            data-bs-dismiss="modal"
+                            style="border-radius:999px; padding:.5rem 1.25rem;">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn"
+                            style="background:#22c55e; color:#fff; border-radius:999px; padding:.5rem 1.5rem; font-weight:500;">
+                        ✓ Aprobar informe
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL DEVOLVER INFORME                       -->
+<!-- ============================================ -->
+<div class="modal fade" id="rechazarModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <div class="modal-icon" style="background:linear-gradient(135deg,#fee2e2,#fecaca); color:#b91c1c;">↺</div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">Devolver con observaciones</h5>
+                        <small class="text-muted">El informe volverá a En proceso</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="rechazar-form" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p class="mb-3">
+                        Devolverás el informe <strong id="rechazar-nombre"></strong>.
+                    </p>
+                    <label class="form-label fw-semibold small text-uppercase text-muted"
+                           style="letter-spacing:.5px;">
+                        Observaciones <span class="text-danger" style="text-transform:none;">*</span>
+                    </label>
+                    <textarea name="observaciones" class="form-control" rows="4" required
+                              placeholder="Detalla qué se debe corregir…"
+                              style="border-radius:10px; border-color:#e5e7eb;"></textarea>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light"
+                            data-bs-dismiss="modal"
+                            style="border-radius:999px; padding:.5rem 1.25rem;">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn"
+                            style="background:#ef4444; color:#fff; border-radius:999px; padding:.5rem 1.5rem; font-weight:500;">
+                        ↺ Devolver informe
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ============================================ -->
+<!-- MODAL ENVIAR A REVISIÓN                      -->
+<!-- ============================================ -->
+<div class="modal fade" id="enviarRevisionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <div class="modal-icon" style="background:linear-gradient(135deg,#fef3c7,#fde68a); color:#b45309;">📤</div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">Enviar a revisión</h5>
+                        <small class="text-muted">El informe pasará a estado "En revisión"</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="enviar-revision-form" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p class="mb-3">
+                        Envío a revisión del informe
+                        <strong id="enviar-nombre"></strong>.
+                    </p>
+
+                    <label class="form-label fw-semibold small text-uppercase text-muted"
+                           style="letter-spacing:.5px;">
+                        Documento adjunto
+                        <span class="text-danger" style="text-transform:none;">*</span>
+                    </label>
+                    <input type="file"
+                           name="documento"
+                           required
+                           accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                           class="form-control"
+                           style="border-radius:10px; border-color:#e5e7eb;">
+                    <div class="form-text">
+                        <strong>Obligatorio.</strong> Solo se aceptan archivos PDF o Word
+                        (.pdf, .doc, .docx). Máx. 10 MB.
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light"
+                            data-bs-dismiss="modal"
+                            style="border-radius:999px; padding:.5rem 1.25rem;">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn"
+                            style="background:#f59e0b; color:#fff; border-radius:999px; padding:.5rem 1.5rem; font-weight:500;">
+                        📤 Enviar a revisión
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL CONFIRMAR ELIMINACIÓN                  -->
+<!-- ============================================ -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <div class="modal-icon danger">⚠️</div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">Eliminar informe</h5>
+                        <small class="text-muted">Esta acción no se puede deshacer</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">
+                    ¿Confirmas eliminar el informe <strong id="delete-nombre"></strong>?
+                </p>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-light"
+                        data-bs-dismiss="modal"
+                        style="border-radius:999px; padding:.5rem 1.25rem;">
+                    Cancelar
+                </button>
+                <form id="delete-form" method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn"
+                            style="background:#ef4444; color:#fff; border-radius:999px; padding:.5rem 1.5rem; font-weight:500;">
+                        Sí, eliminar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ====== Título dinámico del modal y reset ======
+    const informeModal = document.getElementById('informeModal');
+    informeModal.addEventListener('show.bs.modal', (event) => {
+        const trigger = event.relatedTarget;
+        const modo = trigger?.dataset?.modo || 'crear';
+        document.getElementById('informeModalTitle').textContent =
+            modo === 'editar' ? 'Editar informe' : 'Nuevo informe';
+    });
+    informeModal.addEventListener('hidden.bs.modal', () => {
+        document.getElementById('informe-form-wrapper').innerHTML = `
+            <div class="text-center text-muted py-4">
+                <div class="spinner-border spinner-border-sm me-2"></div>
+                Cargando…
+            </div>`;
+    });
+
+    // ====== Reset modal trazabilidad ======
+    const trazModal = document.getElementById('trazabilidadModal');
+    trazModal.addEventListener('hidden.bs.modal', () => {
+        document.getElementById('trazabilidad-wrapper').innerHTML = `
+            <div class="text-center text-muted py-4">
+                <div class="spinner-border spinner-border-sm me-2"></div>
+                Cargando historial…
+            </div>`;
+    });
+
+    // ====== Modal enviar a revisión ======
+    const enviarRevModal = document.getElementById('enviarRevisionModal');
+    enviarRevModal.addEventListener('show.bs.modal', (event) => {
+        const trigger = event.relatedTarget;
+        document.getElementById('enviar-nombre').textContent = trigger.dataset.nombre;
+        document.getElementById('enviar-revision-form').action = trigger.dataset.url;
+    });
+
+    // ====== Modal de eliminación: setear nombre y action ======
+    const deleteModal = document.getElementById('deleteModal');
+    deleteModal.addEventListener('show.bs.modal', (event) => {
+        const trigger = event.relatedTarget;
+        document.getElementById('delete-nombre').textContent = trigger.dataset.nombre;
+        document.getElementById('delete-form').action = trigger.dataset.url;
+    });
+
+    // ====== Modales aprobar / rechazar (sólo encargado) ======
+    {% if es_encargado %}
+    const aprobarModal = document.getElementById('aprobarModal');
+    aprobarModal.addEventListener('show.bs.modal', (event) => {
+        const trigger = event.relatedTarget;
+        document.getElementById('aprobar-nombre').textContent = trigger.dataset.nombre;
+        document.getElementById('aprobar-form').action = trigger.dataset.url;
+    });
+    aprobarModal.addEventListener('hidden.bs.modal', () => {
+        document.getElementById('aprobar-form').reset();
+    });
+
+    const rechazarModal = document.getElementById('rechazarModal');
+    rechazarModal.addEventListener('show.bs.modal', (event) => {
+        const trigger = event.relatedTarget;
+        document.getElementById('rechazar-nombre').textContent = trigger.dataset.nombre;
+        document.getElementById('rechazar-form').action = trigger.dataset.url;
+    });
+    rechazarModal.addEventListener('hidden.bs.modal', () => {
+        document.getElementById('rechazar-form').reset();
+    });
+    {% endif %}
+
+    // ====== Filtros chips ======
+    document.querySelectorAll('#filter-bar .chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('#filter-bar .chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            const filter = chip.dataset.filter;
+            document.querySelectorAll('.informe-col').forEach(col => {
+                col.style.display = (filter === 'ALL' || col.dataset.estado === filter) ? '' : 'none';
+            });
+        });
+    });
+
+    // ====== Countdown de días restantes ======
+    document.querySelectorAll('.countdown[data-fecha]').forEach(el => {
+        const fecha = new Date(el.dataset.fecha + 'T00:00:00');
+        const hoy = new Date(); hoy.setHours(0,0,0,0);
+        const diff = Math.round((fecha - hoy) / (1000*60*60*24));
+        if (diff < 0) {
+            el.textContent = `Vencido (${Math.abs(diff)}d)`;
+            el.classList.add('vencido');
+        } else if (diff === 0) {
+            el.textContent = 'Hoy';
+            el.classList.add('urgente');
+        } else if (diff <= 7) {
+            el.textContent = `${diff}d restantes`;
+            el.classList.add('urgente');
+        } else if (diff <= 30) {
+            el.textContent = `${diff}d restantes`;
+            el.classList.add('proximo');
+        } else {
+            el.textContent = `${diff}d restantes`;
+            el.classList.add('ok');
+        }
+    });
+</script>
+
+{% endblock %}

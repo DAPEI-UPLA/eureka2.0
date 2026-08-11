@@ -1,0 +1,69 @@
+{% load static %}
+
+<form method="post"
+      action="{{ action_url }}"
+      hx-post="{{ action_url }}"
+      hx-target="#informe-form-wrapper"
+      hx-swap="innerHTML"
+      novalidate>
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold small text-uppercase text-muted"
+               style="letter-spacing:.5px;">
+            Nombre del informe
+        </label>
+        {{ form.nombre }}
+        {% if form.nombre.errors %}
+            <div class="text-danger small mt-1">{{ form.nombre.errors|join:", " }}</div>
+        {% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold small text-uppercase text-muted"
+               style="letter-spacing:.5px;">
+            Descripción
+        </label>
+        {{ form.descripcion }}
+        {% if form.descripcion.errors %}
+            <div class="text-danger small mt-1">{{ form.descripcion.errors|join:", " }}</div>
+        {% endif %}
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label fw-semibold small text-uppercase text-muted"
+                   style="letter-spacing:.5px;">
+                Estado
+            </label>
+            {{ form.estado }}
+            {% if form.estado.errors %}
+                <div class="text-danger small mt-1">{{ form.estado.errors|join:", " }}</div>
+            {% endif %}
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-semibold small text-uppercase text-muted"
+                   style="letter-spacing:.5px;">
+                Fecha estimada de término
+            </label>
+            {{ form.fecha_estimada_termino }}
+            {% if form.fecha_estimada_termino.errors %}
+                <div class="text-danger small mt-1">
+                    {{ form.fecha_estimada_termino.errors|join:", " }}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+        <button type="button" class="btn btn-light"
+                data-bs-dismiss="modal"
+                style="border-radius:999px; padding:.5rem 1.25rem;">
+            Cancelar
+        </button>
+        <button type="submit" class="btn"
+                style="background-color:#009fe3; color:#fff; border-radius:999px; padding:.5rem 1.5rem; font-weight:500;">
+            {% if modo == "editar" %}Guardar cambios{% else %}Crear informe{% endif %}
+        </button>
+    </div>
+</form>

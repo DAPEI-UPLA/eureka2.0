@@ -1,0 +1,47 @@
+{% extends "core/base.html" %}
+{% block title %}Análisis{% endblock %}
+
+{% block content %}
+
+<div class="container py-5">
+
+    <!-- Título -->
+    <div class="mb-5">
+        <h2 class="fw-bold">Análisis</h2>
+        <p class="text-muted mb-0">
+            Resultados, seguimiento e informes institucionales.
+        </p>
+    </div>
+
+    <!-- Tarjetas -->
+    <div class="row g-4">
+
+        <!-- Informes -->
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100 card-hover">
+                <div class="card-body p-4">
+                    <h5 class="fw-semibold">Informes</h5>
+                    <p class="text-muted small mb-0">
+                        Panel de control de informes en desarrollo,
+                        con estado y fechas estimadas de término.
+                    </p>
+                    <a href="{% url 'analisis:panel_informes' %}" class="stretched-link"></a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+.card-hover {
+    transition: all 0.2s ease-in-out;
+    border-radius: 12px;
+}
+.card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+</style>
+
+{% endblock %}

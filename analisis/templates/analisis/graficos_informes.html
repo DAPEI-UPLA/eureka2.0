@@ -1,0 +1,370 @@
+{% extends "core/base.html" %}
+{% block title %}Gráficos de Informes{% endblock %}
+
+{% block content %}
+
+<style>
+    .panel-hero {
+        background: linear-gradient(135deg, #ffffff 0%, #f1f8fd 100%);
+        border-radius: 20px;
+        padding: 1.75rem 2rem;
+        border: 1px solid #eaf1f6;
+        margin-bottom: 1.5rem;
+    }
+    .panel-hero h2 { font-weight: 700; color: #1f2937; margin: 0; }
+    .panel-hero p  { color: #6b7280; margin: .25rem 0 0; font-size: .9rem; }
+
+    /* Tabs */
+    .tab-switch {
+        display: inline-flex;
+        background: #fff;
+        border: 1px solid #eef2f6;
+        border-radius: 999px;
+        padding: 4px;
+        gap: 4px;
+    }
+    .tab-switch a {
+        text-decoration: none;
+        padding: .45rem 1.1rem;
+        font-size: .85rem;
+        font-weight: 500;
+        color: #6b7280;
+        border-radius: 999px;
+        transition: all .15s ease;
+    }
+    .tab-switch a:hover { color: #009fe3; }
+    .tab-switch a.active {
+        background: #009fe3;
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(0,159,227,0.25);
+    }
+
+    .chart-card {
+        background: #fff;
+        border-radius: 18px;
+        border: 1px solid #eef2f6;
+        padding: 1.5rem;
+        height: 100%;
+        transition: all .2s ease;
+    }
+    .chart-card:hover {
+        box-shadow: 0 10px 28px rgba(15,23,42,.06);
+    }
+    .chart-title {
+        font-weight: 600;
+        color: #111827;
+        margin: 0 0 .25rem;
+        font-size: 1rem;
+    }
+    .chart-subtitle {
+        color: #6b7280;
+        font-size: .82rem;
+        margin: 0 0 1.25rem;
+    }
+
+    .chart-canvas-wrap {
+        position: relative;
+        width: 100%;
+    }
+    .chart-canvas-wrap.donut    { height: 280px; }
+    .chart-canvas-wrap.bar      { height: 360px; }
+
+    /* Resumen tabla */
+    .summary-card {
+        background: #fff;
+        border-radius: 18px;
+        border: 1px solid #eef2f6;
+        padding: 1.5rem;
+        margin-top: 1rem;
+    }
+    .summary-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .summary-table th {
+        text-transform: uppercase;
+        font-size: .7rem;
+        font-weight: 700;
+        color: #6b7280;
+        letter-spacing: .5px;
+        text-align: center;
+        padding: .65rem .5rem;
+        border-bottom: 1px solid #eef2f6;
+    }
+    .summary-table th.left { text-align: left; }
+    .summary-table td {
+        padding: .85rem .5rem;
+        border-bottom: 1px solid #f6f8fb;
+        font-size: .88rem;
+        text-align: center;
+        color: #374151;
+    }
+    .summary-table td.left { text-align: left; font-weight: 500; color:#111827; }
+    .summary-table tr:last-child td { border-bottom: none; }
+
+    .pill {
+        display: inline-block;
+        min-width: 28px;
+        padding: .2rem .55rem;
+        border-radius: 999px;
+        font-size: .78rem;
+        font-weight: 600;
+        background: #f1f5f9;
+        color: #475569;
+    }
+    .pill-pendiente   { background: #f1f5f9; color: #475569; }
+    .pill-proceso     { background: #e0f2fe; color: #0369a1; }
+    .pill-revision    { background: #fef3c7; color: #b45309; }
+    .pill-finalizado  { background: #dcfce7; color: #15803d; }
+    .pill-suspendido  { background: #fee2e2; color: #b91c1c; }
+
+    .progress-track {
+        background: #f1f5f9;
+        border-radius: 999px;
+        height: 8px;
+        width: 100%;
+        max-width: 140px;
+        overflow: hidden;
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: .5rem;
+    }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #22c55e, #16a34a);
+        border-radius: 999px;
+        transition: width .6s ease;
+    }
+
+    .empty-card {
+        background: #fff;
+        border: 1px dashed #d8e8f3;
+        border-radius: 20px;
+        padding: 3.5rem 2rem;
+        text-align: center;
+    }
+    .empty-icon {
+        width: 72px; height: 72px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #e0f2fe, #f1f8fd);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+</style>
+
+<div class="container py-4">
+
+    <a href="{% url 'analisis:home' %}" class="btn-volver mb-3">
+        <span class="arrow">←</span> Volver
+    </a>
+
+    <!-- Hero -->
+    <div class="panel-hero d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h2>📈 Gráficos de Informes</h2>
+            <p>Distribución por estado y desglose por responsable.</p>
+        </div>
+        <div class="tab-switch">
+            <a href="{% url 'analisis:panel_informes' %}">Lista</a>
+            <a href="{% url 'analisis:graficos_informes' %}" class="active">Gráficos</a>
+        </div>
+    </div>
+
+    {% if hay_datos %}
+
+    <div class="row g-3">
+        <!-- Donut por estado -->
+        <div class="col-lg-5">
+            <div class="chart-card">
+                <h6 class="chart-title">Distribución por estado</h6>
+                <p class="chart-subtitle">Total de informes: <strong>{{ stats.total }}</strong></p>
+                <div class="chart-canvas-wrap donut">
+                    <canvas id="chartEstado"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stacked bar por responsable -->
+        <div class="col-lg-7">
+            <div class="chart-card">
+                <h6 class="chart-title">Informes por responsable</h6>
+                <p class="chart-subtitle">Desglosado por estado.</p>
+                <div class="chart-canvas-wrap bar">
+                    <canvas id="chartResponsables"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen tabular -->
+    <div class="summary-card">
+        <h6 class="chart-title mb-1">Resumen por responsable</h6>
+        <p class="chart-subtitle">Conteo y avance (% finalizados sobre total).</p>
+
+        <div class="table-responsive">
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th class="left">Responsable</th>
+                        <th>Total</th>
+                        <th>Pendiente</th>
+                        <th>En proceso</th>
+                        <th>En revisión</th>
+                        <th>Finalizado</th>
+                        <th>Suspendido</th>
+                        <th class="left" style="min-width:200px;">Avance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in resumen_responsables %}
+                    <tr>
+                        <td class="left">{{ r.nombre }}</td>
+                        <td><strong>{{ r.total }}</strong></td>
+                        <td>{% if r.pendiente %}<span class="pill pill-pendiente">{{ r.pendiente }}</span>{% else %}—{% endif %}</td>
+                        <td>{% if r.en_proceso %}<span class="pill pill-proceso">{{ r.en_proceso }}</span>{% else %}—{% endif %}</td>
+                        <td>{% if r.en_revision %}<span class="pill pill-revision">{{ r.en_revision }}</span>{% else %}—{% endif %}</td>
+                        <td>{% if r.finalizado %}<span class="pill pill-finalizado">{{ r.finalizado }}</span>{% else %}—{% endif %}</td>
+                        <td>{% if r.suspendido %}<span class="pill pill-suspendido">{{ r.suspendido }}</span>{% else %}—{% endif %}</td>
+                        <td class="left">
+                            <span class="progress-track">
+                                <span class="progress-fill" style="width: {{ r.avance }}%;"></span>
+                            </span>
+                            <span class="text-muted small">{{ r.avance }}%</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="empty-card">
+        <div class="empty-icon">📊</div>
+        <h5 class="fw-semibold mb-1">Aún no hay datos para graficar</h5>
+        <p class="text-muted mb-3">Crea informes desde el panel para ver las estadísticas.</p>
+        <a href="{% url 'analisis:panel_informes' %}" class="btn"
+           style="background:#009fe3; color:#fff; border-radius:999px; padding:.5rem 1.25rem;">
+            Ir al panel
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+
+{{ datos_estado|json_script:"datos-estado" }}
+{{ datos_responsables|json_script:"datos-responsables" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    const hayDatos = {{ hay_datos|yesno:"true,false" }};
+    if (!hayDatos) return;
+
+    const baseFont = {
+        family: "Inter, sans-serif",
+        size: 12,
+    };
+    Chart.defaults.font.family = baseFont.family;
+    Chart.defaults.color = "#4b5563";
+
+    // ===== Donut por estado =====
+    const datosEstado = JSON.parse(document.getElementById('datos-estado').textContent);
+    const ctxEstado = document.getElementById('chartEstado');
+
+    new Chart(ctxEstado, {
+        type: 'doughnut',
+        data: {
+            labels: datosEstado.labels,
+            datasets: [{
+                data: datosEstado.data,
+                backgroundColor: datosEstado.colors,
+                borderColor: '#fff',
+                borderWidth: 3,
+                hoverOffset: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        padding: 14,
+                        font: { size: 12 },
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#111827',
+                    padding: 12,
+                    cornerRadius: 8,
+                    titleFont: { weight: '600' },
+                    callbacks: {
+                        label: (ctx) => {
+                            const total = ctx.dataset.data.reduce((a,b) => a+b, 0);
+                            const pct = total ? Math.round(ctx.parsed / total * 100) : 0;
+                            return ` ${ctx.parsed} informes (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ===== Stacked bar por responsable =====
+    const datosResp = JSON.parse(document.getElementById('datos-responsables').textContent);
+    const ctxResp = document.getElementById('chartResponsables');
+
+    new Chart(ctxResp, {
+        type: 'bar',
+        data: datosResp,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: {
+                    stacked: true,
+                    grid: { display: false },
+                    ticks: { font: { size: 12 } }
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0,
+                        font: { size: 11 },
+                    },
+                    grid: { color: '#f1f5f9', drawBorder: false }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        padding: 14,
+                        font: { size: 12 },
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#111827',
+                    padding: 12,
+                    cornerRadius: 8,
+                }
+            }
+        }
+    });
+})();
+</script>
+
+{% endblock %}

@@ -1,0 +1,89 @@
+{% load humanize %}
+
+<div class="traz-header mb-3">
+    <div class="traz-info">
+        <div class="text-muted small text-uppercase fw-semibold" style="letter-spacing:.5px;">
+            Informe
+        </div>
+        <div class="fw-semibold" style="color:#111827;">{{ informe.nombre }}</div>
+    </div>
+    <span class="badge-estado badge-{{ informe.estado }}">
+        {{ informe.get_estado_display }}
+    </span>
+</div>
+
+{% if movimientos %}
+<ul class="timeline">
+    {% for m in movimientos %}
+    <li class="timeline-item tipo-{{ m.tipo }}">
+        <div class="timeline-dot">
+            {% if m.tipo == "CREACION" %}✨
+            {% elif m.tipo == "CAMBIO_ESTADO" %}🔄
+            {% elif m.tipo == "EDICION" %}✏️
+            {% elif m.tipo == "APROBACION" %}✅
+            {% elif m.tipo == "RECHAZO" %}↺
+            {% else %}•{% endif %}
+        </div>
+        <div class="timeline-body">
+            <div class="timeline-top">
+                <span class="timeline-tipo tipo-pill-{{ m.tipo }}">
+                    {{ m.get_tipo_display }}
+                </span>
+                <span class="timeline-fecha" title="{{ m.fecha|date:'d/m/Y H:i' }}">
+                    {{ m.fecha|naturaltime }}
+                </span>
+            </div>
+
+            <div class="timeline-user">
+                {% if m.usuario %}
+                    <span class="user-avatar">
+                        {{ m.usuario.first_name|first|default:m.usuario.username|first|upper }}
+                    </span>
+                    <span>
+                        {{ m.usuario.get_full_name|default:m.usuario.username }}
+                    </span>
+                {% else %}
+                    <span class="text-muted">Sistema</span>
+                {% endif %}
+            </div>
+
+            {% if m.tipo == "CAMBIO_ESTADO" and m.estado_anterior and m.estado_nuevo %}
+                <div class="estado-change">
+                    <span class="badge-estado badge-{{ m.estado_anterior }}">
+                        {{ m.get_estado_anterior_display|default:m.estado_anterior }}
+                    </span>
+                    <span class="arrow-change">→</span>
+                    <span class="badge-estado badge-{{ m.estado_nuevo }}">
+                        {{ m.get_estado_nuevo_display|default:m.estado_nuevo }}
+                    </span>
+                </div>
+            {% endif %}
+
+            {% if m.detalle %}
+                <div class="timeline-detalle">{{ m.detalle }}</div>
+            {% endif %}
+
+            {% if m.documento %}
+                <a href="{{ m.documento.url }}"
+                   target="_blank"
+                   rel="noopener"
+                   class="timeline-doc">
+                    📎
+                    <span class="doc-name">{{ m.documento.name|slice:"-60:" }}</span>
+                    <span class="doc-action">Descargar</span>
+                </a>
+            {% endif %}
+
+            <div class="timeline-meta">
+                {{ m.fecha|date:"d/m/Y H:i" }}
+            </div>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="text-center text-muted py-4">
+    <div style="font-size:2rem;">🕘</div>
+    <p class="mb-0">Sin movimientos registrados.</p>
+</div>
+{% endif %}
