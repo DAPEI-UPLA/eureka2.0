@@ -25,6 +25,32 @@
             {% include "proyectos/partials/detalle_dashboard.html" %}
         </div>
 
+        <!-- SECCIÓN PRESUPUESTO ANUAL (plegable, plegada por defecto) -->
+        <div class="section-title seccion-toggle" data-collapse="presupuesto-anual-container"
+             data-default-collapsed="1" role="button" tabindex="0"
+             onclick="toggleSeccion('presupuesto-anual-container')">
+            <div>
+                <h5>Presupuesto por año</h5>
+                <small class="small">
+                    Cuánto le toca al proyecto cada año calendario
+                    {% if not proyecto.anios_cuadrados %}
+                    · <span class="text-warning fw-semibold">sin cuadrar</span>
+                    {% endif %}
+                </small>
+            </div>
+            <span class="seccion-chevron" aria-hidden="true">▾</span>
+        </div>
+
+        <div id="presupuesto-anual-container"
+             hx-get="{% url 'proyectos:listar_presupuesto_anual' proyecto.pk %}"
+             hx-trigger="load, planUpdated from:body, recargarSeccion"
+             hx-swap="innerHTML"
+             data-reload-event="recargarSeccion">
+            <div class="planes-card">
+                <div class="empty-state"><p class="text-muted mb-0">Cargando…</p></div>
+            </div>
+        </div>
+
         <!-- SECCIÓN GRÁFICOS (plegable, plegada por defecto) -->
         <div class="section-title seccion-toggle" data-collapse="graficos-container"
              data-default-collapsed="1" role="button" tabindex="0"

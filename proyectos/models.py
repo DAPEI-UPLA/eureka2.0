@@ -428,6 +428,91 @@ class Proyecto(models.Model):
             return Decimal("0")
         return (self.gastos_total / self.presupuesto_total * 100).quantize(Decimal("0.01"))
 
+    # AÑOS DEL PROYECTO
+    #
+    # Un proyecto de 36 meses no tiene un presupuesto, tiene tres: uno por año
+    # calendario, que es como se transfiere y como se rinde. El reparto vive en
+    # `PresupuestoAnual`; lo de aquí es lo que necesita la pantalla para saber
+    # cuántos años mostrar y en cuál estamos parados.
+
+    @property
+    def anios(self):
+        """Los años cargados, en orden. Vacío = proyecto sin repartir todavía."""
+        return list(self.presupuestos_anuales.all())
+
+    @property
+    def es_multianual(self):
+        return len(self.anios) > 1
+
+    @property
+    def cantidad_anios_sugerida(self):
+        """Cuántos años calendario toca el proyecto, para proponer el reparto.
+
+        Manda el rango de fechas cuando está cargado, porque un proyecto que
+        parte en julio y dura 36 meses toca cuatro años calendario y no tres.
+        Si no hay fechas se cae a la duración, que es lo único que queda.
+        """
+        if self.fecha_inicio and self.fecha_fin:
+            return self.fecha_fin.year - self.fecha_inicio.year + 1
+        if self.duracion_meses:
+            return -(-self.duracion_meses // 12)  # techo de la división
+        return 1
+
+    @property
+    def anio_calendario_inicial(self):
+        if self.fecha_inicio:
+            return self.fecha_inicio.year
+        primero = self.presupuestos_anuales.first()
+        if primero:
+            return primero.anio_calendario
+        return date.today().year
+
+    def presupuesto_del_anio(self, numero_anio):
+        return self.presupuestos_anuales.filter(numero_anio=numero_anio).first()
+
+    def presupuesto_del_calendario(self, anio_calendario):
+        return self.presupuestos_anuales.filter(
+            anio_calendario=anio_calendario
+        ).first()
+
+    @property
+    def anio_en_curso(self):
+        """El año del proyecto en el que estamos hoy, o None si ya terminó."""
+        return self.presupuesto_del_calendario(date.today().year)
+
+    @property
+    def corriente_repartido_por_anio(self):
+        return self.presupuestos_anuales.aggregate(
+            total=Sum("presupuesto_corriente")
+        )["total"] or Decimal("0")
+
+    @property
+    def capital_repartido_por_anio(self):
+        return self.presupuestos_anuales.aggregate(
+            total=Sum("presupuesto_capital")
+        )["total"] or Decimal("0")
+
+    @property
+    def repartido_por_anio(self):
+        return self.corriente_repartido_por_anio + self.capital_repartido_por_anio
+
+    @property
+    def corriente_sin_repartir(self):
+        return self.presupuesto_corriente - self.corriente_repartido_por_anio
+
+    @property
+    def capital_sin_repartir(self):
+        return self.presupuesto_capital - self.capital_repartido_por_anio
+
+    @property
+    def sin_repartir_por_anio(self):
+        return self.presupuesto_total - self.repartido_por_anio
+
+    @property
+    def anios_cuadrados(self):
+        """True cuando la suma de los años calza con el presupuesto del proyecto."""
+        return self.sin_repartir_por_anio == 0
+
     # FECHAS / SALUD
     @property
     def dias_restantes(self):
@@ -462,6 +547,195 @@ class Proyecto(models.Model):
             'FINALIZADO': 'bg-success',
             'SUSPENDIDO': 'bg-danger',
         }.get(self.estado, 'bg-light')
+
+
+# =========================
+# PRESUPUESTO ANUAL
+# =========================
+# Lo que le toca al proyecto cada año calendario. Es el equivalente de
+# `MetaIndicador` en planificación: la estructura (objetivos, resultados,
+# actividades) se define una vez y vale para todo el proyecto; lo que cambia
+# año a año es el dinero, y eso vive en filas aparte.
+#
+# Se guardan los dos años a propósito. `numero_anio` es la etiqueta que ve el
+# usuario ("Año 2") y `anio_calendario` es lo que amarra con `PlanDeGasto.anio`
+# y con la fecha de los egresos. Deducir el calendario desde `fecha_inicio`
+# sería más limpio, pero los proyectos cargados no la tienen y el sistema tiene
+# que funcionar igual.
+
+
+class PresupuestoAnual(AuditableModel):
+
+    proyecto = models.ForeignKey(
+        Proyecto,
+        on_delete=models.CASCADE,
+        related_name="presupuestos_anuales",
+    )
+
+    numero_anio = models.PositiveSmallIntegerField(
+        verbose_name="Año del proyecto",
+        help_text="1 para el primer año, 2 para el segundo, etc.",
+    )
+    anio_calendario = models.PositiveIntegerField(
+        verbose_name="Año calendario",
+        validators=[MinValueValidator(2000), MaxValueValidator(2100)],
+    )
+
+    presupuesto_corriente = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    presupuesto_capital = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ["proyecto_id", "numero_anio"]
+        verbose_name = "Presupuesto anual"
+        verbose_name_plural = "Presupuestos anuales"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["proyecto", "numero_anio"],
+                name="uniq_presupuesto_proyecto_numero_anio",
+            ),
+            models.UniqueConstraint(
+                fields=["proyecto", "anio_calendario"],
+                name="uniq_presupuesto_proyecto_anio_calendario",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.etiqueta} ({self.anio_calendario}) — {self.proyecto.nombre}"
+
+    @property
+    def etiqueta(self):
+        return f"Año {self.numero_anio}"
+
+    @property
+    def presupuesto_total(self):
+        return (self.presupuesto_corriente or Decimal("0")) + (
+            self.presupuesto_capital or Decimal("0")
+        )
+
+    @property
+    def es_anio_en_curso(self):
+        return self.anio_calendario == date.today().year
+
+    # LO PLANIFICADO EN ESTE AÑO (los planes de gasto que caen en él)
+    def _planes(self):
+        return PlanDeGasto.objects.filter(
+            anio=self.anio_calendario,
+            actividad__resultado__eliminado=False,
+            actividad__resultado__objetivo__eliminado=False,
+            actividad__resultado__objetivo__proyecto_id=self.proyecto_id,
+        ).select_related("gasto_elegible__gasto__tipo_gasto__transferencia")
+
+    @property
+    def planificado(self):
+        return self._planes().aggregate(total=Sum("monto"))["total"] or Decimal("0")
+
+    @property
+    def planificado_corriente(self):
+        return sum(
+            (p.monto for p in self._planes() if p.naturaleza == CORRIENTE),
+            Decimal("0"),
+        )
+
+    @property
+    def planificado_capital(self):
+        return sum(
+            (p.monto for p in self._planes() if p.naturaleza == CAPITAL),
+            Decimal("0"),
+        )
+
+    @property
+    def disponible_corriente(self):
+        return (self.presupuesto_corriente or Decimal("0")) - self.planificado_corriente
+
+    @property
+    def disponible_capital(self):
+        return (self.presupuesto_capital or Decimal("0")) - self.planificado_capital
+
+    @property
+    def disponible(self):
+        return self.presupuesto_total - self.planificado
+
+    @property
+    def porcentaje_planificado(self):
+        if not self.presupuesto_total:
+            return Decimal("0")
+        return (self.planificado / self.presupuesto_total * 100).quantize(Decimal("0.01"))
+
+    # LO GASTADO EN ESTE AÑO
+    def resumen_gastos(self):
+        if not hasattr(self, "_resumen_gastos"):
+            self._resumen_gastos = resumir_egresos(
+                Egreso.objects
+                .filter(
+                    proyecto_id=self.proyecto_id,
+                    plan_de_gasto__anio=self.anio_calendario,
+                )
+                .select_related(
+                    "plan_de_gasto__gasto_elegible__gasto__tipo_gasto__transferencia",
+                    "gasto_elegible__gasto__tipo_gasto__transferencia",
+                )
+            )
+        return self._resumen_gastos
+
+    @property
+    def comprometido(self):
+        return self.resumen_gastos().comprometido
+
+    @property
+    def pagado(self):
+        return self.resumen_gastos().pagado
+
+    @property
+    def gastos_total(self):
+        return self.resumen_gastos().total
+
+    @property
+    def porcentaje_ejecutado(self):
+        """Cuánto del presupuesto del año se ha gastado. El indicador de
+        subejecución: el financiador pregunta por esto, no por el avance."""
+        if not self.presupuesto_total:
+            return Decimal("0")
+        return (self.gastos_total / self.presupuesto_total * 100).quantize(Decimal("0.01"))
+
+    def clean(self):
+        for etiqueta, campo in (("corriente", "presupuesto_corriente"),
+                                ("capital", "presupuesto_capital")):
+            propuesto = getattr(self, campo) or Decimal("0")
+            if propuesto < 0:
+                raise ValidationError({campo: "El presupuesto no puede ser negativo."})
+
+            if not self.proyecto_id:
+                continue
+
+            # El techo de un año es lo que le queda al proyecto una vez
+            # descontados los demás años. Misma forma que la cadena que ya
+            # existe (objetivo ≤ proyecto, resultado ≤ objetivo).
+            usado_por_otros = self.proyecto.presupuestos_anuales.exclude(
+                pk=self.pk
+            ).aggregate(total=Sum(campo))["total"] or Decimal("0")
+            del_proyecto = getattr(self.proyecto, campo) or Decimal("0")
+
+            if usado_por_otros + propuesto > del_proyecto:
+                tope = del_proyecto - usado_por_otros
+                raise ValidationError({campo: (
+                    f"Supera el presupuesto {etiqueta} del proyecto. "
+                    f"El proyecto tiene {pesos(del_proyecto)} y los demás años ya "
+                    f"usan {pesos(usado_por_otros)}, así que este año puede llegar "
+                    f"hasta {pesos(tope)}."
+                )})
+
+            # Y hacia abajo: dejar el año por debajo de lo que sus planes de
+            # gasto ya tienen comprometido lo dejaría financiando POA con plata
+            # que ese año no tiene.
+            if self.pk:
+                planificado = (self.planificado_corriente if campo == "presupuesto_corriente"
+                               else self.planificado_capital)
+                if propuesto < planificado:
+                    raise ValidationError({campo: (
+                        f"No puedes dejar el presupuesto {etiqueta} de este año en "
+                        f"{pesos(propuesto)}: los planes de gasto de {self.anio_calendario} "
+                        f"ya suman {pesos(planificado)}. Baja primero los planes."
+                    )})
 
 
 # =========================
@@ -1146,6 +1420,54 @@ class PlanDeGasto(models.Model):
             raise ValidationError(
                 "El plan de gasto excede el presupuesto de la actividad."
             )
+
+        self._validar_techo_del_anio()
+
+    def _validar_techo_del_anio(self):
+        """El POA de un año no puede pasarse del presupuesto de ese año.
+
+        Sin esto se podía cargar el POA completo de un proyecto de 36 meses en
+        2026 y dejar 2027 y 2028 en cero: la actividad cuadraba, el proyecto
+        cuadraba, y el reparto anual —que es como se transfiere y se rinde la
+        plata— no lo miraba nadie.
+        """
+        proyecto = self.actividad.resultado.objetivo.proyecto
+        if proyecto is None:
+            return
+
+        # Proyectos que todavía no repartieron su presupuesto por año siguen
+        # funcionando como antes: sin reparto no hay techo que comprobar.
+        if not proyecto.presupuestos_anuales.exists():
+            return
+
+        del_anio = proyecto.presupuesto_del_calendario(self.anio)
+        if del_anio is None:
+            anios = ", ".join(
+                str(a.anio_calendario) for a in proyecto.presupuestos_anuales.all()
+            )
+            raise ValidationError({"anio": (
+                f"El proyecto no tiene presupuesto asignado para {self.anio}. "
+                f"Los años cargados son: {anios}."
+            )})
+
+        es_capital = self.naturaleza == CAPITAL
+        etiqueta = "capital" if es_capital else "corriente"
+        campo = "presupuesto_capital" if es_capital else "presupuesto_corriente"
+
+        planificado = (del_anio.planificado_capital if es_capital
+                       else del_anio.planificado_corriente)
+        if self.pk:
+            anterior = PlanDeGasto.objects.filter(pk=self.pk).first()
+            if anterior and anterior.anio == self.anio and anterior.naturaleza == self.naturaleza:
+                planificado -= anterior.monto
+
+        tope = getattr(del_anio, campo) or Decimal("0")
+        if planificado + self.monto > tope:
+            raise ValidationError({"monto": (
+                f"Supera el presupuesto {etiqueta} de {self.anio}. "
+                f"Ese año tiene {pesos(tope)} y los planes ya suman "
+                f"{pesos(planificado)}, así que quedan {pesos(tope - planificado)}."
+            )})
 
     def __str__(self):
         return self.nombre_completo

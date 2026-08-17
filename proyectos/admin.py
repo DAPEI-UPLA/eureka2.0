@@ -5,6 +5,7 @@ from .models import (
     Gasto,
     GastoElegible,
     PlanDeGasto,
+    PresupuestoAnual,
     Proyecto,
     TipoGasto,
     Transferencia,
@@ -215,3 +216,13 @@ class EgresoAdmin(admin.ModelAdmin):
             obj.creado_por = request.user
         obj.actualizado_por = request.user
         super().save_model(request, obj, form, change)
+
+@admin.register(PresupuestoAnual)
+class PresupuestoAnualAdmin(admin.ModelAdmin):
+    list_display = (
+        "proyecto", "numero_anio", "anio_calendario",
+        "presupuesto_corriente", "presupuesto_capital",
+    )
+    list_filter = ("anio_calendario", "proyecto")
+    search_fields = ("proyecto__nombre", "proyecto__codigo")
+    ordering = ("proyecto", "numero_anio")

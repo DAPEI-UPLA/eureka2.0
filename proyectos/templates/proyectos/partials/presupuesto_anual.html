@@ -1,0 +1,156 @@
+{% load humanize %}
+
+{# Reparto del presupuesto del proyecto por año calendario. Se edita en línea:
+   cada fila es un form que postea a guardar_anio y devuelve esta misma lista. #}
+
+<div class="anios-panel">
+
+    {% if error %}
+    <div class="alert alert-danger py-2 px-3 small mb-3">{{ error }}</div>
+    {% endif %}
+
+    {% if anios %}
+    <div class="table-responsive">
+        <table class="table table-sm align-middle anios-tabla mb-2">
+            <thead>
+                <tr class="text-muted small">
+                    <th style="width:15%;">Año</th>
+                    <th style="width:20%;" class="text-end">Corriente</th>
+                    <th style="width:20%;" class="text-end">Capital</th>
+                    <th style="width:17%;" class="text-end">Total</th>
+                    <th style="width:20%;">POA planificado</th>
+                    <th style="width:8%;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in anios %}
+                <tr id="anio-{{ a.pk }}"
+                    class="{% if a.es_anio_en_curso %}anio-en-curso{% endif %}{% if a.pk == anio_con_error %} table-danger{% endif %}">
+
+                    <td>
+                        <div class="fw-semibold">{{ a.etiqueta }}</div>
+                        <div class="small text-muted">
+                            {{ a.anio_calendario }}
+                            {% if a.es_anio_en_curso %}<span class="badge bg-primary ms-1">en curso</span>{% endif %}
+                        </div>
+                    </td>
+
+                    {% if puede_editar %}
+                    <td colspan="2" class="p-0">
+                        <form hx-post="{% url 'proyectos:guardar_anio' a.pk %}"
+                              hx-target="#presupuesto-anual-container"
+                              hx-swap="innerHTML"
+                              class="d-flex gap-2 px-2 py-1">
+                            {% csrf_token %}
+                            <input type="number" step="1" min="0" name="presupuesto_corriente"
+                                   value="{{ a.presupuesto_corriente|floatformat:0 }}"
+                                   class="form-control form-control-sm text-end"
+                                   aria-label="Presupuesto corriente {{ a.anio_calendario }}">
+                            <input type="number" step="1" min="0" name="presupuesto_capital"
+                                   value="{{ a.presupuesto_capital|floatformat:0 }}"
+                                   class="form-control form-control-sm text-end"
+                                   aria-label="Presupuesto capital {{ a.anio_calendario }}">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Guardar</button>
+                        </form>
+                    </td>
+                    {% else %}
+                    <td class="text-end">${{ a.presupuesto_corriente|floatformat:0|intcomma }}</td>
+                    <td class="text-end">${{ a.presupuesto_capital|floatformat:0|intcomma }}</td>
+                    {% endif %}
+
+                    <td class="text-end fw-semibold">
+                        ${{ a.presupuesto_total|floatformat:0|intcomma }}
+                    </td>
+
+                    <td>
+                        <div class="small">
+                            ${{ a.planificado|floatformat:0|intcomma }}
+                            <span class="text-muted">/ {{ a.porcentaje_planificado|floatformat:0 }}%</span>
+                        </div>
+                        <div class="anio-barra">
+                            <span style="width: {% if a.porcentaje_planificado > 100 %}100{% else %}{{ a.porcentaje_planificado|floatformat:0 }}{% endif %}%;"></span>
+                        </div>
+                    </td>
+
+                    <td class="text-end">
+                        {% if puede_editar %}
+                        <button class="btn btn-sm btn-link text-danger p-0"
+                                hx-post="{% url 'proyectos:eliminar_anio' a.pk %}"
+                                hx-target="#presupuesto-anual-container"
+                                hx-swap="innerHTML"
+                                hx-confirm="¿Eliminar el año {{ a.anio_calendario }}?"
+                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                title="Eliminar año">✕</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="border-top">
+                    <td class="fw-semibold">Suma de los años</td>
+                    <td class="text-end">${{ proyecto.corriente_repartido_por_anio|floatformat:0|intcomma }}</td>
+                    <td class="text-end">${{ proyecto.capital_repartido_por_anio|floatformat:0|intcomma }}</td>
+                    <td class="text-end fw-semibold">${{ proyecto.repartido_por_anio|floatformat:0|intcomma }}</td>
+                    <td colspan="2"></td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Presupuesto del proyecto</td>
+                    <td class="text-end text-muted">${{ proyecto.presupuesto_corriente|floatformat:0|intcomma }}</td>
+                    <td class="text-end text-muted">${{ proyecto.presupuesto_capital|floatformat:0|intcomma }}</td>
+                    <td class="text-end text-muted">${{ proyecto.presupuesto_total|floatformat:0|intcomma }}</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    {# El descuadre es la razón de ser de esta pantalla: mientras la suma de los
+       años no calce con el presupuesto, la línea base del proyecto no sirve. #}
+    {% if proyecto.anios_cuadrados %}
+    <div class="alert alert-success py-2 px-3 small mb-0 d-flex align-items-center gap-2">
+        <span>✓</span>
+        <span>El reparto cuadra con el presupuesto del proyecto.</span>
+    </div>
+    {% else %}
+    <div class="alert alert-warning py-2 px-3 small mb-0">
+        <strong>Faltan por repartir ${{ proyecto.sin_repartir_por_anio|floatformat:0|intcomma }}.</strong>
+        {% if proyecto.corriente_sin_repartir %}
+        Corriente ${{ proyecto.corriente_sin_repartir|floatformat:0|intcomma }}.
+        {% endif %}
+        {% if proyecto.capital_sin_repartir %}
+        Capital ${{ proyecto.capital_sin_repartir|floatformat:0|intcomma }}.
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center text-muted py-4">
+        <div class="mb-2">Este proyecto todavía no tiene su presupuesto repartido por año.</div>
+        {% if proyecto.cantidad_anios_sugerida > 1 %}
+        <div class="small">
+            Por su duración debería tener
+            <strong>{{ proyecto.cantidad_anios_sugerida }} año{{ proyecto.cantidad_anios_sugerida|pluralize:"s" }}</strong>.
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if puede_editar %}
+    <div class="mt-3">
+        <button class="btn btn-sm btn-outline-secondary"
+                hx-post="{% url 'proyectos:crear_anio' proyecto.pk %}"
+                hx-target="#presupuesto-anual-container"
+                hx-swap="innerHTML"
+                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+            + Agregar año
+        </button>
+        {% if anios %}
+        <span class="small text-muted ms-2">
+            {{ anios|length }} de {{ proyecto.cantidad_anios_sugerida }} año{{ proyecto.cantidad_anios_sugerida|pluralize:"s" }} sugerido{{ proyecto.cantidad_anios_sugerida|pluralize:"s" }}
+        </span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>

@@ -936,3 +936,42 @@
     transition: opacity .18s ease, transform .18s ease;
 }
 .proy-aviso.visible { opacity: 1; transform: translateY(0); }
+
+/* ===== PRESUPUESTO POR AÑO ===== */
+/* El reparto anual del presupuesto. La fila del año en curso va destacada
+   porque es la única sobre la que se puede actuar hoy. */
+
+.anios-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+}
+
+.anios-tabla th {
+    font-weight: 600;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.anios-tabla tr.anio-en-curso > td:first-child {
+    box-shadow: inset 3px 0 0 #009fe3;
+}
+
+.anios-tabla tfoot td {
+    border-top: 1px solid #e2e8f0;
+}
+
+.anio-barra {
+    height: 5px;
+    border-radius: 3px;
+    background: #e2e8f0;
+    overflow: hidden;
+    margin-top: 3px;
+}
+
+.anio-barra > span {
+    display: block;
+    height: 100%;
+    background: #1d4ed8;
+    border-radius: 3px;
+}

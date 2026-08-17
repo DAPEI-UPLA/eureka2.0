@@ -31,6 +31,12 @@ from .exportar import (
     informe_proyecto,
 )
 from .permisos import es_encargada, es_jefe, usuario_es_responsable
+from .presupuesto_anual import (
+    crear_anio,
+    eliminar_anio,
+    guardar_anio,
+    listar_presupuesto_anual,
+)
 from .planes_gasto import (
     crear_plan_gasto,
     crear_plan_gasto_form,

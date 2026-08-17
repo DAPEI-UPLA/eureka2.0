@@ -13,6 +13,12 @@ urlpatterns = [
     path('proyectos/<int:pk>/exportar/', views.exportar_proyecto_excel, name="exportar_proyecto_excel"),
     path('proyectos/<int:pk>/informe/', views.informe_proyecto, name="informe_proyecto"),
     path('proyectos/<int:pk>/editar/', views.editar_proyecto, name="editar_proyecto"),
+
+    # PRESUPUESTO ANUAL
+    path('proyectos/<int:pk>/anios/', views.listar_presupuesto_anual, name="listar_presupuesto_anual"),
+    path('proyectos/<int:pk>/anios/crear/', views.crear_anio, name="crear_anio"),
+    path('anio/<int:pk>/guardar/', views.guardar_anio, name="guardar_anio"),
+    path('anio/<int:pk>/eliminar/', views.eliminar_anio, name="eliminar_anio"),
     path('proyectos/<int:pk>/eliminar/', views.eliminar_proyecto, name="eliminar_proyecto"),
     path('proyectos/<int:pk>/dashboard/', views.dashboard_proyecto, name="dashboard_proyecto"),
 
