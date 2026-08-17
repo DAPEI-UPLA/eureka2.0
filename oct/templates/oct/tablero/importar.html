@@ -1,0 +1,277 @@
+{% extends "core/base.html" %}
+{% load l10n %}
+{% block title %}Cargar planilla OCT{% endblock %}
+
+{% block content %}
+{% include "oct/partials/estilos.html" %}
+{% include "oct/tablero/_estilos.html" %}
+
+<div class="container py-5">
+
+    <div class="mb-3">
+        <a href="{% url 'oct:tablero_maestro' %}" class="btn-volver"><span class="arrow">←</span> Tablero</a>
+    </div>
+
+    <div class="oct-page-head">
+        <div>
+            <span class="oct-eyebrow">⬆ OCT</span>
+            <h2>Cargar la planilla actualizada</h2>
+            <p class="oct-sub">
+                Suba el Excel tal como está. El sistema reconoce lo que ya tiene
+                y aplica solo las diferencias — no hay que agregarle ninguna columna.
+            </p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- ===== Columna izquierda: el archivo ===== -->
+        <div class="col-lg-4">
+            <div class="oct-card mb-3">
+                <div class="oct-card-head">Archivo</div>
+                <div class="p-3">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {{ form.archivo }}
+                        {% if form.archivo.errors %}
+                        <div class="text-danger small mt-1">{{ form.archivo.errors.0 }}</div>
+                        {% endif %}
+
+                        <div class="form-check mt-3">
+                            {{ form.podar }}
+                            <label class="form-check-label small" for="{{ form.podar.id_for_label }}">
+                                {{ form.podar.label }}
+                            </label>
+                            <div class="form-text">{{ form.podar.help_text }}</div>
+                        </div>
+
+                        <button class="btn btn-oct-ghost btn-sm mt-3">Analizar archivo</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="oct-card">
+                <div class="oct-card-head">Cómo evita duplicar</div>
+                <div class="p-3 small" style="line-height:1.65">
+                    <p class="mb-2">La identidad sale de lo que la planilla ya trae:</p>
+                    <ul class="ps-3 mb-2">
+                        <li>el <strong>código</strong> (COD), cuando dice algo;</li>
+                        <li>si no hay código, el <strong>nombre dentro del ámbito</strong>,
+                            ignorando tildes y mayúsculas.</li>
+                    </ul>
+                    <p class="mb-2 text-muted">
+                        Si le corrigen la redacción a una iniciativa, se reconoce como la
+                        misma en vez de crear otra.
+                    </p>
+                    <p class="mb-0 text-muted">
+                        Solo se leen las hojas que se escriben a mano: el registro, la
+                        proyección y la meta anual. El avance mensual y el tablero de
+                        control son fórmulas y el sistema los recalcula, así que da lo
+                        mismo si el archivo llega sin recalcular.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Columna derecha: el resultado ===== -->
+        <div class="col-lg-8">
+            {% if not resultado %}
+            <div class="oct-card h-100">
+                <div class="oct-empty">
+                    <span class="oct-empty-icon">📄</span>
+                    Elija el archivo y presione <strong>Analizar</strong>.<br>
+                    <span class="small">Verá qué cambiaría antes de guardar nada.</span>
+                </div>
+            </div>
+            {% else %}
+
+            {% if aplicado %}
+            <div class="alert alert-success">
+                {% if resultado.hay_cambios %}
+                Se guardó {{ resultado.relevantes|length }} cambio{{ resultado.relevantes|length|pluralize }}
+                en el tablero {{ resultado.anio|unlocalize }}.
+                {% else %}
+                El archivo ya estaba reflejado en el sistema: no hubo nada que cambiar.
+                {% endif %}
+                <a href="{% url 'oct:tablero_maestro' %}" class="alert-link">Ver el tablero →</a>
+            </div>
+            {% endif %}
+
+            <!-- Resumen -->
+            <div class="oct-card mb-3">
+                <div class="oct-card-head">
+                    {% if previsualizacion %}Vista previa{% else %}Resumen{% endif %}
+                    · año {{ resultado.anio|unlocalize }}
+                    {% if archivo_original %}<span class="small text-muted ms-2">{{ archivo_original }}</span>{% endif %}
+                </div>
+                <div class="tb-tabla-wrap p-3">
+                    <table class="tb-tabla">
+                        <thead>
+                            <tr>
+                                <th>Registro</th>
+                                <th class="num">Nuevas</th>
+                                <th class="num">Actualizadas</th>
+                                <th class="num">Renombradas</th>
+                                <th class="num">Eliminadas</th>
+                                <th class="num">Conservadas</th>
+                                <th class="num">Sin cambios</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fila in resultado.resumen_por_entidad %}
+                            <tr>
+                                <td><strong>{{ fila.entidad }}</strong></td>
+                                <td class="num">{% if fila.nuevas %}{{ fila.nuevas }}{% else %}<span class="tb-cero">—</span>{% endif %}</td>
+                                <td class="num">{% if fila.actualizadas %}{{ fila.actualizadas }}{% else %}<span class="tb-cero">—</span>{% endif %}</td>
+                                <td class="num">{% if fila.renombradas %}{{ fila.renombradas }}{% else %}<span class="tb-cero">—</span>{% endif %}</td>
+                                <td class="num">{% if fila.eliminadas %}{{ fila.eliminadas }}{% else %}<span class="tb-cero">—</span>{% endif %}</td>
+                                <td class="num">{% if fila.conservadas %}{{ fila.conservadas }}{% else %}<span class="tb-cero">—</span>{% endif %}</td>
+                                <td class="num tb-cero">{{ fila.iguales }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {% if previsualizacion %}
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="confirmar" value="1">
+
+                <!-- ===== El punto delicado: lo editado en el sistema ===== -->
+                {% if resultado.conflictos %}
+                <div class="oct-card mb-3" style="border-color:#fbbf24">
+                    <div class="oct-card-head" style="color:#92400e">
+                        ⚠ {{ resultado.conflictos|length }}
+                        dato{{ resultado.conflictos|length|pluralize }} editado{{ resultado.conflictos|length|pluralize }}
+                        en el sistema que el Excel quiere cambiar
+                    </div>
+                    <div class="p-3">
+                        <p class="small text-muted">
+                            Por defecto <strong>se conserva lo que está en el sistema</strong>.
+                            Marque la casilla de los que sí quiera reemplazar con el archivo.
+                        </p>
+
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-sm btn-oct-ghost" id="marcar-todos">
+                                Marcar todos
+                            </button>
+                            <button type="button" class="btn btn-sm btn-oct-ghost" id="desmarcar-todos">
+                                Desmarcar todos
+                            </button>
+                        </div>
+
+                        {% for c in resultado.conflictos %}
+                        <div class="tb-conflicto">
+                            <div class="form-check">
+                                <input class="form-check-input conflicto" type="checkbox"
+                                       name="usar_excel" value="{{ c.clave }}" id="c-{{ c.clave }}">
+                                <label class="form-check-label w-100" for="c-{{ c.clave }}">
+                                    <h6>
+                                        {% if c.codigo %}<span class="oct-badge oct-badge--neutro">{{ c.codigo }}</span>{% endif %}
+                                        {{ c.nombre }}
+                                    </h6>
+                                    <div class="small text-muted">
+                                        {{ c.ambito }}
+                                        {% if c.editado_por %}· editado por {{ c.editado_por }}{% endif %}
+                                        {% if c.fecha_edicion %}el {{ c.fecha_edicion|date:"d-m-Y H:i" }}{% endif %}
+                                    </div>
+                                </label>
+                            </div>
+
+                            {% if c.es_eliminacion %}
+                            <div class="small mt-2" style="color:#92400e">
+                                Ya no viene en el archivo. Sin marcar se conserva;
+                                <strong>marcada se elimina del registro</strong>.
+                            </div>
+                            {% else %}
+                            <div class="mt-2">
+                                <div class="tb-dif" style="border-top:0; font-weight:600; color:#64748b">
+                                    <div>Campo</div>
+                                    <div>En el sistema (se conserva)</div>
+                                    <div>En el Excel</div>
+                                </div>
+                                {% for d in c.diferencias %}
+                                <div class="tb-dif">
+                                    <div class="tb-dif-etiqueta">{{ d.etiqueta }}</div>
+                                    <div class="tb-dif-actual">{{ d.actual }}</div>
+                                    <div class="tb-dif-propuesto">{{ d.propuesto }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Avisos -->
+                {% if resultado.avisos or resultado.descartadas %}
+                <div class="oct-card mb-3">
+                    <div class="oct-card-head">Para revisar</div>
+                    <div class="p-3 small">
+                        {% for aviso in resultado.avisos %}
+                        <div class="mb-1">⚠ {{ aviso }}</div>
+                        {% endfor %}
+                        {% for linea in resultado.descartadas %}
+                        <div class="mb-1 text-danger">✕ {{ linea }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Detalle -->
+                {% if resultado.relevantes %}
+                <div class="oct-card mb-3">
+                    <div class="oct-card-head">Detalle de los cambios</div>
+                    <div class="tb-tabla-wrap p-3" style="max-height:340px; overflow-y:auto">
+                        <table class="tb-tabla">
+                            <tbody>
+                                {% for c in resultado.relevantes %}
+                                <tr>
+                                    <td style="width:110px"><span class="oct-badge oct-badge--neutro">{{ c.accion|capfirst }}</span></td>
+                                    <td style="width:150px" class="small text-muted">{{ c.entidad }}</td>
+                                    <td style="white-space:normal">
+                                        {{ c.nombre|truncatechars:70 }}
+                                        {% if c.detalle %}<div class="small text-muted">{{ c.detalle|truncatechars:100 }}</div>{% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="d-flex align-items-center gap-3">
+                    <button class="btn btn-oct">
+                        {% if resultado.hay_cambios %}
+                        Aplicar {{ resultado.relevantes|length }} cambio{{ resultado.relevantes|length|pluralize }}
+                        {% else %}
+                        Confirmar de todas formas
+                        {% endif %}
+                    </button>
+                    <span class="small text-muted">Todavía no se ha guardado nada.</span>
+                </div>
+            </form>
+            {% endif %}
+
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const casillas = document.querySelectorAll(".conflicto");
+    const marcar = (valor) => casillas.forEach((c) => { c.checked = valor; pintar(c); });
+    const pintar = (c) => c.closest(".tb-conflicto").classList.toggle("usa-excel", c.checked);
+
+    document.getElementById("marcar-todos")?.addEventListener("click", () => marcar(true));
+    document.getElementById("desmarcar-todos")?.addEventListener("click", () => marcar(false));
+    casillas.forEach((c) => c.addEventListener("change", () => pintar(c)));
+})();
+</script>
+{% endblock %}

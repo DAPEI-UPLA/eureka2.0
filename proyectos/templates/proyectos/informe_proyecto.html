@@ -59,12 +59,31 @@
 
         .pie { margin-top: 30px; padding-top: 10px; border-top: 1px solid var(--linea); color: var(--gris); font-size: 11px; }
 
+        /* ===== Gráficos =====
+           SVG dibujado en el servidor, no canvas: así salen en el papel aunque
+           el navegador imprima antes de correr un solo script. */
+        .panel { border: 1px solid var(--linea); border-radius: 10px; padding: 12px 14px; margin-top: 12px; }
+        .panel h3 { margin: 0 0 8px; font-size: 12px; }
+        .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+        .dos .panel { margin-top: 4px; }
+        .graf { width: 100%; height: auto; display: block; overflow: visible; }
+        .graf text { font-family: inherit; fill: var(--gris); }
+        .g-rotulo { font-size: 9px; }
+        .g-valor  { font-size: 9px; fill: var(--oscuro); font-weight: 600; }
+        .g-dentro { font-size: 9.5px; font-weight: 700; }
+        .g-eje    { font-size: 8.5px; }
+        .leyenda { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; font-size: 10.5px; color: var(--gris); }
+        .leyenda span { display: inline-flex; align-items: center; gap: 5px; }
+        .leyenda i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
+        .leyenda b { color: var(--oscuro); font-variant-numeric: tabular-nums; }
+        .aviso { color: #b45309; }
+
         @media print {
             body { background: #fff; font-size: 11.5px; }
             .barra { display: none; }
             .hoja { box-shadow: none; margin: 0; max-width: none; padding: 0; }
             h2 { page-break-after: avoid; }
-            tr, .kpi { page-break-inside: avoid; }
+            tr, .kpi, .panel { page-break-inside: avoid; }
             @page { margin: 1.6cm; }
         }
     </style>
@@ -120,17 +139,93 @@
         </div>
     </div>
 
-    <table style="margin-top:14px;">
-        <tbody>
-            <tr><td>Presupuesto corriente</td><td class="num">${{ proyecto.presupuesto_corriente|floatformat:0|intcomma }}</td></tr>
-            <tr><td>Presupuesto capital</td><td class="num">${{ proyecto.presupuesto_capital|floatformat:0|intcomma }}</td></tr>
-            <tr><td>Asignado a objetivos</td><td class="num">${{ proyecto.presupuesto_asignado|floatformat:0|intcomma }}</td></tr>
-            <tr><td>Gastos totales</td><td class="num">${{ proyecto.gastos_total|floatformat:0|intcomma }}</td></tr>
-            <tr class="total"><td>% ejecutado del presupuesto</td><td class="num">{{ proyecto.porcentaje_gastado|floatformat:1 }}%</td></tr>
-        </tbody>
-    </table>
+    {% if grafico_ejecucion %}
+    <div class="panel">
+        <h3>En qué está el presupuesto</h3>
+        <svg class="graf" viewBox="0 0 {{ grafico_ejecucion.ancho }} {{ grafico_ejecucion.alto }}"
+             role="img" aria-label="Reparto del presupuesto entre pagado, comprometido y disponible">
+            {% for s in grafico_ejecucion.segmentos %}
+            <rect x="{{ s.x }}" y="{{ grafico_ejecucion.y }}" width="{{ s.ancho }}"
+                  height="{{ grafico_ejecucion.alto_barra }}" fill="{{ s.color }}"></rect>
+            {% if s.cabe %}
+            <text x="{{ s.x_texto }}" y="{{ grafico_ejecucion.y }}" dy="17" class="g-dentro"
+                  text-anchor="middle" fill="{% if s.claro %}#ffffff{% else %}#475569{% endif %}">{{ s.texto }}</text>
+            {% endif %}
+            {% endfor %}
+            {% if grafico_ejecucion.supera %}
+            {# Se gastó más de lo presupuestado: se marca dónde estaba el techo. #}
+            <line x1="{{ grafico_ejecucion.x_limite }}" y1="{{ grafico_ejecucion.y_limite }}"
+                  x2="{{ grafico_ejecucion.x_limite }}" y2="{{ grafico_ejecucion.y_limite_fin }}"
+                  stroke="{{ grafico_ejecucion.color_limite }}" stroke-width="1.5"></line>
+            <text x="{{ grafico_ejecucion.x_rotulo_limite }}" y="{{ grafico_ejecucion.y_rotulo_limite }}"
+                  class="g-eje" text-anchor="middle">{{ grafico_ejecucion.etiqueta_limite }}</text>
+            {% endif %}
+        </svg>
+        <div class="leyenda">
+            {% for s in grafico_ejecucion.segmentos %}
+            <span><i style="background: {{ s.color }}"></i> {{ s.etiqueta }}
+                <b>${{ s.monto|floatformat:0|intcomma }}</b></span>
+            {% endfor %}
+            {% if grafico_ejecucion.supera %}
+            <span class="aviso">El gasto supera el presupuesto; la línea marca dónde estaba el techo.</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="dos">
+        <table style="margin-top:14px;">
+            <tbody>
+                <tr><td>Presupuesto corriente</td><td class="num">${{ proyecto.presupuesto_corriente|floatformat:0|intcomma }}</td></tr>
+                <tr><td>Presupuesto capital</td><td class="num">${{ proyecto.presupuesto_capital|floatformat:0|intcomma }}</td></tr>
+                <tr><td>Asignado a objetivos</td><td class="num">${{ proyecto.presupuesto_asignado|floatformat:0|intcomma }}</td></tr>
+                <tr><td>Gastos totales</td><td class="num">${{ proyecto.gastos_total|floatformat:0|intcomma }}</td></tr>
+                <tr class="total"><td>% ejecutado del presupuesto</td><td class="num">{{ proyecto.porcentaje_gastado|floatformat:1 }}%</td></tr>
+            </tbody>
+        </table>
+
+        {% if grafico_bolsas %}
+        <div class="panel">
+            <h3>Gasto de cada bolsa</h3>
+            <svg class="graf" viewBox="0 0 {{ grafico_bolsas.ancho }} {{ grafico_bolsas.alto }}"
+                 role="img" aria-label="Gasto contra presupuesto en las bolsas corriente y capital">
+                {% for f in grafico_bolsas.filas %}
+                <text x="0" y="{{ f.y_texto }}" class="g-rotulo">{{ f.etiqueta }}</text>
+                <rect x="{{ f.x }}" y="{{ f.y }}" width="{{ f.ancho_gastado }}" height="{{ f.alto }}"
+                      rx="2" fill="{{ f.color }}"></rect>
+                <rect x="{{ f.x_pendiente }}" y="{{ f.y }}" width="{{ f.ancho_pendiente }}"
+                      height="{{ f.alto }}" rx="2" fill="{{ grafico_bolsas.color_pendiente }}"></rect>
+                {% if f.supera %}
+                <line x1="{{ f.x_limite }}" y1="{{ f.y }}" x2="{{ f.x_limite }}" y2="{{ f.y_limite_fin }}"
+                      stroke="{{ grafico_bolsas.color_limite }}" stroke-width="1.5"></line>
+                {% endif %}
+                <text x="{{ f.x_valor }}" y="{{ f.y_texto }}" class="g-valor">{{ f.texto }}</text>
+                {% endfor %}
+            </svg>
+            <div class="leyenda">
+                <span>Barra llena = presupuesto de esa bolsa. Corriente y capital no se prestan entre sí.</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
 
     <h2>Ejecución por transferencia</h2>
+    {% if grafico_transferencias %}
+    <div class="panel">
+        <svg class="graf" viewBox="0 0 {{ grafico_transferencias.ancho }} {{ grafico_transferencias.alto }}"
+             role="img" aria-label="Monto ejecutado en cada transferencia">
+            {% for f in grafico_transferencias.filas %}
+            <text x="0" y="{{ f.y_texto }}" class="g-rotulo">{{ f.etiqueta }}<title>{{ f.titulo }}</title></text>
+            <rect x="{{ f.x }}" y="{{ f.y }}" width="{{ f.ancho }}" height="{{ f.alto }}"
+                  rx="2" fill="{{ grafico_transferencias.color }}"></rect>
+            <text x="{{ f.x_valor }}" y="{{ f.y_texto }}" class="g-valor">{{ f.texto }}</text>
+            {% endfor %}
+        </svg>
+        <div class="leyenda">
+            <span>El monto exacto de cada transferencia está en la tabla.</span>
+        </div>
+    </div>
+    {% endif %}
     {% if transferencias %}
     <table>
         <thead>
@@ -148,6 +243,33 @@
     {% endif %}
 
     <h2>Avance por objetivo</h2>
+    {% if grafico_objetivos %}
+    <div class="panel">
+        <h3>Avance físico contra avance del gasto</h3>
+        <svg class="graf" viewBox="0 0 {{ grafico_objetivos.ancho }} {{ grafico_objetivos.alto }}"
+             role="img" aria-label="Cumplimiento y porcentaje del presupuesto gastado, por objetivo">
+            {# La línea del 100%: hasta ahí llega lo comprometido y lo planificado. #}
+            <line x1="{{ grafico_objetivos.x_cien }}" y1="0"
+                  x2="{{ grafico_objetivos.x_cien }}" y2="{{ grafico_objetivos.y_cien_fin }}"
+                  stroke="{{ grafico_objetivos.color_limite }}" stroke-width="1"
+                  stroke-dasharray="2 2" opacity=".45"></line>
+            {% for f in grafico_objetivos.filas %}
+            <text x="0" y="{{ f.y_rotulo }}" class="g-rotulo">{{ f.etiqueta }}<title>{{ f.titulo }}</title></text>
+            <rect x="{{ f.x }}" y="{{ f.y_fisico }}" width="{{ f.ancho_fisico }}" height="{{ f.alto }}"
+                  rx="2" fill="{{ grafico_objetivos.color_fisico }}"></rect>
+            <text x="{{ f.x_valor_fisico }}" y="{{ f.y_texto_fisico }}" class="g-valor">{{ f.texto_fisico }}</text>
+            <rect x="{{ f.x }}" y="{{ f.y_financiero }}" width="{{ f.ancho_financiero }}" height="{{ f.alto }}"
+                  rx="2" fill="{{ grafico_objetivos.color_financiero }}"></rect>
+            <text x="{{ f.x_valor_financiero }}" y="{{ f.y_texto_financiero }}" class="g-valor">{{ f.texto_financiero }}</text>
+            {% endfor %}
+        </svg>
+        <div class="leyenda">
+            <span><i style="background: {{ grafico_objetivos.color_fisico }}"></i> Cumplimiento</span>
+            <span><i style="background: {{ grafico_objetivos.color_financiero }}"></i> Presupuesto gastado</span>
+            <span>La línea punteada es el 100%. Las dos barras muy distintas son la señal a mirar.</span>
+        </div>
+    </div>
+    {% endif %}
     {% if objetivos %}
     <table>
         <thead>
@@ -155,6 +277,7 @@
                 <th style="width:52px;">Obj.</th>
                 <th>Descripción</th>
                 <th class="num">Presupuesto</th>
+                <th class="num">Gastado</th>
                 <th style="width:150px;">Cumplimiento</th>
             </tr>
         </thead>
@@ -164,6 +287,10 @@
                 <td><b>{{ o.etiqueta }}</b></td>
                 <td>{{ o.descripcion|default:"(sin descripción)" }}</td>
                 <td class="num">${{ o.presupuesto|floatformat:0|intcomma }}</td>
+                <td class="num">
+                    ${{ o.gastado|floatformat:0|intcomma }}
+                    <span class="sub">({{ o.pct_gastado|floatformat:0 }}%)</span>
+                </td>
                 <td>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <div class="barra-prog"><span style="width:{{ o.cumplimiento|floatformat:0 }}%;"></span></div>

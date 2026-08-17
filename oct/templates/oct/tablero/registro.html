@@ -1,0 +1,153 @@
+{% extends "core/base.html" %}
+{% load humanize l10n %}
+{% block title %}Registro de iniciativas OCT{% endblock %}
+
+{% comment %}El año va con |unlocalize: con USE_THOUSAND_SEPARATOR se dibuja
+«2 026» y dentro de un ?anio= ni siquiera filtra.{% endcomment %}
+
+{% block content %}
+{% include "oct/partials/estilos.html" %}
+{% include "oct/tablero/_estilos.html" %}
+
+<div class="container py-5">
+
+    <div class="mb-3">
+        <a href="{% url 'oct:tablero_maestro' %}" class="btn-volver"><span class="arrow">←</span> Tablero</a>
+    </div>
+
+    <div class="oct-page-head">
+        <div>
+            <span class="oct-eyebrow">📋 OCT</span>
+            <h2>Registro de iniciativas {{ anio|unlocalize }}
+                <span class="oct-count-pill">{{ total_anio }}</span>
+            </h2>
+            <p class="oct-sub">
+                Es la única hoja que se escribe: el tablero se recalcula solo a
+                partir de estas filas.
+            </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            {% comment %}El Excel sale completo a propósito, no filtrado: un
+            archivo con la mitad de las filas, subido de vuelta, borraría el
+            resto.{% endcomment %}
+            <a href="{% url 'oct:tablero_exportar_excel' %}?anio={{ anio|unlocalize }}"
+               class="btn btn-sm btn-oct-ghost" title="Descarga el año completo">⬇ Excel</a>
+            <a href="{% url 'oct:tablero_informe' %}?anio={{ anio|unlocalize }}{% if filtro_ambito %}&ambito={{ filtro_ambito }}{% endif %}"
+               class="btn btn-sm btn-oct-ghost">📄 Informe</a>
+            <a href="{% url 'oct:tablero_importar' %}" class="btn btn-sm btn-oct-ghost">⬆ Cargar Excel</a>
+            <a href="{% url 'oct:tablero_gestion_nueva' %}" class="btn btn-sm btn-oct">+ Nueva gestión</a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="oct-chips">
+        <a href="?anio={{ anio|unlocalize }}" class="oct-chip {% if not filtro_ambito %}active{% endif %}">
+            Todos <span class="oct-chip-count">{{ total_anio }}</span>
+        </a>
+        {% for c in chips %}
+        <a href="?anio={{ anio|unlocalize }}&ambito={{ c.valor }}"
+           class="oct-chip {% if filtro_ambito == c.valor %}active{% endif %}">
+            {{ c.etiqueta }} <span class="oct-chip-count">{{ c.n }}</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <form method="get" class="row g-2 align-items-end mb-3">
+        <input type="hidden" name="anio" value="{{ anio|unlocalize }}">
+        {% if filtro_ambito %}<input type="hidden" name="ambito" value="{{ filtro_ambito }}">{% endif %}
+        <div class="col-md-5">
+            <label class="form-label small text-muted mb-1">Buscar</label>
+            <input type="search" name="q" value="{{ busqueda }}" class="form-control form-control-sm"
+                   placeholder="Nombre, código, institución o responsable">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">Estado</label>
+            <select name="estado" class="form-select form-select-sm">
+                <option value="">Todos</option>
+                {% for valor, etiqueta in estados %}
+                <option value="{{ valor }}" {% if filtro_estado == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button class="btn btn-sm btn-oct-ghost flex-grow-1">Filtrar</button>
+            {% if busqueda or filtro_estado or filtro_ambito %}
+            <a href="{% url 'oct:tablero_registro' %}?anio={{ anio|unlocalize }}" class="btn btn-sm btn-oct-ghost">Limpiar</a>
+            {% endif %}
+        </div>
+    </form>
+
+    <div class="oct-card">
+        {% if gestiones %}
+        <div class="tb-tabla-wrap">
+            <table class="tb-tabla">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Ámbito</th>
+                        <th>Iniciativa</th>
+                        <th>Institución</th>
+                        <th>Ingreso</th>
+                        <th class="num">Postulado</th>
+                        <th>Estado</th>
+                        <th>Resultado</th>
+                        <th class="num">Adjudicado</th>
+                        <th>Responsable</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in gestiones %}
+                    <tr>
+                        <td>
+                            <span class="oct-badge oct-badge--neutro">{{ g.codigo|default:"—" }}</span>
+                        </td>
+                        <td>{{ g.get_ambito_display }}</td>
+                        <td style="white-space: normal; min-width: 260px;">
+                            <div>{{ g.nombre }}</div>
+                            <div class="small text-muted">
+                                {{ g.tipo }}
+                                {% if g.origen == "MANUAL" %}<span class="tb-tag tb-tag--manual">Cargada acá</span>{% endif %}
+                                {% if g.editada_en_sistema %}
+                                <span class="tb-tag tb-tag--editado"
+                                      title="Campos editados: {{ g.campos_editados|join:', ' }}">Editado</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td style="white-space: normal; max-width: 200px;">{{ g.institucion|default:"—" }}</td>
+                        <td>{{ g.fecha_ingreso|date:"d-m-Y"|default:"—" }}</td>
+                        <td class="num">
+                            {% if g.monto_postulado %}${{ g.monto_postulado|floatformat:0|intcomma }}{% else %}<span class="tb-cero">—</span>{% endif %}
+                        </td>
+                        <td>{{ g.get_estado_display }}</td>
+                        <td>{{ g.fecha_resultado|date:"d-m-Y"|default:"—" }}</td>
+                        <td class="num">
+                            {% if g.monto_adjudicado %}${{ g.monto_adjudicado|floatformat:0|intcomma }}{% else %}<span class="tb-cero">—</span>{% endif %}
+                        </td>
+                        <td style="white-space: normal; max-width: 170px;">{{ g.responsable|default:"—" }}</td>
+                        <td>
+                            <a href="{% url 'oct:tablero_gestion_editar' g.pk %}"
+                               class="btn btn-sm btn-oct-ghost" title="Editar">✎</a>
+                            <a href="{% url 'oct:tablero_gestion_eliminar' g.pk %}"
+                               class="btn btn-sm btn-oct-ghost" title="Eliminar">✕</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="oct-empty">
+            <span class="oct-empty-icon">🗂️</span>
+            {% if busqueda or filtro_estado or filtro_ambito %}
+            No hay gestiones que calcen con ese filtro.
+            {% else %}
+            Todavía no hay gestiones cargadas para {{ anio|unlocalize }}.<br>
+            <a href="{% url 'oct:tablero_importar' %}">Suba la planilla</a> o
+            <a href="{% url 'oct:tablero_gestion_nueva' %}">agregue la primera a mano</a>.
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

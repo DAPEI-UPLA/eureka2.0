@@ -1,0 +1,304 @@
+{% comment %}
+Estilos compartidos del módulo de Evaluación de Desempeño. Incluir dentro del
+bloque content.
+
+El color de la vicerrectoría llega como variable `--c` en el elemento que
+envuelve la página; sirve de acento y es lo único que cambia entre unidades.
+Sin ese contexto (la portada) cae al azul institucional.
+{% endcomment %}
+<style>
+    .ev { --c: #009fe3; }
+
+    /* ===== Encabezado de página ===== */
+    .ev-head { margin-bottom: 1.75rem; }
+    .ev-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        font-size: .72rem;
+        font-weight: 600;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: var(--c);
+        margin-bottom: .35rem;
+    }
+    .ev-head h2 { font-weight: 700; color: #2f3a45; margin: 0; }
+    .ev-head .ev-sub { color: #94a3b8; margin: .25rem 0 0; font-size: .95rem; }
+
+    /* ===== Migas de pan ===== */
+    .ev-crumb {
+        font-size: .8rem;
+        color: #94a3b8;
+        margin-bottom: .75rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: .35rem;
+        align-items: center;
+    }
+    .ev-crumb a { color: #64748b; text-decoration: none; }
+    .ev-crumb a:hover { color: var(--c); }
+    .ev-crumb .sep { opacity: .5; }
+
+    /* ===== Tarjetas de navegación ===== */
+    .ev-tile {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: #fff;
+        border: 1px solid #eef1f4;
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-decoration: none;
+        color: inherit;
+        overflow: hidden;
+        transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+    }
+    .ev-tile::before {
+        content: "";
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 5px;
+        background: var(--c);
+        opacity: .85;
+    }
+    .ev-tile:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 14px 30px rgba(47,58,69,.10);
+        border-color: #e2e8f0;
+    }
+    .ev-tile h5 { font-weight: 600; color: #2f3a45; margin: 0 0 .4rem; font-size: 1rem; line-height: 1.35; }
+    .ev-tile .ev-meta { color: #94a3b8; font-size: .82rem; margin-top: auto; padding-top: 1rem; }
+    .ev-tile .ev-meta b { color: var(--c); font-weight: 600; }
+    .ev-tile .ev-sigla {
+        width: 56px; height: 56px;
+        border-radius: 14px;
+        background: var(--c);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1rem;
+        letter-spacing: .03em;
+        margin-bottom: 1rem;
+    }
+    .ev-tile .ev-num {
+        width: 32px; height: 32px;
+        border-radius: 9px;
+        background: #f1f5f9;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: .82rem;
+        margin-bottom: .75rem;
+    }
+    .ev-tile .ev-area {
+        color: #94a3b8;
+        font-size: .68rem;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        margin-bottom: .3rem;
+    }
+
+    .ev-pill {
+        display: inline-block;
+        padding: .28em .7em;
+        border-radius: 50rem;
+        font-size: .68rem;
+        font-weight: 600;
+        letter-spacing: .03em;
+        background: #f1f5f9;
+        color: #64748b;
+        margin-bottom: .45rem;
+        align-self: flex-start;
+    }
+    .ev-pill--tipo { background: #eef3f9; color: var(--c); }
+
+    /* ===== Tarjeta contenedora ===== */
+    .ev-card {
+        background: #fff;
+        border: 1px solid #eef1f4;
+        border-radius: 16px;
+        box-shadow: 0 1px 2px rgba(0,0,0,.03);
+        margin-bottom: 1.25rem;
+    }
+    .ev-card-head {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #eef1f4;
+        font-weight: 600;
+        color: #2f3a45;
+    }
+    .ev-card-body { padding: 1.25rem; }
+
+    .ev-card .table { margin: 0; }
+    .ev-card .table thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-size: .72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        border-bottom: 1px solid #eef1f4;
+        padding: .75rem 1rem;
+    }
+    .ev-card .table tbody td {
+        padding: .7rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        font-size: .9rem;
+    }
+    .ev-card .table tbody tr:last-child td { border-bottom: 0; }
+
+    /* ===== Ficha del perfil ===== */
+    .ev-campo { padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9; }
+    .ev-campo:last-child { border-bottom: 0; }
+    .ev-campo .ev-lbl {
+        font-size: .7rem;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: var(--c);
+        font-weight: 700;
+        margin-bottom: .35rem;
+    }
+    .ev-campo .ev-val { font-size: .9rem; line-height: 1.6; white-space: pre-line; color: #334155; }
+
+    /* ===== Bloque de resultado ===== */
+    .ev-res {
+        background: linear-gradient(135deg, #2f3a45, var(--c));
+        color: #fff;
+        border: none;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.25rem;
+    }
+    .ev-res .ev-nota { font-size: 2.75rem; font-weight: 700; line-height: 1; }
+    .ev-res .ev-interp { font-size: 1.05rem; margin-top: .3rem; opacity: .95; }
+    .ev-res .ev-comp { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: 1.25rem; }
+    .ev-res .ev-comp > div {
+        background: rgba(255,255,255,.14);
+        border-radius: 10px;
+        padding: .6rem 1rem;
+    }
+    .ev-res .ev-comp b { font-size: 1.25rem; display: block; font-weight: 600; }
+    .ev-res .ev-comp span { font-size: .72rem; opacity: .85; }
+    .ev-res .ev-titulo {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        opacity: .75;
+        margin-bottom: .5rem;
+    }
+
+    /* ===== Formularios ===== */
+    .ev-select {
+        padding: .35rem .5rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: .82rem;
+        width: 100%;
+        color: #334155;
+        background: #fff;
+    }
+    .ev-select:focus { border-color: #93c5fd; outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+    .col-nivel { width: 170px; }
+
+    .ev-req {
+        display: inline-block;
+        min-width: 28px;
+        text-align: center;
+        background: #f1f5f9;
+        color: #475569;
+        border-radius: 6px;
+        padding: .15rem .45rem;
+        font-weight: 600;
+        font-size: .82rem;
+    }
+    .ev-factor { color: #94a3b8; font-size: .78rem; }
+
+    .ev-grid {
+        display: grid;
+        grid-template-columns: 1fr 130px;
+        gap: .6rem 1rem;
+        align-items: center;
+        max-width: 560px;
+    }
+    .ev-grid--ident { grid-template-columns: 1fr 1fr; max-width: none; }
+    .ev-grid label { font-size: .88rem; color: #475569; margin: 0; }
+    .ev-grid input {
+        padding: .35rem .6rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        width: 100%;
+        font-size: .88rem;
+        color: #334155;
+    }
+    .ev-grid input:focus { border-color: #93c5fd; outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+
+    .btn-ev {
+        background: var(--c);
+        border: 1px solid var(--c);
+        color: #fff;
+        border-radius: 9px;
+        font-weight: 500;
+        padding: .5rem 1.25rem;
+    }
+    .btn-ev:hover { filter: brightness(.92); color: #fff; }
+    .btn-ev-ghost {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        border-radius: 9px;
+        font-weight: 500;
+        padding: .5rem 1.25rem;
+    }
+    .btn-ev-ghost:hover { border-color: var(--c); color: var(--c); }
+
+    /* ===== Avisos ===== */
+    .ev-aviso {
+        border-radius: 10px;
+        padding: .7rem 1rem;
+        font-size: .85rem;
+        margin-bottom: 1.25rem;
+        border: 1px solid transparent;
+    }
+    .ev-aviso--ok    { background: #f0fdf4; border-color: #dcfce7; color: #15803d; }
+    .ev-aviso--nota  { background: #fffbeb; border-color: #fef3c7; color: #b45309; }
+    .ev-aviso--alerta{ background: #fef2f2; border-color: #fee2e2; color: #b91c1c; }
+
+    .ev-brecha {
+        display: inline-block;
+        min-width: 24px;
+        text-align: center;
+        border-radius: 6px;
+        padding: .1rem .4rem;
+        font-weight: 600;
+        font-size: .8rem;
+        background: #f1f5f9;
+        color: #475569;
+    }
+    .ev-brecha--alta { background: #fee2e2; color: #b91c1c; }
+
+    /* ===== Vacío ===== */
+    .ev-vacio {
+        background: #fff;
+        border: 1px dashed #e2e8f0;
+        border-radius: 16px;
+        text-align: center;
+        padding: 3rem 1.25rem;
+        color: #94a3b8;
+    }
+    .ev-vacio .ev-vacio-icon { font-size: 2rem; display: block; margin-bottom: .6rem; opacity: .6; }
+    .ev-vacio .ev-tag {
+        display: inline-block;
+        margin-top: .9rem;
+        background: #f1f5f9;
+        color: #64748b;
+        padding: .35rem .9rem;
+        border-radius: 50rem;
+        font-size: .75rem;
+        font-weight: 600;
+    }
+</style>

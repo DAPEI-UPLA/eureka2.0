@@ -1,0 +1,56 @@
+{% extends "core/base.html" %}
+
+{% block title %}{{ actual.nombre }}{% endblock %}
+
+{% block content %}
+{% include "evaluaciones/partials/estilos.html" %}
+
+<div class="ev container py-4" style="--c: {{ color }}">
+
+    <div class="ev-crumb">
+        <a href="{% url 'evaluaciones:home' %}">Evaluación de desempeño</a>
+        {% for b in breadcrumb %}
+            <span class="sep">›</span>
+            {% if forloop.last %}{{ b.nombre }}{% else %}<a href="{% url 'evaluaciones:nodo' b.ruta %}">{{ b.nombre }}</a>{% endif %}
+        {% endfor %}
+    </div>
+
+    <div class="ev-head">
+        <h2>{{ actual.nombre }}</h2>
+        {% if cards %}<p class="ev-sub">Seleccione una opción para continuar.</p>{% endif %}
+    </div>
+
+    {% if cards %}
+    <div class="row g-4">
+        {% for c in cards %}
+        <div class="col-md-6 col-lg-4">
+            <a class="ev-tile" href="{% url 'evaluaciones:nodo' c.ruta %}">
+                {% if c.tipo == "rama" %}
+                    <div class="ev-num">{{ forloop.counter }}</div>
+                    <h5>{{ c.nombre }}</h5>
+                    <div class="ev-meta">
+                        {% if c.n %}<b>{{ c.n }}</b> {{ c.label }}{% else %}Sin contenido aún{% endif %}
+                    </div>
+                {% else %}
+                    <span class="ev-pill">Cargo</span>
+                    {% if c.area %}<div class="ev-area">{{ c.area }}</div>{% endif %}
+                    <h5>{{ c.nombre }}</h5>
+                    <div class="ev-meta">
+                        {% if c.tiene_perfil %}<b>Ver perfil</b>{% else %}Perfil por definir{% endif %}
+                        {% if c.instrumento %} · instrumento oficial{% endif %}
+                    </div>
+                {% endif %}
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="ev-vacio">
+        <span class="ev-vacio-icon">🗂️</span>
+        Aún no hay contenido cargado para esta unidad.
+        <div><span class="ev-tag">Contenido por definir</span></div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

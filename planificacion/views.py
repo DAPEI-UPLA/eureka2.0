@@ -412,9 +412,18 @@ def crear_programa(request):
 def editar_programa(request, id):
     programa = get_object_or_404(Programa, id=id)
     nombre = (request.POST.get("nombre") or "").strip()
-    if nombre:
+    if not nombre:
+        messages.error(request, "El nombre no puede estar vacío.")
+    elif (
+        Programa.objects.filter(nombre=nombre, tipo=programa.tipo)
+        .exclude(pk=programa.pk)
+        .exists()
+    ):
+        messages.error(request, "Ya existe un plan con ese nombre en esta sección.")
+    elif nombre != programa.nombre:
         programa.nombre = nombre
-        programa.save()
+        programa.save(update_fields=["nombre"])
+        messages.success(request, "Nombre del plan actualizado.")
     return redirect("planificacion:lista_programas_tipo", tipo=programa.tipo)
 
 

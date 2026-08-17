@@ -1,0 +1,54 @@
+{% extends "core/base.html" %}
+
+{% block title %}{{ actual.nombre }}{% endblock %}
+
+{% block content %}
+{% include "evaluaciones/partials/estilos.html" %}
+
+<div class="ev container py-4" style="--c: {{ color }}">
+
+    <div class="ev-crumb">
+        <a href="{% url 'evaluaciones:home' %}">Evaluación de desempeño</a>
+        {% for b in breadcrumb %}
+            <span class="sep">›</span>
+            {% if forloop.last %}{{ b.nombre }}{% else %}<a href="{% url 'evaluaciones:nodo' b.ruta %}">{{ b.nombre }}</a>{% endif %}
+        {% endfor %}
+    </div>
+
+    <div class="ev-head d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <h2>{{ actual.nombre }}</h2>
+            {% if perfil %}<span class="ev-pill ev-pill--tipo mt-2">Perfil tipo {{ perfil.tipo }}</span>{% endif %}
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a class="btn btn-ev-ghost btn-sm"
+               href="{% if volver_ruta %}{% url 'evaluaciones:nodo' volver_ruta %}{% else %}{% url 'evaluaciones:home' %}{% endif %}">
+                ← Volver
+            </a>
+            {% if instrumento %}
+            <a class="btn btn-ev btn-sm" href="{% url instrumento %}">Abrir instrumento oficial →</a>
+            {% elif perfil %}
+            <a class="btn btn-ev btn-sm" href="{% url 'evaluaciones:evaluar_cargo' cargo_ruta %}">Evaluar este cargo →</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if perfil %}
+    <div class="ev-card">
+        {% for etiqueta, valor in perfil.campos %}
+        <div class="ev-campo">
+            <div class="ev-lbl">{{ etiqueta }}</div>
+            <div class="ev-val">{{ valor }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="ev-vacio">
+        <span class="ev-vacio-icon">📄</span>
+        Este cargo aún no tiene un perfil asociado.
+        <div><span class="ev-tag">Perfil por definir</span></div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

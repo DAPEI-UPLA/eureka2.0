@@ -8,7 +8,9 @@ Tres salidas, todas reutilizando los @property ya definidos en los modelos
   - exportar_cartera_excel: libro .xlsx con el resumen de todos los proyectos
       visibles (respeta el permiso jefe vs responsable, igual que la lista).
   - informe_proyecto: página HTML optimizada para imprimir / "Guardar como PDF"
-      desde el navegador (sin dependencias de PDF en el servidor).
+      desde el navegador (sin dependencias de PDF en el servidor). Sus gráficos
+      son SVG dibujados acá mismo (`..graficos_informe`), no Chart.js: ver el
+      porqué en `core.svg`.
 
 openpyxl ya está en requirements; si faltara, se devuelve un 500 explicativo
 (mismo patrón que planificacion.views).
@@ -25,6 +27,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.text import slugify
 
+from .. import graficos_informe as gi
 from ..models import Egreso, PlanDeGasto, Proyecto
 from .graficos import _cumplimiento_objetivo
 from .permisos import es_jefe
@@ -420,11 +423,20 @@ def informe_proyecto(request, pk):
 
     objetivos = []
     for i, obj in enumerate(proyecto.objetivos.filter(eliminado=False).order_by('orden', 'id'), start=1):
+        # Lo gastado del objetivo se arma sumando sus resultados, que es donde
+        # los egresos quedan colgados; el objetivo no lo sabe por sí mismo.
+        presupuesto = obj.presupuesto_asignado
+        gastado = sum(
+            (r.gastos_total for r in obj.resultados.filter(eliminado=False)),
+            Decimal('0'),
+        )
         objetivos.append({
             'etiqueta': f'OE{i}',
             'descripcion': obj.descripcion,
-            'presupuesto': obj.presupuesto_asignado,
+            'presupuesto': presupuesto,
+            'gastado': gastado,
             'cumplimiento': _cumplimiento_objetivo(obj),
+            'pct_gastado': gi.porcentaje(gastado, presupuesto),
         })
 
     return render(request, 'proyectos/informe_proyecto.html', {
@@ -433,4 +445,27 @@ def informe_proyecto(request, pk):
         'objetivos': objetivos,
         'generado': timezone.now(),
         'auto_print': request.GET.get('print') == '1',
+        # Gráficos del informe: SVG servido, no Chart.js (ver core.svg).
+        'grafico_ejecucion': gi.barra_de_ejecucion(
+            proyecto.gastos_pagados,
+            proyecto.gastos_comprometidos,
+            proyecto.presupuesto_total,
+        ),
+        'grafico_bolsas': gi.barras_de_bolsas([
+            ('Corriente', proyecto.gastos_corriente, proyecto.presupuesto_corriente, gi.COLOR_CORRIENTE),
+            ('Capital', proyecto.gastos_capital, proyecto.presupuesto_capital, gi.COLOR_CAPITAL),
+        ]),
+        'grafico_transferencias': gi.barras_de_montos(
+            [(t['nombre'], t['monto']) for t in transferencias],
+            ancho=gi.ANCHO_TOTAL, col_etiqueta=168, largo_rotulo=30,
+        ),
+        'grafico_objetivos': gi.barras_de_objetivos([
+            {
+                'etiqueta': f"{o['etiqueta']}: {gi.recortar(o['descripcion'] or 'Sin descripción', 24)}",
+                'titulo': o['descripcion'] or '',
+                'fisico': o['cumplimiento'],
+                'financiero': o['pct_gastado'],
+            }
+            for o in objetivos
+        ]),
     })

@@ -170,17 +170,6 @@
     </script>
 
     {% if columnas %}
-    <div class="d-flex justify-content-end mb-3">
-        <div class="btn-group" role="group" aria-label="Modo de comparación" id="modo-comparar">
-            <button type="button" class="btn btn-outline-primary active" data-modo="objetivo">
-                Por objetivo
-            </button>
-            <button type="button" class="btn btn-outline-primary" data-modo="indicador">
-                Por indicador
-            </button>
-        </div>
-    </div>
-
     <div class="row g-3">
         {% for col in columnas %}
         <div class="col-md-{% if columnas|length == 1 %}12{% elif columnas|length == 2 %}6{% else %}4{% endif %}">
@@ -194,24 +183,7 @@
                     <small class="text-muted">Avance global {{ anio }}/S{{ semestre }}</small>
                 </div>
 
-                <div class="vista-objetivo">
-                    <h6 class="text-uppercase small text-muted mt-3">Por objetivo</h6>
-                    {% for b in col.estructura %}
-                        <div class="mb-2">
-                            <div class="d-flex justify-content-between small">
-                                <span>{{ b.objetivo.nombre|truncatechars:40 }}</span>
-                                <span>{% if b.avance is not None %}{{ b.avance|floatformat:0 }}%{% else %}—{% endif %}</span>
-                            </div>
-                            <div class="bar-progress">
-                                <span class="bg-{{ b.color_obj }}" style="width: {{ b.avance|avance_clamp }}%;"></span>
-                            </div>
-                        </div>
-                    {% empty %}
-                        <p class="text-muted small">Sin objetivos.</p>
-                    {% endfor %}
-                </div>
-
-                <div class="vista-indicador d-none">
+                <div class="vista-indicador">
                     <h6 class="text-uppercase small text-muted mt-3">Por indicador</h6>
                     {% for b in col.estructura %}
                         {% for ind in b.indicadores %}
@@ -245,28 +217,6 @@
         {% endfor %}
     </div>
 
-    <script>
-    (function () {
-        const grupo = document.getElementById('modo-comparar');
-        if (!grupo) return;
-        grupo.addEventListener('click', function (e) {
-            const btn = e.target.closest('button[data-modo]');
-            if (!btn) return;
-            const modo = btn.dataset.modo;
-            grupo.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
-            document.querySelectorAll('.vista-objetivo').forEach(el => el.classList.toggle('d-none', modo !== 'objetivo'));
-            document.querySelectorAll('.vista-indicador').forEach(el => el.classList.toggle('d-none', modo !== 'indicador'));
-            try { sessionStorage.setItem('comparar_modo', modo); } catch (err) {}
-        });
-        try {
-            const saved = sessionStorage.getItem('comparar_modo');
-            if (saved === 'indicador') {
-                const btn = grupo.querySelector('button[data-modo="indicador"]');
-                if (btn) btn.click();
-            }
-        } catch (err) {}
-    })();
-    </script>
     {% else %}
     <div class="alert alert-light">Selecciona uno o más planes para comparar.</div>
     {% endif %}

@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import exportar, views
 
 app_name = 'oct'
 
@@ -41,4 +41,17 @@ urlpatterns = [
     path("formulaciones/revisar/", views.revisar_formulaciones, name="revisar_formulaciones"),
     path("formulaciones/aprobar/<int:pk>/", views.aprobar_formulacion, name="aprobar_formulacion"),
     path("formulaciones/devolver/<int:pk>/", views.devolver_formulacion, name="devolver_formulacion"),
+
+    # Tablero maestro de resultados
+    path("tablero/", views.tablero_maestro, name="tablero_maestro"),
+    path("tablero/registro/", views.tablero_registro, name="tablero_registro"),
+    path("tablero/registro/nueva/", views.tablero_gestion_nueva, name="tablero_gestion_nueva"),
+    path("tablero/registro/<int:pk>/editar/", views.tablero_gestion_editar, name="tablero_gestion_editar"),
+    path("tablero/registro/<int:pk>/eliminar/", views.tablero_gestion_eliminar, name="tablero_gestion_eliminar"),
+    path("tablero/parametros/", views.tablero_parametros, name="tablero_parametros"),
+    path("tablero/importar/", views.tablero_importar, name="tablero_importar"),
+
+    # Salidas: Excel reimportable e informe para imprimir o guardar como PDF
+    path("tablero/exportar/", exportar.exportar_tablero_excel, name="tablero_exportar_excel"),
+    path("tablero/informe/", exportar.informe_tablero, name="tablero_informe"),
 ]

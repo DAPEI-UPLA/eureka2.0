@@ -1,0 +1,340 @@
+{% extends "core/base.html" %}
+{% load humanize l10n %}
+{% block title %}Tablero maestro OCT{% endblock %}
+
+{% comment %}Los años van con |unlocalize: con USE_THOUSAND_SEPARATOR, un
+{{ anio }} suelto se dibuja «2 026» y, dentro de un ?anio=, ni siquiera
+filtra.{% endcomment %}
+
+{% block content %}
+{% include "oct/partials/estilos.html" %}
+{% include "oct/tablero/_estilos.html" %}
+
+<div class="container py-5">
+
+    <div class="mb-3">
+        <a href="{% url 'oct:home' %}" class="btn-volver"><span class="arrow">←</span> Volver a OCT</a>
+    </div>
+
+    <div class="oct-page-head">
+        <div>
+            <span class="oct-eyebrow">📊 OCT</span>
+            <h2>Tablero maestro de resultados {{ anio|unlocalize }}</h2>
+            <p class="oct-sub">
+                {% if n_gestiones == 1 %}1 gestión{% else %}{{ n_gestiones }} gestiones{% endif %}
+                en el registro. Todo lo que en la planilla era fórmula se recalcula acá.
+            </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            {% if anios|length > 1 %}
+            <form method="get" class="d-flex align-items-center gap-2">
+                <label class="form-label mb-0 small text-muted">Año</label>
+                <select name="anio" class="form-select form-select-sm" style="width:auto"
+                        onchange="this.form.submit()">
+                    {% for a in anios %}
+                    <option value="{{ a|unlocalize }}" {% if a == anio %}selected{% endif %}>{{ a|unlocalize }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            {% endif %}
+            <a href="{% url 'oct:tablero_registro' %}" class="btn btn-sm btn-oct-ghost">📋 Registro</a>
+            <a href="{% url 'oct:tablero_parametros' %}" class="btn btn-sm btn-oct-ghost">🎯 Metas y proyección</a>
+
+            <div class="btn-group">
+                <button class="btn btn-sm btn-oct-ghost dropdown-toggle" type="button"
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                    ⬇ Exportar
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item"
+                           href="{% url 'oct:tablero_exportar_excel' %}?anio={{ anio|unlocalize }}">
+                            📊 Excel del tablero
+                            <div class="small text-muted">Se puede volver a subir tal cual</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item"
+                           href="{% url 'oct:tablero_informe' %}?anio={{ anio|unlocalize }}">
+                            📄 Informe / PDF
+                            <div class="small text-muted">Con detalle por ámbito</div>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <a href="{% url 'oct:tablero_importar' %}" class="btn btn-sm btn-oct">⬆ Cargar Excel</a>
+        </div>
+    </div>
+
+    {% if editadas %}
+    <div class="alert alert-light border d-flex align-items-center gap-2 py-2" role="status">
+        <span class="tb-tag tb-tag--editado">Editado</span>
+        <span class="small text-muted">
+            {% if editadas == 1 %}1 gestión{% else %}{{ editadas }} gestiones{% endif %}
+            con cambios hechos en el sistema.
+            La próxima carga del Excel preguntará antes de pisarlos.
+        </span>
+    </div>
+    {% endif %}
+
+    <!-- ===== Cabecera de indicadores ===== -->
+    <div class="tb-kpis">
+        <div class="tb-kpi">
+            <div class="tb-kpi-label">Gestiones realizadas</div>
+            <div class="tb-kpi-valor">{{ total.gestiones|floatformat:0 }}</div>
+            <div class="tb-kpi-nota">de {{ total.meta }} comprometidas</div>
+        </div>
+        <div class="tb-kpi">
+            <div class="tb-kpi-label">Nivel de avance</div>
+            <div class="tb-kpi-valor tb-sem tb-sem--{{ total.semaforo_avance }}">
+                {{ total.avance_pct|floatformat:1 }}%
+            </div>
+            <div class="tb-barra"><span style="width: {% if total.avance_pct > 100 %}100{% else %}{{ total.avance_pct|floatformat:0 }}{% endif %}%"></span></div>
+        </div>
+        <div class="tb-kpi">
+            <div class="tb-kpi-label">Resultados exitosos</div>
+            <div class="tb-kpi-valor">{{ total.exitosos|floatformat:0 }}</div>
+            <div class="tb-kpi-nota">tasa de éxito {{ total.tasa_exito_pct|floatformat:1 }}%</div>
+        </div>
+        <div class="tb-kpi">
+            <div class="tb-kpi-label">Ingreso proyectado</div>
+            <div class="tb-kpi-valor">${{ total.proyectado|floatformat:0|intcomma }}</div>
+            <div class="tb-kpi-nota">escenario del año</div>
+        </div>
+        <div class="tb-kpi">
+            <div class="tb-kpi-label">Ingreso efectivo</div>
+            <div class="tb-kpi-valor">${{ total.efectivo|floatformat:0|intcomma }}</div>
+            <div class="tb-kpi-nota tb-sem tb-sem--{{ total.semaforo_cumplimiento }}">
+                {{ total.cumplimiento_pct|floatformat:1 }}% de cumplimiento
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Tablero de control ===== -->
+    <div class="oct-card mb-4">
+        <div class="oct-card-head">Tablero de control por ámbito</div>
+        <div class="tb-tabla-wrap p-3">
+            <table class="tb-tabla">
+                <thead>
+                    <tr>
+                        <th>Ámbito</th>
+                        <th class="num">Meta anual</th>
+                        <th class="num">Gestiones</th>
+                        <th class="num">Nivel de avance</th>
+                        <th class="num">Exitosos</th>
+                        <th class="num">Tasa de éxito</th>
+                        <th class="num">Monto proyectado</th>
+                        <th class="num">Monto efectivo</th>
+                        <th class="num">Cumplimiento</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in filas %}
+                    <tr>
+                        <td><strong>{{ f.etiqueta }}</strong></td>
+                        <td class="num">{{ f.meta }}</td>
+                        <td class="num">{{ f.gestiones|floatformat:0 }}</td>
+                        <td class="num">
+                            <span class="tb-sem tb-sem--{{ f.semaforo_avance }}">{{ f.avance_pct|floatformat:1 }}%</span>
+                        </td>
+                        <td class="num">{{ f.exitosos|floatformat:0 }}</td>
+                        <td class="num">{{ f.tasa_exito_pct|floatformat:1 }}%</td>
+                        <td class="num">${{ f.proyectado|floatformat:0|intcomma }}</td>
+                        <td class="num">${{ f.efectivo|floatformat:0|intcomma }}</td>
+                        <td class="num">
+                            <span class="tb-sem tb-sem--{{ f.semaforo_cumplimiento }}">{{ f.cumplimiento_pct|floatformat:1 }}%</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="tb-total">
+                        <td>TOTAL</td>
+                        <td class="num">{{ total.meta }}</td>
+                        <td class="num">{{ total.gestiones|floatformat:0 }}</td>
+                        <td class="num">{{ total.avance_pct|floatformat:1 }}%</td>
+                        <td class="num">{{ total.exitosos|floatformat:0 }}</td>
+                        <td class="num">{{ total.tasa_exito_pct|floatformat:1 }}%</td>
+                        <td class="num">${{ total.proyectado|floatformat:0|intcomma }}</td>
+                        <td class="num">${{ total.efectivo|floatformat:0|intcomma }}</td>
+                        <td class="num">{{ total.cumplimiento_pct|floatformat:1 }}%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="px-3 pb-3">
+            <p class="small text-muted mb-0">
+                Nivel de avance = gestiones / meta · Tasa de éxito = exitosos / gestiones ·
+                Cumplimiento = monto efectivo / proyectado.
+                Semáforo: verde ≥ 90%, amarillo 70–89%, rojo &lt; 70%.
+            </p>
+        </div>
+    </div>
+
+    <!-- ===== Gráficos ===== -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-5">
+            <div class="oct-card h-100">
+                <div class="oct-card-head">Gestiones contra la meta</div>
+                <div class="p-3"><canvas id="graf-avance" height="220"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="oct-card h-100">
+                <div class="oct-card-head">Ingreso proyectado y efectivo por mes</div>
+                <div class="p-3"><canvas id="graf-dinero" height="220"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Avance mensual ===== -->
+    <div class="oct-card mb-4">
+        <div class="oct-card-head">Avance mensual de gestión</div>
+        <div class="tb-tabla-wrap p-3">
+            <table class="tb-tabla">
+                <thead>
+                    <tr>
+                        <th class="tb-rotulo">Indicador</th>
+                        {% for n, nombre in meses %}<th class="num">{{ nombre }}</th>{% endfor %}
+                        <th class="num">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in bloques %}
+                    <tr class="tb-grupo">
+                        <td class="tb-rotulo">{{ b.etiqueta }}</td>
+                        <td colspan="13"></td>
+                    </tr>
+                    {% for f in b.filas %}
+                    <tr>
+                        <td class="tb-rotulo">{{ f.rotulo }}</td>
+                        {% if f.es_tasa %}
+                            {% for v in f.meses_pct %}
+                            <td class="num {% if not v %}tb-cero{% endif %}">{{ v|floatformat:0 }}%</td>
+                            {% endfor %}
+                            <td class="num"><strong>{{ f.total_pct|floatformat:0 }}%</strong></td>
+                        {% elif f.es_monto %}
+                            {% for v in f.meses %}
+                            <td class="num {% if not v %}tb-cero{% endif %}">
+                                {% if v %}${{ v|floatformat:0|intcomma }}{% else %}—{% endif %}
+                            </td>
+                            {% endfor %}
+                            <td class="num"><strong>${{ f.total|floatformat:0|intcomma }}</strong></td>
+                        {% else %}
+                            {% for v in f.meses %}
+                            <td class="num {% if not v %}tb-cero{% endif %}">{{ v|floatformat:0 }}</td>
+                            {% endfor %}
+                            <td class="num"><strong>{{ f.total|floatformat:0 }}</strong></td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="px-3 pb-3">
+            <p class="small text-muted mb-0">
+                Lo gestionado y lo postulado se cuentan por el <strong>mes de ingreso</strong>;
+                lo exitoso y lo adjudicado, por el <strong>mes de resultado</strong>.
+                Una gestión sin fecha de ingreso aparece en el registro pero no cae en
+                ningún mes — igual que en la planilla.
+            </p>
+        </div>
+    </div>
+
+    <!-- ===== Proyección financiera ===== -->
+    <div class="oct-card">
+        <div class="oct-card-head">
+            Proyección financiera
+            <a href="{% url 'oct:tablero_parametros' %}" class="ms-auto small text-decoration-none">Editar →</a>
+        </div>
+        <div class="tb-tabla-wrap p-3">
+            <table class="tb-tabla">
+                <thead>
+                    <tr>
+                        <th class="tb-rotulo">Ámbito</th>
+                        {% for n, nombre in meses %}<th class="num">{{ nombre }}</th>{% endfor %}
+                        <th class="num">Total anual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in proyeccion %}
+                    <tr>
+                        <td class="tb-rotulo">{{ f.etiqueta }}</td>
+                        {% for v in f.meses %}
+                        <td class="num {% if not v %}tb-cero{% endif %}">
+                            {% if v %}${{ v|floatformat:0|intcomma }}{% else %}—{% endif %}
+                        </td>
+                        {% endfor %}
+                        <td class="num"><strong>${{ f.total|floatformat:0|intcomma }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="tb-total">
+                        <td class="tb-rotulo">{{ proyeccion_total.etiqueta }}</td>
+                        {% for v in proyeccion_total.meses %}
+                        <td class="num">{% if v %}${{ v|floatformat:0|intcomma }}{% else %}—{% endif %}</td>
+                        {% endfor %}
+                        <td class="num">${{ proyeccion_total.total|floatformat:0|intcomma }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{{ grafico_avance|json_script:"datos-avance" }}
+{{ grafico_dinero|json_script:"datos-dinero" }}
+{{ colores|json_script:"datos-colores" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    if (typeof Chart === "undefined") return;   // sin CDN, la tabla igual sirve
+
+    const avance  = JSON.parse(document.getElementById("datos-avance").textContent);
+    const dinero  = JSON.parse(document.getElementById("datos-dinero").textContent);
+    const color   = JSON.parse(document.getElementById("datos-colores").textContent);
+
+    const pesos = (v) => "$" + v.toLocaleString("es-CL");
+
+    const comun = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } },
+        scales: { y: { beginAtZero: true, grid: { color: "#f1f5f9" } },
+                  x: { grid: { display: false } } },
+    };
+
+    new Chart(document.getElementById("graf-avance"), {
+        type: "bar",
+        data: {
+            labels: avance.etiquetas,
+            datasets: [
+                { label: "Meta anual", data: avance.meta, backgroundColor: color.apagado },
+                { label: "Gestiones realizadas", data: avance.gestiones, backgroundColor: color.serie },
+            ],
+        },
+        options: comun,
+    });
+
+    new Chart(document.getElementById("graf-dinero"), {
+        type: "bar",
+        data: {
+            labels: dinero.etiquetas,
+            datasets: [
+                { label: "Proyectado", data: dinero.proyectado, backgroundColor: color.apagado },
+                { label: "Efectivo", data: dinero.efectivo, backgroundColor: color.serie2 },
+            ],
+        },
+        options: Object.assign({}, comun, {
+            plugins: Object.assign({}, comun.plugins, {
+                tooltip: { callbacks: { label: (c) => c.dataset.label + ": " + pesos(c.parsed.y) } },
+            }),
+            scales: Object.assign({}, comun.scales, {
+                y: { beginAtZero: true, grid: { color: "#f1f5f9" },
+                     ticks: { callback: (v) => "$" + (v / 1e6).toLocaleString("es-CL") + "M" } },
+            }),
+        }),
+    });
+})();
+</script>
+{% endblock %}

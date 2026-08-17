@@ -1,0 +1,155 @@
+{% extends "core/base.html" %}
+
+{% block title %}Evaluar · {{ actual.nombre }}{% endblock %}
+
+{% block content %}
+{% include "evaluaciones/partials/estilos.html" %}
+
+<div class="ev container py-4" style="--c: {{ color }}">
+
+    <div class="ev-crumb">
+        <a href="{% url 'evaluaciones:home' %}">Evaluación de desempeño</a>
+        {% for b in breadcrumb %}
+            <span class="sep">›</span>
+            <a href="{% url 'evaluaciones:nodo' b.ruta %}">{{ b.nombre }}</a>
+        {% endfor %}
+    </div>
+
+    <div class="ev-head d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <span class="ev-eyebrow">Evaluación del cargo</span>
+            <h2>{{ actual.nombre }}</h2>
+            {% if perfil_tipo %}<span class="ev-pill ev-pill--tipo mt-2">Perfil tipo {{ perfil_tipo }}</span>{% endif %}
+        </div>
+        <a class="btn btn-ev-ghost btn-sm" href="{% url 'evaluaciones:nodo' ficha_ruta %}">
+            ← Volver a la ficha del cargo
+        </a>
+    </div>
+
+    {% if guardado_ok %}
+    <div class="ev-aviso ev-aviso--ok">✓ Niveles requeridos guardados.</div>
+    {% endif %}
+
+    {% if sin_perfil %}
+    <div class="ev-vacio">
+        <span class="ev-vacio-icon">📄</span>
+        Este cargo no tiene un perfil con funciones cargado.
+        <div><span class="ev-tag">Perfil por definir</span></div>
+    </div>
+    {% else %}
+
+    {% if resultado %}
+    <div class="ev-res">
+        <div class="ev-titulo">Resultado preliminar</div>
+        <div class="ev-nota">{{ resultado.final|floatformat:2 }}</div>
+        <div class="ev-interp">{{ resultado.interpretacion }}</div>
+        <div class="ev-comp">
+            {% for s in resultado.secciones %}
+            <div>
+                <b>{{ s.promedio|floatformat:2 }}</b>
+                <span>{{ s.titulo }} ({{ s.n }})</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% comment %}
+    Este cargo no tiene instrumento oficial: sus ítems salen del texto del
+    perfil y no traen peso ni factor UPLA, así que la nota es un promedio
+    parejo y no incluye asistencia. Decirlo acá evita que se cite como si
+    fuera la nota reglamentaria.
+    {% endcomment %}
+    <div class="ev-aviso ev-aviso--nota">
+        <b>Cálculo preliminar.</b> Este cargo aún no tiene instrumento oficial: los ítems
+        se toman del texto del perfil, se promedian todos por igual y no se considera
+        asistencia. No reemplaza a la evaluación reglamentaria.
+    </div>
+
+    {% if resultado.brechas %}
+    <div class="ev-card">
+        <div class="ev-card-head">Plan de desarrollo sugerido ({{ resultado.brechas|length }} brecha{{ resultado.brechas|length|pluralize:"s" }})</div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width:90px">Brecha</th>
+                        <th>Ítem</th>
+                        <th style="width:220px">Sección</th>
+                        <th style="width:110px">Req / Obs</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in resultado.brechas %}
+                    <tr>
+                        <td><span class="ev-brecha {% if b.brecha >= 2 %}ev-brecha--alta{% endif %}">{{ b.brecha }}</span></td>
+                        <td>{{ b.texto }}</td>
+                        <td class="ev-factor">{{ b.seccion }}</td>
+                        <td>{{ b.req }} / {{ b.obs }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <div class="ev-aviso ev-aviso--nota">
+        ✏️ El <b>nivel requerido</b> es editable mientras se define oficialmente, y se guarda
+        con cualquiera de los dos botones. Valor inicial: {{ nivel_por_defecto }} · Intermedio.
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {% for sec in secciones %}
+        <div class="ev-card">
+            <div class="ev-card-head">{{ sec.titulo }}</div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Ítem a evaluar</th>
+                            <th class="col-nivel">Nivel requerido</th>
+                            <th class="col-nivel">Nivel observado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for it in sec.items %}
+                        <tr>
+                            <td>{{ it.texto }}</td>
+                            <td>
+                                <select class="ev-select" name="req_{{ it.key }}">
+                                    {% for val, etiqueta in escala %}
+                                    <option value="{{ val }}" {% if val == it.req %}selected{% endif %}>{{ etiqueta }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select class="ev-select" name="obs_{{ it.key }}">
+                                    {% for val, etiqueta in escala %}
+                                    <option value="{{ val }}" {% if val == it.obs %}selected{% endif %}>{{ etiqueta }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-ev-ghost" type="submit" name="accion" value="guardar">
+                Guardar niveles requeridos
+            </button>
+            <button class="btn btn-ev" type="submit" name="accion" value="calcular">
+                Calcular evaluación
+            </button>
+        </div>
+    </form>
+
+    {% endif %}
+</div>
+{% endblock %}

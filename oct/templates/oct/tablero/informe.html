@@ -1,0 +1,460 @@
+{% load humanize l10n %}<!DOCTYPE html>
+{% comment %}Informe del tablero OCT.
+
+Página independiente (no extiende base.html) pensada para imprimirse o
+guardarse como PDF desde el navegador — no hay librería de PDF en el servidor,
+por el despliegue en la Raspberry Pi. La barra de botones desaparece al
+imprimir y el avance mensual se dibuja apaisado en su propia página, que es la
+única forma de que entren los doce meses.{% endcomment %}
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Informe OCT {{ anio|unlocalize }}{% if etiqueta_filtro %} · {{ etiqueta_filtro }}{% endif %}</title>
+    <style>
+        :root { --azul:#2563eb; --gris:#64748b; --linea:#e2e8f0; --oscuro:#0f172a; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            color: var(--oscuro); margin: 0; background: #f1f5f9;
+            font-size: 13px; line-height: 1.45;
+        }
+        .hoja {
+            max-width: 980px; margin: 24px auto; background: #fff;
+            padding: 36px 44px; box-shadow: 0 4px 24px rgba(0,0,0,.08);
+        }
+        .barra {
+            position: sticky; top: 0; background: #fff; border-bottom: 1px solid var(--linea);
+            padding: 10px 16px; display: flex; gap: 8px; justify-content: flex-end;
+            align-items: center; flex-wrap: wrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,.05); z-index: 5;
+        }
+        .barra .izq { margin-right: auto; color: var(--gris); font-size: 12px; }
+        .btn {
+            border: 1px solid var(--linea); background: #fff; color: var(--oscuro);
+            padding: 7px 16px; border-radius: 8px; font-size: 13px; cursor: pointer;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-primary { background: var(--azul); color: #fff; border-color: var(--azul); }
+        .btn.activo { border-color: var(--azul); color: var(--azul); font-weight: 600; }
+        .btn:hover { filter: brightness(.97); }
+
+        h1 { font-size: 22px; margin: 0 0 4px; }
+        h2 {
+            font-size: 15px; margin: 28px 0 10px; padding-bottom: 6px;
+            border-bottom: 2px solid var(--azul); color: var(--azul);
+        }
+        h3 { font-size: 13px; margin: 18px 0 6px; color: var(--oscuro); }
+        .encab { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+        .sub { color: var(--gris); font-size: 12px; }
+        .pill {
+            display: inline-block; padding: 2px 10px; border-radius: 999px;
+            font-size: 11px; font-weight: 600; background: #dbeafe; color: #1d4ed8;
+        }
+
+        .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 6px; }
+        .kpi { border: 1px solid var(--linea); border-radius: 10px; padding: 10px 12px; }
+        .kpi .lbl { color: var(--gris); font-size: 11px; }
+        .kpi .val { font-size: 16px; font-weight: 700; margin-top: 2px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+        th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--linea); }
+        th { background: #f8fafc; font-size: 11px; text-transform: uppercase; color: var(--gris); letter-spacing: .03em; }
+        td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+        tr.total td { font-weight: 700; border-top: 2px solid var(--oscuro); }
+        tr.grupo td { background: #eff6ff; color: #1d4ed8; font-weight: 600; font-size: 11px;
+                      text-transform: uppercase; letter-spacing: .04em; }
+        .cero { color: #cbd5e1; }
+
+        /* El semáforo va siempre con su número al lado, nunca solo color. */
+        .sem { display: inline-flex; align-items: baseline; gap: .35rem; }
+        .sem::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%;
+                       background: #94a3b8; flex: none; }
+        .sem--verde::before    { background: #0ca30c; }
+        .sem--amarillo::before { background: #fab219; }
+        .sem--rojo::before     { background: #d03b3b; }
+        .sem--gris::before     { background: #cbd5e1; }
+
+        .mensual { font-size: 10.5px; }
+        .mensual th, .mensual td { padding: 4px 5px; white-space: nowrap; }
+        /* Doce columnas de pesos no entran en el ancho de la hoja: en pantalla
+           se desplazan, y al imprimir la sección se va apaisada y más chica. */
+        .ancha { overflow-x: auto; }
+
+        .pie { margin-top: 30px; padding-top: 10px; border-top: 1px solid var(--linea);
+               color: var(--gris); font-size: 11px; }
+        .nota { color: var(--gris); font-size: 11px; margin-top: 6px; }
+
+        /* ===== Gráficos =====
+           Son SVG dibujados en el servidor, no canvas: así salen en el papel
+           aunque el navegador imprima antes de correr un solo script. */
+        .graficos { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 10px; }
+        .panel { border: 1px solid var(--linea); border-radius: 10px; padding: 12px 14px; }
+        .panel h3 { margin: 0 0 8px; font-size: 12px; }
+        .graf { width: 100%; height: auto; display: block; overflow: visible; }
+        .graf text { font-family: inherit; fill: var(--gris); }
+        .g-rotulo { font-size: 9px; }
+        .g-valor  { font-size: 9px; fill: var(--oscuro); font-weight: 600; }
+        .g-eje    { font-size: 8.5px; }
+        .g-linea  { stroke: var(--linea); stroke-width: 1; }
+        .leyenda { display: flex; gap: 16px; margin-top: 6px; font-size: 10.5px; color: var(--gris); }
+        .leyenda span { display: inline-flex; align-items: center; gap: 5px; }
+        .leyenda i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+        @media print {
+            body { background: #fff; font-size: 11px; }
+            .barra { display: none; }
+            .hoja { box-shadow: none; margin: 0; max-width: none; padding: 0; }
+            h2 { page-break-after: avoid; }
+            tr, .kpi { page-break-inside: avoid; }
+            .apaisada { page-break-before: always; }
+            .ancha { overflow: visible; }
+            .mensual { font-size: 9px; }
+            .mensual th, .mensual td { padding: 2px 3px; }
+            @page { margin: 1.5cm; }
+            /* Los doce meses no entran en vertical: esa sección va apaisada. */
+            @page apaisada { size: landscape; margin: 1.2cm; }
+            .apaisada { page: apaisada; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="barra">
+    <span class="izq">
+        Informe de {{ anio|unlocalize }}{% if etiqueta_filtro %} · {{ etiqueta_filtro }}{% endif %}
+    </span>
+    <a class="btn" href="{% url 'oct:tablero_maestro' %}">← Volver</a>
+    <a class="btn {% if not filtro %}activo{% endif %}"
+       href="?anio={{ anio|unlocalize }}">Todo</a>
+    {% for valor, etiqueta in ambitos %}
+    <a class="btn {% if filtro == valor %}activo{% endif %}"
+       href="?anio={{ anio|unlocalize }}&ambito={{ valor }}">{{ etiqueta }}</a>
+    {% endfor %}
+    <a class="btn" href="{% url 'oct:tablero_exportar_excel' %}?anio={{ anio|unlocalize }}">⬇ Excel</a>
+    <button class="btn btn-primary" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+</div>
+
+<div class="hoja">
+
+    <div class="encab">
+        <div>
+            <h1>Tablero maestro de resultados {{ anio|unlocalize }}</h1>
+            <div class="sub">
+                Oficina de Cooperación Técnica · Universidad de Playa Ancha
+            </div>
+        </div>
+        <div style="text-align:right;">
+            {% if etiqueta_filtro %}
+            <span class="pill">{{ etiqueta_filtro }}</span>
+            {% else %}
+            <span class="pill">Todos los ámbitos</span>
+            {% endif %}
+            <div class="sub" style="margin-top:6px;">
+                {% if n_gestiones == 1 %}1 iniciativa{% else %}{{ n_gestiones }} iniciativas{% endif %}
+                en el registro
+            </div>
+        </div>
+    </div>
+
+    <h2>Resumen del año</h2>
+    <div class="kpis">
+        <div class="kpi">
+            <div class="lbl">Gestiones realizadas</div>
+            <div class="val">{{ total.gestiones|floatformat:0 }}</div>
+            <div class="sub">de {{ total.meta }} comprometidas</div>
+        </div>
+        <div class="kpi">
+            <div class="lbl">Nivel de avance</div>
+            <div class="val sem sem--{{ total.semaforo_avance }}">{{ total.avance_pct|floatformat:1 }}%</div>
+        </div>
+        <div class="kpi">
+            <div class="lbl">Resultados exitosos</div>
+            <div class="val">{{ total.exitosos|floatformat:0 }}</div>
+            <div class="sub">tasa {{ total.tasa_exito_pct|floatformat:1 }}%</div>
+        </div>
+        <div class="kpi">
+            <div class="lbl">Ingreso proyectado</div>
+            <div class="val">${{ total.proyectado|floatformat:0|intcomma }}</div>
+        </div>
+        <div class="kpi">
+            <div class="lbl">Ingreso efectivo</div>
+            <div class="val">${{ total.efectivo|floatformat:0|intcomma }}</div>
+            <div class="sub sem sem--{{ total.semaforo_cumplimiento }}">
+                {{ total.cumplimiento_pct|floatformat:1 }}% de cumplimiento
+            </div>
+        </div>
+    </div>
+
+    <h2>Tablero de control</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Ámbito</th>
+                <th class="num">Meta</th>
+                <th class="num">Gestiones</th>
+                <th class="num">Avance</th>
+                <th class="num">Exitosos</th>
+                <th class="num">Tasa de éxito</th>
+                <th class="num">Proyectado</th>
+                <th class="num">Efectivo</th>
+                <th class="num">Cumplimiento</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in filas %}
+            <tr>
+                <td><b>{{ f.etiqueta }}</b></td>
+                <td class="num">{{ f.meta }}</td>
+                <td class="num">{{ f.gestiones|floatformat:0 }}</td>
+                <td class="num"><span class="sem sem--{{ f.semaforo_avance }}">{{ f.avance_pct|floatformat:1 }}%</span></td>
+                <td class="num">{{ f.exitosos|floatformat:0 }}</td>
+                <td class="num">{{ f.tasa_exito_pct|floatformat:1 }}%</td>
+                <td class="num">${{ f.proyectado|floatformat:0|intcomma }}</td>
+                <td class="num">${{ f.efectivo|floatformat:0|intcomma }}</td>
+                <td class="num"><span class="sem sem--{{ f.semaforo_cumplimiento }}">{{ f.cumplimiento_pct|floatformat:1 }}%</span></td>
+            </tr>
+            {% endfor %}
+            {% if not filtro %}
+            <tr class="total">
+                <td>TOTAL</td>
+                <td class="num">{{ total.meta }}</td>
+                <td class="num">{{ total.gestiones|floatformat:0 }}</td>
+                <td class="num">{{ total.avance_pct|floatformat:1 }}%</td>
+                <td class="num">{{ total.exitosos|floatformat:0 }}</td>
+                <td class="num">{{ total.tasa_exito_pct|floatformat:1 }}%</td>
+                <td class="num">${{ total.proyectado|floatformat:0|intcomma }}</td>
+                <td class="num">${{ total.efectivo|floatformat:0|intcomma }}</td>
+                <td class="num">{{ total.cumplimiento_pct|floatformat:1 }}%</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+    <p class="nota">
+        Nivel de avance = gestiones / meta · Tasa de éxito = exitosos / gestiones ·
+        Cumplimiento = monto efectivo / proyectado.
+        Semáforo: verde ≥ 90%, amarillo 70–89%, rojo &lt; 70%.
+    </p>
+
+    <div class="graficos">
+        {% if grafico_avance %}
+        <div class="panel">
+            <h3>Gestiones realizadas contra la meta</h3>
+            <svg class="graf" viewBox="0 0 {{ grafico_avance.ancho }} {{ grafico_avance.alto }}"
+                 role="img" aria-label="Gestiones realizadas contra la meta anual, por ámbito">
+                {% for f in grafico_avance.filas %}
+                <text x="0" y="{{ f.y_texto }}" class="g-rotulo">{{ f.etiqueta }}</text>
+                <rect x="{{ f.x }}" y="{{ f.y }}" width="{{ f.ancho_hecho }}" height="{{ f.alto }}"
+                      rx="2" fill="{{ grafico_avance.color }}"></rect>
+                <rect x="{{ f.x_pendiente }}" y="{{ f.y }}" width="{{ f.ancho_pendiente }}"
+                      height="{{ f.alto }}" rx="2" fill="{{ grafico_avance.color_pista }}"></rect>
+                {% if f.supera %}
+                {# Se pasó de la meta: se marca dónde estaba. #}
+                <line x1="{{ f.x_meta }}" y1="{{ f.y }}" x2="{{ f.x_meta }}" y2="{{ f.y_meta_fin }}"
+                      stroke="#0f172a" stroke-width="1.5"></line>
+                {% endif %}
+                <text x="{{ f.x_valor }}" y="{{ f.y_texto }}" class="g-valor">{{ f.texto }}</text>
+                {% endfor %}
+            </svg>
+            <div class="leyenda">
+                <span><i style="background: {{ grafico_avance.color }}"></i> Realizadas</span>
+                <span><i style="background: {{ grafico_avance.color_pista }}"></i> Meta del año</span>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if grafico_estados %}
+        <div class="panel">
+            <h3>Iniciativas por estado</h3>
+            <svg class="graf" viewBox="0 0 {{ grafico_estados.ancho }} {{ grafico_estados.alto }}"
+                 role="img" aria-label="Cantidad de iniciativas en cada estado">
+                {% for f in grafico_estados.filas %}
+                <text x="0" y="{{ f.y_texto }}" class="g-rotulo">{{ f.etiqueta }}</text>
+                <rect x="{{ f.x }}" y="{{ f.y }}" width="{{ f.ancho }}" height="{{ f.alto }}"
+                      rx="2" fill="{{ grafico_estados.color }}"></rect>
+                <text x="{{ f.x_valor }}" y="{{ f.y_texto }}" class="g-valor">{{ f.texto }}</text>
+                {% endfor %}
+            </svg>
+            <div class="leyenda">
+                <span>Dónde está parada cada iniciativa hoy.</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <h2>Detalle de las iniciativas</h2>
+    {% for g in grupos %}
+    <h3>{{ g.etiqueta }}</h3>
+    <table>
+        <thead>
+            {% comment %}Anchos en porcentaje, no en píxeles: en la hoja
+            vertical los fijos dejaban la columna del nombre en un hilo y cada
+            iniciativa salía con una palabra por línea.{% endcomment %}
+            <tr>
+                <th style="width:11%;">Código</th>
+                <th style="width:31%;">Iniciativa</th>
+                <th style="width:18%;">Institución</th>
+                <th style="width:9%;">Ingreso</th>
+                <th class="num" style="width:11%;">Postulado</th>
+                <th style="width:9%;">Estado</th>
+                <th class="num" style="width:11%;">Adjudicado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for i in g.gestiones %}
+            <tr>
+                <td>{{ i.codigo|default:"—" }}</td>
+                <td>
+                    {{ i.nombre }}
+                    {% if i.responsable %}<div class="sub">{{ i.responsable }}</div>{% endif %}
+                </td>
+                <td>{{ i.institucion|default:"—" }}</td>
+                <td>{{ i.fecha_ingreso|date:"d-m-Y"|default:"—" }}</td>
+                <td class="num">
+                    {% if i.monto_postulado %}${{ i.monto_postulado|floatformat:0|intcomma }}{% else %}<span class="cero">—</span>{% endif %}
+                </td>
+                <td>{{ i.get_estado_display }}</td>
+                <td class="num">
+                    {% if i.monto_adjudicado %}${{ i.monto_adjudicado|floatformat:0|intcomma }}{% else %}<span class="cero">—</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            <tr class="total">
+                <td colspan="4">Subtotal {{ g.etiqueta|lower }}</td>
+                <td class="num">${{ g.postulado|floatformat:0|intcomma }}</td>
+                <td></td>
+                <td class="num">${{ g.adjudicado|floatformat:0|intcomma }}</td>
+            </tr>
+        </tbody>
+    </table>
+    {% empty %}
+    <p class="sub">Sin iniciativas registradas para este año.</p>
+    {% endfor %}
+
+    <!-- Los doce meses solo entran en una hoja apaisada. -->
+    <div class="apaisada">
+        <h2>Avance mensual de gestión</h2>
+        <div class="ancha">
+        <table class="mensual">
+            <thead>
+                <tr>
+                    <th>Indicador</th>
+                    {% for n, nombre in meses %}<th class="num">{{ nombre }}</th>{% endfor %}
+                    <th class="num">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in bloques %}
+                <tr class="grupo"><td colspan="14">{{ b.etiqueta }}</td></tr>
+                {% for f in b.filas %}
+                <tr>
+                    <td>{{ f.rotulo }}</td>
+                    {% if f.es_tasa %}
+                        {% for v in f.meses_pct %}
+                        <td class="num {% if not v %}cero{% endif %}">{{ v|floatformat:0 }}%</td>
+                        {% endfor %}
+                        <td class="num"><b>{{ f.total_pct|floatformat:0 }}%</b></td>
+                    {% elif f.es_monto %}
+                        {% for v in f.meses %}
+                        <td class="num {% if not v %}cero{% endif %}">
+                            {% if v %}${{ v|floatformat:0|intcomma }}{% else %}—{% endif %}
+                        </td>
+                        {% endfor %}
+                        <td class="num"><b>${{ f.total|floatformat:0|intcomma }}</b></td>
+                    {% else %}
+                        {% for v in f.meses %}
+                        <td class="num {% if not v %}cero{% endif %}">{{ v|floatformat:0 }}</td>
+                        {% endfor %}
+                        <td class="num"><b>{{ f.total|floatformat:0 }}</b></td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        <p class="nota">
+            Lo gestionado y lo postulado se cuentan por el mes de ingreso; lo exitoso
+            y lo adjudicado, por el mes de resultado.
+        </p>
+
+        <h2>Ingreso proyectado y efectivo</h2>
+        <div class="panel">
+            <svg class="graf" viewBox="0 0 {{ grafico_meses.ancho }} {{ grafico_meses.alto }}"
+                 role="img" aria-label="Ingreso proyectado y efectivo mes a mes">
+                {% for r in grafico_meses.referencias %}
+                <line x1="{{ grafico_meses.x_eje }}" y1="{{ r.y }}"
+                      x2="{{ grafico_meses.x_fin }}" y2="{{ r.y }}" class="g-linea"></line>
+                <text x="{{ grafico_meses.x_eje }}" y="{{ r.y }}" dx="-6" dy="3"
+                      class="g-eje" text-anchor="end">{{ r.etiqueta }}</text>
+                {% endfor %}
+
+                {% for g in grafico_meses.grupos %}
+                <rect x="{{ g.x_proyectado }}" y="{{ g.y_proyectado }}"
+                      width="{{ grafico_meses.ancho_barra }}" height="{{ g.alto_proyectado }}"
+                      fill="{{ grafico_meses.color_proyectado }}"></rect>
+                <rect x="{{ g.x_efectivo }}" y="{{ g.y_efectivo }}"
+                      width="{{ grafico_meses.ancho_barra }}" height="{{ g.alto_efectivo }}"
+                      fill="{{ grafico_meses.color_efectivo }}"></rect>
+                <text x="{{ g.centro }}" y="{{ grafico_meses.y_meses }}"
+                      class="g-eje" text-anchor="middle">{{ g.nombre }}</text>
+                {% endfor %}
+            </svg>
+            <div class="leyenda">
+                <span><i style="background: {{ grafico_meses.color_proyectado }}"></i> Proyectado</span>
+                <span><i style="background: {{ grafico_meses.color_efectivo }}"></i> Efectivo</span>
+                {% if not grafico_meses.hay_efectivo %}
+                <span>Todavía no hay ingreso efectivo registrado en el año.</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <h2>Proyección financiera</h2>
+        <div class="ancha">
+        <table class="mensual">
+            <thead>
+                <tr>
+                    <th>Ámbito</th>
+                    {% for n, nombre in meses %}<th class="num">{{ nombre }}</th>{% endfor %}
+                    <th class="num">Total anual</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in proyeccion %}
+                <tr>
+                    <td><b>{{ f.etiqueta }}</b></td>
+                    {% for v in f.meses %}
+                    <td class="num {% if not v %}cero{% endif %}">
+                        {% if v %}${{ v|floatformat:0|intcomma }}{% else %}—{% endif %}
+                    </td>
+                    {% endfor %}
+                    <td class="num"><b>${{ f.total|floatformat:0|intcomma }}</b></td>
+                </tr>
+                {% endfor %}
+                {% if not filtro %}
+                <tr class="total">
+                    <td>{{ proyeccion_total.etiqueta }}</td>
+                    {% for v in proyeccion_total.meses %}
+                    <td class="num">{% if v %}${{ v|floatformat:0|intcomma }}{% else %}—{% endif %}</td>
+                    {% endfor %}
+                    <td class="num">${{ proyeccion_total.total|floatformat:0|intcomma }}</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <div class="pie">
+        Generado el {{ generado|date:"d-m-Y H:i" }} · Sistema Prisma · OCT UPLA ·
+        Tablero maestro de resultados {{ anio|unlocalize }}
+    </div>
+
+</div>
+
+{% if auto_print %}
+<script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script>
+{% endif %}
+
+</body>
+</html>

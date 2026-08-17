@@ -386,9 +386,9 @@
         {% csrf_token %}
         <div class="modal-header"><h5>Agregar objetivo al plan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body">
-          <select name="objetivo_id" class="form-select">
+          <select name="objetivo_id" class="form-select" style="max-width:100%;">
             {% for obj in objetivos_disponibles %}
-              <option value="{{ obj.id }}">{{ obj.nombre }} — {{ obj.get_tipo_display }}</option>
+              <option value="{{ obj.id }}" title="{{ obj.nombre }}">{{ obj.nombre|truncatechars:90 }} — {{ obj.get_tipo_display }}</option>
             {% empty %}<option disabled>No hay objetivos disponibles</option>{% endfor %}
           </select>
         </div>
@@ -406,9 +406,9 @@
         <div class="modal-header"><h5>Agregar indicador al plan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body">
           <small class="text-muted d-block mb-2">El indicador debe pertenecer a un objetivo ya en el plan.</small>
-          <select name="indicador_id" class="form-select">
+          <select name="indicador_id" class="form-select" style="max-width:100%;">
             {% for indicador in indicadores_disponibles %}
-              <option value="{{ indicador.id }}">{{ indicador.nombre }} ({{ indicador.objetivo }})</option>
+              <option value="{{ indicador.id }}" title="{{ indicador.nombre }} ({{ indicador.objetivo }})">{{ indicador.nombre|truncatechars:80 }} ({{ indicador.objetivo|truncatechars:40 }})</option>
             {% empty %}<option disabled>No hay indicadores disponibles</option>{% endfor %}
           </select>
         </div>

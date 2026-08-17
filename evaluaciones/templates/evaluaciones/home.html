@@ -1,0 +1,41 @@
+{% extends "core/base.html" %}
+
+{% block title %}Evaluación de desempeño{% endblock %}
+
+{% block content %}
+{% include "evaluaciones/partials/estilos.html" %}
+
+<div class="ev container py-4">
+
+    <div class="mb-3">
+        <a href="{% url 'home' %}" class="btn-volver">
+            <span class="arrow">←</span> Volver al inicio
+        </a>
+    </div>
+
+    <div class="ev-head">
+        <span class="ev-eyebrow">📋 Evaluación de desempeño</span>
+        <h2>Perfiles de cargo y evaluación</h2>
+        <p class="ev-sub">Seleccione la unidad institucional para ver sus perfiles y evaluaciones.</p>
+    </div>
+
+    <div class="row g-4">
+        {% for u in raices %}
+        <div class="col-md-6 col-lg-3">
+            <a class="ev-tile" style="--c: {{ u.color }}" href="{% url 'evaluaciones:nodo' u.ruta %}">
+                <div class="ev-sigla">{{ u.sigla }}</div>
+                <h5>{{ u.nombre }}</h5>
+                <div class="ev-meta">
+                    {% if u.n %}
+                        <b>{{ u.n }}</b> unidad{{ u.n|pluralize:"es" }} interna{{ u.n|pluralize:"s" }}
+                    {% else %}
+                        Sin unidades aún
+                    {% endif %}
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

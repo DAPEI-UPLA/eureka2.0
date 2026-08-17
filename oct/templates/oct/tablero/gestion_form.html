@@ -1,0 +1,129 @@
+{% extends "core/base.html" %}
+{% load l10n %}
+{% block title %}{% if es_nueva %}Nueva gestión{% else %}Editar gestión{% endif %}{% endblock %}
+
+{% block content %}
+{% include "oct/partials/estilos.html" %}
+{% include "oct/tablero/_estilos.html" %}
+
+<div class="container py-5" style="max-width: 900px;">
+
+    <div class="mb-3">
+        <a href="{% url 'oct:tablero_registro' %}" class="btn-volver"><span class="arrow">←</span> Registro</a>
+    </div>
+
+    <div class="oct-page-head">
+        <div>
+            <span class="oct-eyebrow">📋 OCT {{ anio|unlocalize }}</span>
+            <h2>{% if es_nueva %}Nueva gestión{% else %}Editar gestión{% endif %}</h2>
+            {% if not es_nueva %}
+            <p class="oct-sub">{{ gestion.nombre }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not es_nueva and gestion.origen == "IMPORTADO" %}
+    <div class="alert alert-light border small" role="status">
+        Esta gestión vino del Excel. Lo que cambie acá queda marcado, y la
+        próxima vez que se cargue la planilla el sistema
+        <strong>preguntará antes de reemplazarlo</strong> en vez de pisarlo.
+        {% if gestion.editada_en_sistema %}
+        <div class="mt-2">
+            Ya hay cambios protegidos:
+            <strong>{{ gestion.campos_editados|join:", " }}</strong>
+            {% if gestion.editado_por %}· los hizo {{ gestion.editado_por.get_full_name|default:gestion.editado_por.username }}{% endif %}
+            {% if gestion.fecha_edicion %}el {{ gestion.fecha_edicion|date:"d-m-Y H:i" }}{% endif %}.
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="oct-card mb-3">
+            <div class="oct-card-head">Identificación</div>
+            <div class="p-3 row g-3">
+                <div class="col-md-4">
+                    <label class="form-label small" for="{{ form.codigo.id_for_label }}">{{ form.codigo.label }}</label>
+                    {{ form.codigo }}
+                    <div class="form-text">Puede ir vacío si todavía no tiene.</div>
+                    {{ form.codigo.errors }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small" for="{{ form.ambito.id_for_label }}">{{ form.ambito.label }}</label>
+                    {{ form.ambito }}
+                    {{ form.ambito.errors }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small" for="{{ form.tipo.id_for_label }}">{{ form.tipo.label }}</label>
+                    {{ form.tipo }}
+                    {{ form.tipo.errors }}
+                </div>
+                <div class="col-12">
+                    <label class="form-label small" for="{{ form.nombre.id_for_label }}">{{ form.nombre.label }}</label>
+                    {{ form.nombre }}
+                    {{ form.nombre.errors }}
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label small" for="{{ form.institucion.id_for_label }}">{{ form.institucion.label }}</label>
+                    {{ form.institucion }}
+                    {{ form.institucion.errors }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small" for="{{ form.responsable.id_for_label }}">{{ form.responsable.label }}</label>
+                    {{ form.responsable }}
+                    {{ form.responsable.errors }}
+                </div>
+            </div>
+        </div>
+
+        <div class="oct-card mb-3">
+            <div class="oct-card-head">Seguimiento</div>
+            <div class="p-3 row g-3">
+                <div class="col-md-4">
+                    <label class="form-label small" for="{{ form.fecha_ingreso.id_for_label }}">{{ form.fecha_ingreso.label }}</label>
+                    {{ form.fecha_ingreso }}
+                    <div class="form-text">Define en qué mes se cuenta la gestión.</div>
+                    {{ form.fecha_ingreso.errors }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small" for="{{ form.monto_postulado.id_for_label }}">{{ form.monto_postulado.label }}</label>
+                    {{ form.monto_postulado }}
+                    {{ form.monto_postulado.errors }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small" for="{{ form.estado.id_for_label }}">{{ form.estado.label }}</label>
+                    {{ form.estado }}
+                    {{ form.estado.errors }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small" for="{{ form.fecha_resultado.id_for_label }}">{{ form.fecha_resultado.label }}</label>
+                    {{ form.fecha_resultado }}
+                    <div class="form-text">Define en qué mes se cuenta el resultado.</div>
+                    {{ form.fecha_resultado.errors }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small" for="{{ form.monto_adjudicado.id_for_label }}">{{ form.monto_adjudicado.label }}</label>
+                    {{ form.monto_adjudicado }}
+                    {{ form.monto_adjudicado.errors }}
+                </div>
+                <div class="col-12">
+                    <label class="form-label small" for="{{ form.observaciones.id_for_label }}">{{ form.observaciones.label }}</label>
+                    {{ form.observaciones }}
+                    {{ form.observaciones.errors }}
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-oct">{% if es_nueva %}Agregar al registro{% else %}Guardar cambios{% endif %}</button>
+            <a href="{% url 'oct:tablero_registro' %}" class="btn btn-oct-ghost">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

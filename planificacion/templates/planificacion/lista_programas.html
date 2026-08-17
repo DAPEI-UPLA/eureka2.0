@@ -67,15 +67,26 @@
                         <span class="tipo-badge">{{ programa.get_tipo_display }}</span>
 
                         {% if es_planificacion %}
-                        <form method="post"
-                              action="{% url 'planificacion:eliminar_programa' programa.pk %}"
-                              class="m-0"
-                              onsubmit="return confirm('¿Eliminar este plan? También se quitarán sus asociaciones.');">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Eliminar">
-                                ✕
+                        <div class="d-flex gap-2 align-items-center">
+                            <button type="button"
+                                    class="btn btn-sm btn-link text-secondary p-0 btn-editar-programa"
+                                    title="Editar nombre"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#editarProgramaModal"
+                                    data-pk="{{ programa.pk }}"
+                                    data-nombre="{{ programa.nombre }}">
+                                ✎
                             </button>
-                        </form>
+                            <form method="post"
+                                  action="{% url 'planificacion:eliminar_programa' programa.pk %}"
+                                  class="m-0"
+                                  onsubmit="return confirm('¿Eliminar este plan? También se quitarán sus asociaciones.');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Eliminar">
+                                    ✕
+                                </button>
+                            </form>
+                        </div>
                         {% endif %}
                     </div>
 
@@ -155,6 +166,36 @@
         </div>
     </div>
 </div>
+
+<!-- MODAL EDITAR NOMBRE DEL PLAN -->
+<div class="modal fade" id="editarProgramaModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Editar nombre del plan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <form method="POST" id="editarProgramaForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Nombre</label>
+                        <input type="text" name="nombre" id="editarProgramaNombre"
+                               class="form-control" maxlength="100" required autocomplete="off">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
 {% endif %}
 
 <script>
@@ -167,6 +208,28 @@
         items.forEach(el => {
             el.style.display = el.dataset.search.includes(q) ? '' : 'none';
         });
+    });
+})();
+
+(function () {
+    const modal = document.getElementById('editarProgramaModal');
+    if (!modal) return;
+    const form = document.getElementById('editarProgramaForm');
+    const nombreInput = document.getElementById('editarProgramaNombre');
+    // Plantilla de URL con un id placeholder que reemplazamos en runtime.
+    const urlTpl = "{% url 'planificacion:editar_programa' 0 %}";
+
+    modal.addEventListener('show.bs.modal', (event) => {
+        const btn = event.relatedTarget;
+        if (!btn) return;
+        const pk = btn.getAttribute('data-pk');
+        form.action = urlTpl.replace('/0/', '/' + pk + '/');
+        nombreInput.value = btn.getAttribute('data-nombre') || '';
+    });
+
+    modal.addEventListener('shown.bs.modal', () => {
+        nombreInput.focus();
+        nombreInput.select();
     });
 })();
 </script>

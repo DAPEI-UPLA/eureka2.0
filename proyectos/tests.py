@@ -13,6 +13,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
 
+from . import graficos_informe as gi
 from .models import (
     CAPITAL,
     CORRIENTE,
@@ -1613,3 +1614,165 @@ class CuotasDelHonorarioTests(BaseGastosTest):
 
         self.assertEqual(r.status_code, 400)
         self.assertFalse(Egreso.objects.exists())
+
+
+# ===========================================================================
+# GRÁFICOS DEL INFORME IMPRIMIBLE
+# ===========================================================================
+
+# Los atributos del SVG que llevan un número. Si alguno sale con coma decimal
+# o con espacio de miles, el navegador descarta la figura entera sin avisar.
+NUMERICOS = re.compile(r'\s(?:width|height|x|y|x1|x2|y1|y2)="([^"]*)"')
+SVGS = re.compile(r'<svg class="graf".*?</svg>', re.S)
+
+
+class GraficosDelInformeTests(BaseGastosTest):
+    """El informe se imprime, así que los gráficos se dibujan en el servidor.
+    Lo que se prueba acá es la geometría: que lo que se ve sea lo que pasó."""
+
+    def setUp(self):
+        super().setUp()
+        self.compra(self.plan_corriente, estado=Egreso.ESTADO_PAGADO, neto="100000")
+        self.compra(self.plan_capital, estado=Egreso.ESTADO_COMPROMETIDO, neto="200000")
+
+    def _informe(self):
+        return self.client.get(
+            reverse("proyectos:informe_proyecto", args=[self.proyecto.pk])
+        )
+
+    # --- La página ---
+
+    def test_el_informe_llega_con_sus_cuatro_graficos(self):
+        html = self._informe().content.decode()
+
+        self.assertEqual(len(SVGS.findall(html)), 4)
+        self.assertIn("En qué está el presupuesto", html)
+        self.assertIn("Gasto de cada bolsa", html)
+        self.assertIn("Avance físico contra avance del gasto", html)
+
+    def test_ninguna_coordenada_sale_con_coma_decimal(self):
+        """La trampa de es-CL: un 150.25 dibujado como «150,25» rompe el SVG."""
+        html = self._informe().content.decode()
+
+        valores = [v for svg in SVGS.findall(html) for v in NUMERICOS.findall(svg)]
+        self.assertTrue(valores)
+        for valor in valores:
+            self.assertNotIn(",", valor, f"coordenada localizada: {valor!r}")
+            self.assertNotIn("\xa0", valor, f"separador de miles: {valor!r}")
+            float(valor)  # revienta acá si quedó algo que no es un número
+
+    def test_el_gasto_de_cada_objetivo_queda_en_la_tabla(self):
+        html = self._informe().content.decode()
+
+        self.assertIn("Gastado", html)
+        # $119.000 pagados + $238.000 comprometidos, con el espacio duro de es-CL.
+        self.assertIn("357.000", html.replace("\xa0", "."))
+
+    # --- Barra de ejecución ---
+
+    def test_la_barra_reparte_pagado_comprometido_y_disponible(self):
+        g = gi.barra_de_ejecucion(250, 250, 1000)
+
+        anchos = [float(s["ancho"]) for s in g["segmentos"]]
+        self.assertAlmostEqual(anchos[0], gi.ANCHO_TOTAL / 4)
+        self.assertAlmostEqual(anchos[1], gi.ANCHO_TOTAL / 4)
+        self.assertAlmostEqual(anchos[2], gi.ANCHO_TOTAL / 2)
+        self.assertFalse(g["supera"])
+        self.assertEqual([s["texto"] for s in g["segmentos"]], ["25%", "25%", "50%"])
+
+    def test_gastar_justo_el_presupuesto_no_es_un_sobregiro(self):
+        g = gi.barra_de_ejecucion(600, 400, 1000)
+
+        self.assertFalse(g["supera"])
+        self.assertEqual(float(g["segmentos"][2]["ancho"]), 0)
+
+    def test_pasarse_del_presupuesto_se_ve_y_se_marca(self):
+        """Recortar la barra al presupuesto dibujaría exactamente lo mismo que
+        gastar justo: el sobregiro quedaría tapado."""
+        g = gi.barra_de_ejecucion(900, 300, 1000)
+
+        self.assertTrue(g["supera"])
+        gastado = sum(float(s["ancho"]) for s in g["segmentos"])
+        self.assertAlmostEqual(gastado, gi.ANCHO_TOTAL)
+        # El techo quedó adentro, donde corresponde: 1000 de 1200.
+        self.assertAlmostEqual(float(g["x_limite"]), gi.ANCHO_TOTAL * 1000 / 1200, places=1)
+        self.assertIn("$1k", g["etiqueta_limite"])
+
+    def test_un_proyecto_sin_presupuesto_no_divide_por_cero(self):
+        g = gi.barra_de_ejecucion(0, 0, 0)
+
+        self.assertFalse(g["supera"])
+        self.assertEqual([s["texto"] for s in g["segmentos"]], ["0%", "0%", "0%"])
+
+    # --- Bolsas ---
+
+    def test_las_dos_bolsas_comparten_escala(self):
+        """Con una escala por fila, $10M y $90M se verían del mismo largo."""
+        g = gi.barras_de_bolsas([
+            ("Corriente", 100, 1000, "#1d4ed8"),
+            ("Capital", 100, 200, "#7c3aed"),
+        ])
+
+        corriente, capital = g["filas"]
+        self.assertAlmostEqual(float(corriente["ancho_gastado"]), float(capital["ancho_gastado"]))
+        # La barra completa mide el presupuesto: la de $1000 es cinco veces la de $200.
+        largo_corriente = float(corriente["ancho_gastado"]) + float(corriente["ancho_pendiente"])
+        largo_capital = float(capital["ancho_gastado"]) + float(capital["ancho_pendiente"])
+        self.assertAlmostEqual(largo_corriente, largo_capital * 5, places=1)
+
+    def test_una_bolsa_sin_gasto_deja_una_hebra_visible(self):
+        g = gi.barras_de_bolsas([("Corriente", 0, 1000, "#1d4ed8")])
+
+        self.assertGreater(float(g["filas"][0]["ancho_gastado"]), 0)
+
+    def test_un_proyecto_sin_bolsas_no_dibuja_un_panel_vacio(self):
+        self.assertIsNone(gi.barras_de_bolsas([
+            ("Corriente", 0, 0, "#1d4ed8"),
+            ("Capital", 0, 0, "#7c3aed"),
+        ]))
+
+    # --- Transferencias ---
+
+    def test_las_transferencias_van_de_mayor_a_menor_y_sin_ceros(self):
+        g = gi.barras_de_montos([("Chica", 1000), ("Vacía", 0), ("Grande", 5000)])
+
+        self.assertEqual([f["etiqueta"] for f in g["filas"]], ["Grande", "Chica"])
+        self.assertGreater(float(g["filas"][0]["ancho"]), float(g["filas"][1]["ancho"]))
+
+    def test_un_nombre_largo_se_recorta_pero_se_conserva_entero(self):
+        largo = "Transferencia corriente para gastos de operación"
+        g = gi.barras_de_montos([(largo, 1000)])
+
+        self.assertLess(len(g["filas"][0]["etiqueta"]), len(largo))
+        self.assertEqual(g["filas"][0]["titulo"], largo)
+
+    # --- Objetivos ---
+
+    def test_el_cumplimiento_y_el_gasto_se_dibujan_uno_sobre_otro(self):
+        g = gi.barras_de_objetivos([
+            {"etiqueta": "OE1", "fisico": 20, "financiero": 80},
+        ])
+
+        fila = g["filas"][0]
+        self.assertAlmostEqual(
+            float(fila["ancho_financiero"]) / float(fila["ancho_fisico"]), 4, places=1
+        )
+        # Nadie llegó al 100%: la línea de referencia queda al final del riel.
+        self.assertAlmostEqual(float(g["x_cien"]), float(g["ancho"]) - 52, places=1)
+
+    def test_pasarse_del_100_estira_la_escala_sin_mover_el_significado(self):
+        g = gi.barras_de_objetivos([
+            {"etiqueta": "OE1", "fisico": 50, "financiero": 180},
+        ])
+
+        fila = g["filas"][0]
+        self.assertLess(float(g["x_cien"]), float(g["ancho"]) - 52)
+        self.assertGreater(float(fila["ancho_financiero"]), float(g["x_cien"]) - 132)
+
+    def test_sin_objetivos_no_se_dibuja_nada(self):
+        self.assertIsNone(gi.barras_de_objetivos([]))
+
+    def test_el_porcentaje_no_explota_con_el_presupuesto_en_cero(self):
+        """Pasa siempre: un objetivo recién creado todavía no tiene plata."""
+        self.assertEqual(gi.porcentaje(1000, 0), Decimal("0"))
+        self.assertEqual(gi.porcentaje(50, 200), Decimal("25"))

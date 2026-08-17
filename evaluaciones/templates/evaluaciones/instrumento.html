@@ -1,0 +1,149 @@
+{% extends "core/base.html" %}
+
+{% block title %}Instrumento de evaluación{% endblock %}
+
+{% block content %}
+{% include "evaluaciones/partials/estilos.html" %}
+
+<div class="ev container py-4" style="--c: #0a66c2">
+
+    <div class="ev-crumb">
+        <a href="{% url 'evaluaciones:home' %}">Evaluación de desempeño</a>
+        <span class="sep">›</span> Instrumento oficial
+    </div>
+
+    <div class="ev-head">
+        <span class="ev-eyebrow">Instrumento oficial</span>
+        <h2>Evaluación de desempeño</h2>
+        <p class="ev-sub">{{ cargo }}</p>
+    </div>
+
+    {% if resultado %}
+    <div class="ev-res">
+        <div class="ev-titulo">Resultado de la evaluación</div>
+        <div class="ev-nota">{{ resultado.nota_final|floatformat:2 }}</div>
+        <div class="ev-interp">{{ resultado.interpretacion }}</div>
+        <div class="ev-comp">
+            <div><b>{{ resultado.nota_funciones|floatformat:2 }}</b><span>Funciones · 50%</span></div>
+            <div><b>{{ resultado.nota_competencias|floatformat:2 }}</b><span>Competencias · 30%</span></div>
+            <div><b>{{ resultado.nota_conocimientos|floatformat:2 }}</b><span>Conocimientos · 15%</span></div>
+            <div><b>{{ resultado.nota_asistencia|floatformat:2 }}</b><span>Asistencia · 5%</span></div>
+        </div>
+    </div>
+
+    {% if not resultado.asistencia.consistente %}
+    <div class="ev-aviso ev-aviso--alerta">
+        <b>⚠ Revisar datos de asistencia:</b> los días no asistidos
+        ({{ resultado.asistencia.dias_no_asistidos }}) no coinciden con las inasistencias
+        injustificadas registradas. Verifique los datos del período.
+    </div>
+    {% endif %}
+
+    <div class="ev-card">
+        <div class="ev-card-head">Plan de desarrollo sugerido ({{ resultado.brechas_prioritarias|length }} brecha{{ resultado.brechas_prioritarias|length|pluralize:"s" }})</div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width:90px">Brecha</th>
+                        <th>Elemento</th>
+                        <th style="width:130px">Tipo</th>
+                        <th style="width:80px">Factor</th>
+                        <th style="width:110px">Req / Obs</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in resultado.brechas_prioritarias %}
+                    <tr>
+                        <td><span class="ev-brecha {% if b.brecha >= 2 %}ev-brecha--alta{% endif %}">{{ b.brecha }}</span></td>
+                        <td>{{ b.nombre }}</td>
+                        <td class="ev-factor">{{ b.categoria }}</td>
+                        <td class="ev-factor" title="{{ b.descripcion_factor }}">{{ b.factor }}</td>
+                        <td>{{ b.requerido }} / {{ b.observado }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="ev-card">
+            <div class="ev-card-head">Identificación de la evaluación</div>
+            <div class="ev-card-body">
+                <div class="ev-grid ev-grid--ident">
+                    {% for campo, etiqueta, valor in campos_ident %}
+                    <label for="id_{{ campo }}">{{ etiqueta }}</label>
+                    <input type="text" id="id_{{ campo }}" name="{{ campo }}" value="{{ valor }}">
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        {% for sec in secciones %}
+        <div class="ev-card">
+            <div class="ev-card-head">{{ sec.titulo }}</div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width:50%">Elemento</th>
+                            <th style="width:80px">Factor</th>
+                            <th style="width:110px">Requerido</th>
+                            <th class="col-nivel">Nivel observado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in sec.items %}
+                        <tr>
+                            <td>{{ e.nombre }}</td>
+                            <td class="ev-factor">{{ e.factor_upla }}</td>
+                            <td><span class="ev-req">{{ e.nivel_requerido }}</span></td>
+                            <td>
+                                <select class="ev-select" name="obs_{{ e.id }}">
+                                    {% for val, etiqueta in escala %}
+                                    <option value="{{ val }}" {% if val == e.nivel_observado %}selected{% endif %}>{{ etiqueta }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="ev-card">
+            <div class="ev-card-head">Asistencia y puntualidad</div>
+            <div class="ev-card-body">
+                <div class="ev-grid">
+                    {% for campo, etiqueta, valor in campos_asistencia %}
+                    <label for="id_{{ campo }}">{{ etiqueta }}</label>
+                    <input type="number" id="id_{{ campo }}" name="{{ campo }}" value="{{ valor }}" min="0">
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-ev" type="submit" name="accion" value="calcular">
+                Calcular evaluación
+            </button>
+            {% comment %}
+            El informe se abre en otra pestaña para que el formulario recién
+            llenado siga ahí: es un instrumento largo y volver con el botón
+            «atrás» del navegador reenvía el POST.
+            {% endcomment %}
+            <button class="btn btn-ev-ghost" type="submit" name="accion" value="informe"
+                    formaction="{% url 'evaluaciones:informe' %}" formtarget="_blank">
+                🖨 Informe imprimible
+            </button>
+        </div>
+    </form>
+
+</div>
+{% endblock %}

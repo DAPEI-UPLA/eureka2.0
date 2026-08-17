@@ -11,6 +11,7 @@ urlpatterns = [
     path('oct/', include('oct.urls')),
     path('otec/', include('otec.urls')),
     path('analisis/', include('analisis.urls')),
+    path('evaluaciones/', include('evaluaciones.urls')),
     # Los archivos subidos se sirven SIEMPRE a través de una vista protegida
     # (login_required), tanto en desarrollo como en producción, para no exponer
     # documentos sensibles por URL directa.

@@ -21,11 +21,11 @@
     <div class="row g-4">
 
         <div class="col-md-6">
-            <a href="#" class="oct-tile oct-tile--accent">
-                <span class="oct-tile-icon">🔎</span>
-                <h5>Buscador de financiamiento</h5>
-                <p>Consulta y gestión de oportunidades de financiamiento nacionales e internacionales.</p>
-                <div class="oct-tile-go">Próximamente →</div>
+            <a href="{% url 'oct:tablero_maestro' %}" class="oct-tile">
+                <span class="oct-tile-icon">📊</span>
+                <h5>Tablero maestro de resultados</h5>
+                <p>Avance mensual, metas y proyección financiera por ámbito, con carga de la planilla actualizada.</p>
+                <div class="oct-tile-go">Entrar →</div>
             </a>
         </div>
 
@@ -35,6 +35,15 @@
                 <h5>Iniciativas</h5>
                 <p>Registro y seguimiento de iniciativas institucionales vinculadas a cooperación técnica.</p>
                 <div class="oct-tile-go">Entrar →</div>
+            </a>
+        </div>
+
+        <div class="col-md-6">
+            <a href="#" class="oct-tile oct-tile--accent">
+                <span class="oct-tile-icon">🔎</span>
+                <h5>Buscador de financiamiento</h5>
+                <p>Consulta y gestión de oportunidades de financiamiento nacionales e internacionales.</p>
+                <div class="oct-tile-go">Próximamente →</div>
             </a>
         </div>
 

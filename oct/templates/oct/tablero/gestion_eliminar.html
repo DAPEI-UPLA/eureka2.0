@@ -1,0 +1,55 @@
+{% extends "core/base.html" %}
+{% load humanize l10n %}
+{% block title %}Eliminar gestión{% endblock %}
+
+{% block content %}
+{% include "oct/partials/estilos.html" %}
+{% include "oct/tablero/_estilos.html" %}
+
+<div class="container py-5" style="max-width: 640px;">
+
+    <div class="mb-3">
+        <a href="{% url 'oct:tablero_registro' %}" class="btn-volver"><span class="arrow">←</span> Registro</a>
+    </div>
+
+    <div class="oct-card">
+        <div class="oct-card-head">Eliminar del registro</div>
+        <div class="p-4">
+            <p>¿Eliminar esta gestión del tablero {{ gestion.anio|unlocalize }}?</p>
+
+            <div class="oct-field">
+                <div class="oct-field-label">Iniciativa</div>
+                <div class="oct-field-value">{{ gestion.nombre }}</div>
+            </div>
+            <div class="oct-field">
+                <div class="oct-field-label">Ámbito y estado</div>
+                <div class="oct-field-value">
+                    {{ gestion.get_ambito_display }} · {{ gestion.get_estado_display }}
+                    {% if gestion.codigo %}· {{ gestion.codigo }}{% endif %}
+                </div>
+            </div>
+            {% if gestion.monto_postulado %}
+            <div class="oct-field">
+                <div class="oct-field-label">Monto postulado</div>
+                <div class="oct-field-value">${{ gestion.monto_postulado|floatformat:0|intcomma }}</div>
+            </div>
+            {% endif %}
+
+            <p class="small text-muted">
+                Los indicadores del tablero se recalculan al instante, así que
+                esta gestión dejará de contar en su mes.
+                {% if gestion.origen == "IMPORTADO" %}
+                Ojo: viene del Excel, así que volverá a aparecer la próxima vez
+                que se cargue la planilla si sigue en el archivo.
+                {% endif %}
+            </p>
+
+            <form method="post" class="d-flex gap-2">
+                {% csrf_token %}
+                <button class="btn btn-danger">Sí, eliminar</button>
+                <a href="{% url 'oct:tablero_registro' %}" class="btn btn-oct-ghost">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "core/base.html" %}
+{% load humanize l10n %}
+{% block title %}Metas y proyección OCT{% endblock %}
+
+{% comment %}Los campos numéricos van con |unlocalize: con LANGUAGE_CODE es-cl
+y USE_THOUSAND_SEPARATOR, un número se renderiza como «39 977 451» y un
+<input type="number"> con ese valor llega vacío al servidor.{% endcomment %}
+
+{% block content %}
+{% include "oct/partials/estilos.html" %}
+{% include "oct/tablero/_estilos.html" %}
+
+<div class="container py-5">
+
+    <div class="mb-3">
+        <a href="{% url 'oct:tablero_maestro' %}" class="btn-volver"><span class="arrow">←</span> Tablero</a>
+    </div>
+
+    <div class="oct-page-head">
+        <div>
+            <span class="oct-eyebrow">🎯 OCT</span>
+            <h2>Metas y proyección {{ anio|unlocalize }}</h2>
+            <p class="oct-sub">
+                Los dos datos que en la planilla se escriben a mano: cuántas
+                gestiones se comprometieron y cuánto ingreso se espera cada mes.
+                Todo lo demás sale del registro.
+            </p>
+        </div>
+        {% if anios|length > 1 %}
+        <form method="get" class="d-flex align-items-center gap-2">
+            <label class="form-label mb-0 small text-muted">Año</label>
+            <select name="anio" class="form-select form-select-sm" style="width:auto"
+                    onchange="this.form.submit()">
+                {% for a in anios %}
+                <option value="{{ a|unlocalize }}" {% if a == anio %}selected{% endif %}>{{ a|unlocalize }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% endif %}
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="oct-card mb-4">
+            <div class="oct-card-head">Meta anual de gestiones</div>
+            <div class="p-3 row g-3">
+                {% for f in filas %}
+                <div class="col-md-3">
+                    <label class="form-label small" for="meta-{{ f.ambito }}">{{ f.etiqueta }}</label>
+                    <input type="number" min="0" step="1" class="form-control form-control-sm text-end"
+                           id="meta-{{ f.ambito }}" name="meta-{{ f.ambito }}" value="{{ f.meta|unlocalize }}">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="oct-card mb-4">
+            <div class="oct-card-head">Proyección de ingresos por mes</div>
+            <div class="tb-tabla-wrap p-3">
+                <table class="tb-tabla">
+                    <thead>
+                        <tr>
+                            <th class="tb-rotulo">Ámbito</th>
+                            {% for n, nombre in meses %}<th class="num">{{ nombre }}</th>{% endfor %}
+                            <th class="num">Total anual</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in filas %}
+                        <tr>
+                            <td class="tb-rotulo"><strong>{{ f.etiqueta }}</strong></td>
+                            {% for c in f.celdas %}
+                            <td>
+                                <input type="number" min="0" step="1"
+                                       class="form-control form-control-sm tb-celda-monto"
+                                       name="proy-{{ f.ambito }}-{{ c.mes }}"
+                                       value="{{ c.valor|unlocalize }}"
+                                       aria-label="{{ f.etiqueta }} mes {{ c.mes }}">
+                            </td>
+                            {% endfor %}
+                            <td class="num"><strong>${{ f.total|floatformat:0|intcomma }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-3 pb-3">
+                <p class="small text-muted mb-0">
+                    En pesos, sin puntos ni símbolo. El total anual se actualiza al guardar.
+                </p>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-oct">Guardar</button>
+            <a href="{% url 'oct:tablero_maestro' %}" class="btn btn-oct-ghost">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
