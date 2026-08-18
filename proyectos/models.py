@@ -400,9 +400,9 @@ class Proyecto(models.Model):
     def planificado(self):
         from django.db.models import Sum
         total = PlanDeGasto.objects.filter(
-            actividad__resultado__eliminado=False,
-            actividad__resultado__objetivo__eliminado=False,
-            actividad__resultado__objetivo__proyecto=self,
+            resultado__eliminado=False,
+            resultado__objetivo__eliminado=False,
+            resultado__objetivo__proyecto=self,
         ).aggregate(total=Sum("monto"))["total"]
         return total or Decimal("0")
 
@@ -660,9 +660,9 @@ class PresupuestoAnual(AuditableModel):
     def _planes(self):
         return PlanDeGasto.objects.filter(
             anio=self.anio_calendario,
-            actividad__resultado__eliminado=False,
-            actividad__resultado__objetivo__eliminado=False,
-            actividad__resultado__objetivo__proyecto_id=self.proyecto_id,
+            resultado__eliminado=False,
+            resultado__objetivo__eliminado=False,
+            resultado__objetivo__proyecto_id=self.proyecto_id,
         ).select_related("gasto_elegible__gasto__tipo_gasto__transferencia")
 
     @property
@@ -999,8 +999,8 @@ class ObjetivoEspecifico(AuditableModel):
         """Lo que suman los planes de gasto de este objetivo en un año."""
         planes = PlanDeGasto.objects.filter(
             anio=anio_calendario,
-            actividad__resultado__eliminado=False,
-            actividad__resultado__objetivo=self,
+            resultado__eliminado=False,
+            resultado__objetivo=self,
         ).select_related("gasto_elegible__gasto__tipo_gasto__transferencia")
         if naturaleza is None:
             return planes.aggregate(total=Sum("monto"))["total"] or Decimal("0")
@@ -1190,21 +1190,32 @@ class Resultado(AuditableModel):
     def presupuesto_asignado(self):
         return self.presupuesto_corriente + self.presupuesto_capital
 
+    # LO DISTRIBUIDO
+    #
+    # Antes esto sumaba el presupuesto de las actividades. Las actividades ya no
+    # llevan monto: lo que consume el presupuesto de un resultado son sus planes
+    # de gasto, así que «distribuido» pasa a ser el POA.
+
     @property
     def corriente_distribuido(self):
-        return self.actividades.aggregate(
-            total=Sum("presupuesto_corriente")
-        )["total"] or Decimal("0")
+        return self.planificado_por_bolsa(CORRIENTE)
 
     @property
     def capital_distribuido(self):
-        return self.actividades.aggregate(
-            total=Sum("presupuesto_capital")
-        )["total"] or Decimal("0")
+        return self.planificado_por_bolsa(CAPITAL)
 
     @property
     def presupuesto_distribuido(self):
-        return self.corriente_distribuido + self.capital_distribuido
+        return self.planes_gasto.aggregate(total=Sum("monto"))["total"] or Decimal("0")
+
+    def planificado_por_bolsa(self, naturaleza):
+        planes = self.planes_gasto.select_related(
+            "gasto_elegible__gasto__tipo_gasto__transferencia"
+        )
+        return sum(
+            (p.monto for p in planes if p.naturaleza == naturaleza),
+            Decimal("0"),
+        )
 
     @property
     def corriente_disponible(self):
@@ -1221,19 +1232,22 @@ class Resultado(AuditableModel):
     # CUMPLIMIENTO DERIVADO
     @property
     def cumplimiento(self):
+        """Promedio simple del avance de sus actividades.
+
+        Antes se ponderaba por el presupuesto de cada actividad. Ahora las
+        actividades no llevan monto, así que no hay con qué ponderar: todas
+        pesan igual. Es defendible —lo que se mide es cuánto del trabajo
+        comprometido está hecho, y el trabajo ya no tiene precio propio— pero
+        conviene saberlo: dos actividades muy desiguales en esfuerzo cuentan lo
+        mismo.
+        """
         actividades = list(self.actividades.all())
         if not actividades:
             return Decimal("0")
-        pesos = sum((a.presupuesto for a in actividades), Decimal("0"))
-        if pesos == 0:
-            return (
-                sum((Decimal(a.cumplimiento) for a in actividades), Decimal("0")) / len(actividades)
-            ).quantize(Decimal("0.01"))
-        ponderado = sum(
-            (Decimal(a.cumplimiento) * a.presupuesto for a in actividades),
-            Decimal("0"),
-        )
-        return (ponderado / pesos).quantize(Decimal("0.01"))
+        return (
+            sum((Decimal(a.cumplimiento) for a in actividades), Decimal("0"))
+            / len(actividades)
+        ).quantize(Decimal("0.01"))
 
     @property
     def estado(self):
@@ -1258,7 +1272,7 @@ class Resultado(AuditableModel):
         if not hasattr(self, "_resumen_gastos"):
             self._resumen_gastos = resumir_egresos(
                 Egreso.objects
-                .filter(plan_de_gasto__actividad__resultado=self)
+                .filter(plan_de_gasto__resultado=self)
                 .select_related(
                     "plan_de_gasto__gasto_elegible__gasto__tipo_gasto__transferencia",
                     "gasto_elegible__gasto__tipo_gasto__transferencia",
@@ -1270,7 +1284,7 @@ class Resultado(AuditableModel):
         """Los gastos cargados a los planes de este resultado, del último al primero."""
         return (
             Egreso.objects
-            .filter(plan_de_gasto__actividad__resultado=self)
+            .filter(plan_de_gasto__resultado=self)
             .select_related(
                 "plan_de_gasto__actividad",
                 "plan_de_gasto__gasto_elegible__gasto__tipo_gasto__transferencia",
@@ -1283,7 +1297,7 @@ class Resultado(AuditableModel):
     def planificado(self):
         """Lo que suman los planes de gasto de sus actividades (el POA)."""
         return PlanDeGasto.objects.filter(
-            actividad__resultado=self
+            resultado=self
         ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
 
     @property
@@ -1361,15 +1375,18 @@ class Resultado(AuditableModel):
                     f"llegar hasta ${tope:,.0f} y quedaría en ${propuesto:,.0f}."
                 )
 
-            # Y hacia abajo: bajar el monto por debajo de lo que sus actividades
-            # ya tienen repartido las dejaría financiadas con dinero inexistente.
+            # Y hacia abajo: bajar el monto por debajo de lo que sus planes de
+            # gasto ya comprometieron los dejaría financiados con dinero
+            # inexistente. Antes se miraban las actividades; ahora el POA, que
+            # es lo que de verdad toma el presupuesto del resultado.
             if self.pk:
-                repartido = self.actividades.aggregate(total=Sum(campo))["total"] or Decimal("0")
-                if propuesto < repartido:
+                naturaleza = CAPITAL if campo == "presupuesto_capital" else CORRIENTE
+                planificado = self.planificado_por_bolsa(naturaleza)
+                if propuesto < planificado:
                     raise ValidationError(
                         f"No puedes dejar el presupuesto {etiqueta} en ${propuesto:,.0f}: "
-                        f"las actividades de este resultado ya tienen repartidos "
-                        f"${repartido:,.0f}. Baja primero el monto de las actividades."
+                        f"los planes de gasto de este resultado ya suman "
+                        f"${planificado:,.0f}. Baja primero los planes."
                     )
 
     # REPARTO POR AÑO
@@ -1402,7 +1419,7 @@ class Resultado(AuditableModel):
         """Lo que suman los planes de gasto de este resultado en un año."""
         planes = PlanDeGasto.objects.filter(
             anio=anio_calendario,
-            actividad__resultado=self,
+            resultado=self,
         ).select_related("gasto_elegible__gasto__tipo_gasto__transferencia")
         if naturaleza is None:
             return planes.aggregate(total=Sum("monto"))["total"] or Decimal("0")
@@ -1596,11 +1613,17 @@ class Actividad(AuditableModel):
         validators=[MinValueValidator(0), MaxValueValidator(100)],
     )
 
-    # El presupuesto se separa en las dos bolsas que arrastra toda la cadena
-    # (proyecto → objetivo → resultado → actividad): cada una se descuenta de la
-    # del resultado que corresponde, porque no son intercambiables.
-    presupuesto_corriente = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    presupuesto_capital = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    # La actividad NO lleva presupuesto.
+    #
+    # El dinero se compromete a nivel de resultado y se detiene ahí: las
+    # actividades son el medio para cumplirlo y pueden cambiar, fusionarse o
+    # aparecer sobre la marcha sin que el compromiso presupuestario se mueva.
+    # Ponerles monto obligaba a rehacer el reparto cada vez que se reordenaba el
+    # trabajo, que es exactamente lo que no se quería.
+    #
+    # Lo que sí sigue colgando de la actividad es el *cuándo* (`fecha_limite`) y
+    # el *cuánto se avanzó* (`cumplimiento`). El gasto se planifica en el
+    # resultado, con `PlanDeGasto`.
 
     orden = models.PositiveIntegerField(default=0, db_index=True)
 
@@ -1608,35 +1631,14 @@ class Actividad(AuditableModel):
         ordering = ["orden", "id"]
 
     @property
-    def presupuesto(self):
-        """Total de la actividad. Se conserva el nombre porque es lo que leen
-        el cumplimiento ponderado, los planes de gasto y las pantallas."""
-        return (self.presupuesto_corriente or Decimal("0")) + (self.presupuesto_capital or Decimal("0"))
+    def planificado(self):
+        """Lo que suman los planes de gasto que apuntan a esta actividad.
 
-    def clean(self):
-        for etiqueta, campo in (("corriente", "presupuesto_corriente"),
-                                ("capital", "presupuesto_capital")):
-            propuesto = getattr(self, campo) or Decimal("0")
-            if propuesto < 0:
-                raise ValidationError({campo: "El presupuesto no puede ser negativo."})
-
-            usado_por_otras = self.resultado.actividades.exclude(pk=self.pk).aggregate(
-                total=Sum(campo)
-            )["total"] or Decimal("0")
-            asignado = getattr(self.resultado, campo)
-
-            if usado_por_otras + propuesto > asignado:
-                if asignado == 0:
-                    raise ValidationError({campo: (
-                        f"El resultado no tiene presupuesto {etiqueta} asignado, así que "
-                        f"esta actividad no puede recibir ese tipo de gasto. Asigna "
-                        f"presupuesto {etiqueta} al resultado o deja el monto en $0."
-                    )})
-                raise ValidationError({campo: (
-                    f"Supera el presupuesto {etiqueta} del resultado. "
-                    f"Asignado ${asignado:,.0f} · ya distribuido ${usado_por_otras:,.0f} · "
-                    f"disponible ${asignado - usado_por_otras:,.0f}."
-                )})
+        Es informativo: el presupuesto no se controla aquí, sino en el
+        resultado. Sirve para ver a qué actividad se le está destinando plata,
+        no para toparla.
+        """
+        return self.planes_gasto.aggregate(total=Sum("monto"))["total"] or Decimal("0")
 
     @property
     def tiempo_restante(self):
@@ -1760,18 +1762,6 @@ class Actividad(AuditableModel):
                 motivo=getattr(self, "_motivo_reprogramacion", "") or "",
                 creado_por=self.actualizado_por,
             )
-
-    @property
-    def presupuesto_planificado(self):
-        return self.planes_gasto.aggregate(total=Sum("monto"))["total"] or Decimal("0")
-
-    @property
-    def presupuesto_disponible(self):
-        return self.presupuesto - self.presupuesto_planificado
-
-    @property
-    def saldo(self):
-        return self.presupuesto_disponible
 
     def __str__(self):
         return self.nombre
@@ -1912,11 +1902,31 @@ class Unidad(models.Model):
 # =========================
 
 class PlanDeGasto(models.Model):
+    """Una línea del POA: cuánto se piensa gastar en qué, de qué resultado y
+    en qué año.
+
+    Cuelga del **resultado**, no de la actividad. El dinero se compromete a
+    nivel de resultado, y las actividades pueden cambiar, fusionarse o
+    desaparecer mientras el resultado siga en pie: si el POA colgara de ellas,
+    reordenar el trabajo borraría la planificación financiera.
+
+    La actividad se puede indicar igual, como referencia de para qué es el
+    gasto, pero es opcional y borrarla no se lleva el plan.
+    """
+
+    resultado = models.ForeignKey(
+        "Resultado",
+        on_delete=models.CASCADE,
+        related_name="planes_gasto",
+    )
 
     actividad = models.ForeignKey(
         "Actividad",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="planes_gasto",
+        null=True,
+        blank=True,
+        help_text="Opcional: para qué actividad es este gasto.",
     )
 
     gasto_elegible = models.ForeignKey(
@@ -1941,12 +1951,16 @@ class PlanDeGasto(models.Model):
 
     class Meta:
         constraints = [
+            # Una línea por resultado, gasto elegible y año. La actividad no
+            # entra: es una referencia, no parte de la identidad de la línea, y
+            # si entrara se podrían abrir varias líneas del mismo gasto en el
+            # mismo año sólo por apuntar a actividades distintas.
             models.UniqueConstraint(
-                fields=["actividad", "gasto_elegible", "anio"],
-                name="uniq_plan_actividad_gasto_anio",
+                fields=["resultado", "gasto_elegible", "anio"],
+                name="uniq_plan_resultado_gasto_anio",
             ),
         ]
-        ordering = ["-anio", "actividad_id"]
+        ordering = ["-anio", "resultado_id"]
 
     @property
     def gasto(self):
@@ -2013,8 +2027,7 @@ class PlanDeGasto(models.Model):
 
     @property
     def nombre_corto(self):
-        actividad = self.actividad
-        resultado = actividad.resultado
+        resultado = self.resultado
         objetivo = resultado.objetivo
         ge = self.gasto_elegible
         unidad_codigo = (
@@ -2023,7 +2036,8 @@ class PlanDeGasto(models.Model):
             else (f"U{self.unidad_responsable_id}" if self.unidad_responsable_id else "U?")
         )
         return (
-            f"{self.anio}/O{objetivo.id}/R{resultado.id}/A{actividad.id}/"
+            f"{self.anio}/O{objetivo.id}/R{resultado.id}/"
+            f"{f'A{self.actividad_id}/' if self.actividad_id else ''}"
             f"T{ge.gasto.tipo_gasto.transferencia_id}/TG{ge.gasto.tipo_gasto_id}/"
             f"G{ge.gasto_id}/GE{ge.id}/{unidad_codigo}"
         )
@@ -2036,19 +2050,12 @@ class PlanDeGasto(models.Model):
         if self.monto is None or self.monto < 0:
             raise ValidationError("El monto no puede ser negativo.")
 
-        total_actual = self.actividad.planes_gasto.aggregate(
-            total=Sum("monto")
-        )["total"] or 0
-
-        if self.pk:
-            anterior = PlanDeGasto.objects.filter(pk=self.pk).first()
-            if anterior:
-                total_actual -= anterior.monto
-
-        if total_actual + self.monto > self.actividad.presupuesto:
-            raise ValidationError(
-                "El plan de gasto excede el presupuesto de la actividad."
-            )
+        # La actividad, si se indica, tiene que ser de este mismo resultado: un
+        # plan que apunta a la actividad de otro resultado no significa nada.
+        if self.actividad_id and self.actividad.resultado_id != self.resultado_id:
+            raise ValidationError({"actividad": (
+                "Esa actividad no pertenece a este resultado."
+            )})
 
         self._validar_techo_del_anio()
 
@@ -2060,7 +2067,7 @@ class PlanDeGasto(models.Model):
         cuadraba, y el reparto anual —que es como se transfiere y se rinde la
         plata— no lo miraba nadie.
         """
-        proyecto = self.actividad.resultado.objetivo.proyecto
+        proyecto = self.resultado.objetivo.proyecto
         if proyecto is None:
             return
 
@@ -2108,7 +2115,7 @@ class PlanDeGasto(models.Model):
         año cuadraría con el proyecto pero un objetivo podría gastarse la plata
         de otro sin que nada lo notara.
         """
-        objetivo = self.actividad.resultado.objetivo
+        objetivo = self.resultado.objetivo
         del_objetivo = objetivo.presupuesto_del_anio(del_anio)
         if del_objetivo is None:
             # Objetivo sin reparto para ese año: manda el techo del proyecto,
@@ -2138,9 +2145,22 @@ class PlanDeGasto(models.Model):
         actividades pueden cambiar mientras el resultado se cumpla, así que lo
         que se compromete anualmente es el resultado.
         """
-        resultado = self.actividad.resultado
+        resultado = self.resultado
         del_resultado = resultado.presupuesto_del_anio(del_anio)
         if del_resultado is None:
+            # Un resultado que ya reparte por año no puede recibir POA en un año
+            # que no está en su reparto: sería plata que ese año no tiene. Sólo
+            # se deja pasar cuando el resultado no ha repartido nada todavía,
+            # que es el caso de los proyectos aún sin configurar.
+            if resultado.tiene_reparto_anual:
+                anios = ", ".join(
+                    str(f.anio.anio_calendario)
+                    for f in resultado.presupuestos_anuales.select_related("anio")
+                )
+                raise ValidationError({"anio": (
+                    f"Este resultado no tiene presupuesto asignado para {self.anio}. "
+                    f"Los años que tiene son: {anios}."
+                )})
             return
 
         naturaleza = CAPITAL if es_capital else CORRIENTE

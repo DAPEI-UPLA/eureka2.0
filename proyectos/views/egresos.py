@@ -51,7 +51,7 @@ def _parsear_egreso(request, proyecto):
         plan = get_object_or_404(
             PlanDeGasto.objects.select_related(
                 "gasto_elegible__gasto",
-                "actividad__resultado__objetivo__proyecto",
+                "resultado__objetivo__proyecto",
             ),
             pk=plan_id,
         )
@@ -126,11 +126,11 @@ def _planes_por_elegible(proyecto, gasto_elegible_id):
     return (
         PlanDeGasto.objects
         .filter(
-            actividad__resultado__objetivo__proyecto=proyecto,
+            resultado__objetivo__proyecto=proyecto,
             gasto_elegible_id=gasto_elegible_id,
         )
         .select_related(
-            "actividad__resultado__objetivo",
+            "resultado__objetivo",
             "gasto_elegible__gasto__tipo_gasto__transferencia",
         )
         .order_by("-anio", "actividad__nombre")
@@ -345,7 +345,7 @@ def listar_egresos(request, proyecto_id):
         Egreso.objects
         .filter(proyecto=proyecto)
         .select_related(
-            "plan_de_gasto__actividad__resultado__objetivo",
+            "plan_de_gasto__resultado__objetivo",
             "gasto__tipo_gasto__transferencia",
             "gasto_elegible",
         )
@@ -360,8 +360,13 @@ def listar_egresos(request, proyecto_id):
     if f_tipo:
         qs = qs.filter(tipo=f_tipo)
     if f_anio:
+        # El año de un gasto es el del plan al que se carga, no el de su fecha.
+        # Es el plan el que consume presupuesto, así que un gasto de un plan
+        # 2026 pagado en enero de 2027 sigue siendo ejecución de 2026. Antes
+        # esto filtraba por `fecha__year` y contradecía a los saldos por año,
+        # que siempre miraron el año del plan.
         try:
-            qs = qs.filter(fecha__year=int(f_anio))
+            qs = qs.filter(plan_de_gasto__anio=int(f_anio))
         except (TypeError, ValueError):
             pass
 
@@ -380,10 +385,14 @@ def listar_egresos(request, proyecto_id):
         for tipo, total in totales.items()
     ]
 
-    anios = (
-        Egreso.objects
-        .filter(proyecto=proyecto, eliminado=False)
-        .dates("fecha", "year", order="DESC")
+    # Los años que ofrece el filtro salen del POA, que es contra lo que se
+    # rinde, y no de las fechas sueltas de los gastos.
+    anios = sorted(
+        (a for a in Egreso.objects
+         .filter(proyecto=proyecto, eliminado=False,
+                 plan_de_gasto__isnull=False)
+         .values_list("plan_de_gasto__anio", flat=True).distinct()),
+        reverse=True,
     )
 
     return render(request, "proyectos/partials/egresos_lista.html", {
@@ -395,7 +404,7 @@ def listar_egresos(request, proyecto_id):
         "filtro_anio": f_anio,
         "estados": Egreso.ESTADOS,
         "tipos": Egreso.TIPOS,
-        "anios": [d.year for d in anios],
+        "anios": anios,
         "resumen_por_tipo": resumen_por_tipo,
     })
 

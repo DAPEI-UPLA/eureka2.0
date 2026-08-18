@@ -174,19 +174,19 @@ def exportar_proyecto_excel(request, pk):
     planes = (
         PlanDeGasto.objects
         .filter(
-            actividad__resultado__objetivo__proyecto=proyecto,
-            actividad__resultado__eliminado=False,
-            actividad__resultado__objetivo__eliminado=False,
+            resultado__objetivo__proyecto=proyecto,
+            resultado__eliminado=False,
+            resultado__objetivo__eliminado=False,
         )
         .select_related(
-            'actividad__resultado__objetivo',
+            'resultado__objetivo',
             'gasto_elegible__gasto__tipo_gasto__transferencia',
             'unidad_responsable',
         )
         .order_by(
             'anio',
-            'actividad__resultado__objetivo__orden', 'actividad__resultado__objetivo_id',
-            'actividad__resultado__orden', 'actividad__resultado_id',
+            'resultado__objetivo__orden', 'resultado__objetivo_id',
+            'resultado__orden', 'resultado_id',
             'actividad__orden', 'actividad_id',
         )
     )

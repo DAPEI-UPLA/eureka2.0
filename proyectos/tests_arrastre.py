@@ -34,7 +34,6 @@ class CompromisoOriginalTests(BaseProyectoTest):
             resultado=self.resultado,
             nombre="Diplomado de formación docente",
             fecha_limite=date(2026, 6, 30),
-            presupuesto_corriente=Decimal("100000"),
         )
 
     def test_la_primera_fecha_queda_como_compromiso(self):
@@ -172,7 +171,6 @@ class ArrastrePorAnioTests(BaseProyectoTest):
     def _actividad(self, nombre, fecha):
         return Actividad.objects.create(
             resultado=self.resultado, nombre=nombre, fecha_limite=fecha,
-            presupuesto_corriente=Decimal("50000"),
         )
 
     def test_el_anio_uno_conserva_solo_lo_que_sigue_en_el(self):

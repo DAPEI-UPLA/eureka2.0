@@ -162,7 +162,7 @@ class GastoElegibleAdmin(admin.ModelAdmin):
 
 @admin.register(Actividad)
 class ActividadAdmin(admin.ModelAdmin):
-    list_display = ("id", "nombre", "resultado", "presupuesto", "fecha_limite")
+    list_display = ("id", "nombre", "resultado", "fecha_limite", "cumplimiento")
     search_fields = ("nombre", "resultado__descripcion")
     list_filter = ("resultado__objetivo__proyecto",)
 
@@ -177,16 +177,18 @@ class UnidadAdmin(admin.ModelAdmin):
 @admin.register(PlanDeGasto)
 class PlanDeGastoAdmin(admin.ModelAdmin):
     list_display = (
-        "id", "anio", "actividad", "gasto_elegible",
+        "id", "anio", "resultado", "actividad", "gasto_elegible",
         "unidad_responsable", "monto", "creado_en",
     )
     list_filter = ("anio", "unidad_responsable")
     search_fields = (
+        "resultado__descripcion",
         "actividad__nombre",
         "gasto_elegible__nombre",
         "unidad_responsable__nombre",
     )
     autocomplete_fields = ("actividad", "gasto_elegible", "unidad_responsable")
+    raw_id_fields = ("resultado",)
     readonly_fields = ("creado_en",)
 
 

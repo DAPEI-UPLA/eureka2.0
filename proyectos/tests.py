@@ -94,81 +94,6 @@ class PresupuestoActividadTests(BaseProyectoTest):
         ).content.decode()
         self.assertNotIn('max="0"', html)
 
-    def test_los_montos_van_en_campos_de_texto(self):
-        """Un `type="number"` vacía el campo al recibir "3.000.000".
-
-        El separador de miles lo pone el JS de `base.html` mientras se escribe,
-        y un input numérico descarta cualquier valor con dos puntos: por eso el
-        monto se reiniciaba justo al pasar del millón.
-        """
-        html = self.client.get(
-            reverse("proyectos:crear_actividad_form", args=[self.resultado.pk])
-        ).content.decode()
-        for campo in ("presupuesto_corriente", "presupuesto_capital"):
-            with self.subTest(campo=campo):
-                self.assertNotIn(f'type="number" name="{campo}"', html)
-                self.assertIn(f'type="text" name="{campo}"', html)
-
-    def test_se_puede_cargar_presupuesto_a_la_actividad(self):
-        r = self.client.post(
-            reverse("proyectos:crear_actividad", args=[self.resultado.pk]),
-            {"nombre": "Taller", "presupuesto_corriente": "150000", "fecha_limite": ""},
-        )
-        self.assertEqual(r.status_code, 200)
-        actividad = Actividad.objects.get()
-        self.assertEqual(actividad.presupuesto, Decimal("150000"))
-
-    def test_montos_en_millones_escritos_con_separador(self):
-        """El caso reportado: 300 millones, tal como los deja la pantalla.
-
-        El JS agrupa con puntos y Django con espacio duro; ambas formas tienen
-        que entrar, porque el campo reenvía el texto que tenga a la vista.
-        """
-        grande = self.crear_resultado(
-            self.objetivo,
-            descripcion="Con plata",
-            presupuesto_corriente=Decimal("300000000"),
-            presupuesto_capital=Decimal("150000000"),
-        )
-        r = self.client.post(
-            reverse("proyectos:crear_actividad", args=[grande.pk]),
-            {
-                "nombre": "Equipamiento",
-                "presupuesto_corriente": "300.000.000",
-                "presupuesto_capital": "150\xa0000\xa0000",
-                "fecha_limite": "",
-            },
-        )
-        self.assertEqual(r.status_code, 200, r.content.decode()[:300])
-        actividad = Actividad.objects.get()
-        self.assertEqual(actividad.presupuesto_corriente, Decimal("300000000"))
-        self.assertEqual(actividad.presupuesto_capital, Decimal("150000000"))
-
-        # Y al reabrirla, el monto vuelve agrupado y no como "300000000".
-        html = self.client.get(
-            reverse("proyectos:editar_actividad_form", args=[actividad.pk])
-        ).content.decode()
-        self.assertIn("300\xa0000\xa0000", html)
-
-    def test_actividad_sin_monto_es_valida(self):
-        r = self.client.post(
-            reverse("proyectos:crear_actividad", args=[self.resultado.pk]),
-            {"nombre": "Por definir", "presupuesto_corriente": "0", "fecha_limite": ""},
-        )
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(Actividad.objects.get().presupuesto, Decimal("0"))
-
-    def test_exceso_devuelve_el_formulario_con_lo_escrito(self):
-        r = self.client.post(
-            reverse("proyectos:crear_actividad", args=[self.resultado.pk]),
-            {"nombre": "Cara", "presupuesto_corriente": "999999999", "fecha_limite": ""},
-        )
-        self.assertEqual(r.status_code, 400)
-        html = r.content.decode()
-        self.assertIn("disponible", html.lower())
-        self.assertIn("Cara", html)
-
-
 class BorradoEnVivoTests(BaseProyectoTest):
     def setUp(self):
         super().setUp()
@@ -177,7 +102,7 @@ class BorradoEnVivoTests(BaseProyectoTest):
             self.objetivo, presupuesto_corriente=Decimal("300000")
         )
         self.actividad = Actividad.objects.create(
-            resultado=self.resultado, nombre="A", presupuesto_corriente=Decimal("1000")
+            resultado=self.resultado, nombre="A",
         )
 
     def test_eliminar_resultado_dispara_refresco(self):
@@ -261,7 +186,7 @@ class DetalleProyectoRenderTests(BaseProyectoTest):
     def test_la_pagina_de_detalle_se_arma_completa(self):
         objetivo = self.crear_objetivo(presupuesto_corriente=Decimal("100000"))
         resultado = self.crear_resultado(objetivo, presupuesto_corriente=Decimal("100000"))
-        Actividad.objects.create(resultado=resultado, nombre="A", presupuesto_corriente=Decimal("500"))
+        Actividad.objects.create(resultado=resultado, nombre="A")
 
         html = self.client.get(
             reverse("proyectos:detalle_proyecto", args=[self.proyecto.pk])
@@ -492,15 +417,27 @@ class CadenaDePresupuestoTests(BaseProyectoTest):
         self.oe1.refresh_from_db()
         self.assertEqual(self.oe1.corriente_disponible, Decimal("400000"))
 
-    def test_no_se_puede_bajar_por_debajo_de_lo_repartido_a_actividades(self):
+    def test_no_se_puede_bajar_por_debajo_de_lo_planificado(self):
+        """El tope hacia abajo lo ponen los planes de gasto, no las actividades.
+
+        Las actividades ya no llevan monto: lo que consume el presupuesto de un
+        resultado es su POA.
+        """
         resultado = self.crear_resultado(self.oe1)
         self._asignar(resultado, "300000")
-        Actividad.objects.create(
-            resultado=resultado, nombre="A", presupuesto_corriente=Decimal("250000"))
+        PlanDeGasto.objects.create(
+            resultado=resultado,
+            gasto_elegible=GastoElegible.objects.filter(
+                gasto__tipo_gasto__transferencia__naturaleza=CORRIENTE
+            ).first(),
+            anio=2026,
+            monto=Decimal("250000"),
+        )
 
         rechazo = self._asignar(resultado, "100000")
         self.assertEqual(rechazo.status_code, 400)
         self.assertIn("250,000", rechazo.content.decode())
+        resultado.refresh_from_db()
         self.assertEqual(resultado.presupuesto_corriente, Decimal("300000"))
 
     def test_la_pantalla_muestra_el_disponible_del_objetivo(self):
@@ -511,20 +448,6 @@ class CadenaDePresupuestoTests(BaseProyectoTest):
 
         self.assertIn("Disponible en el objetivo", html)
         self.assertNotIn("Disponible en el proyecto", html)
-
-    def test_la_actividad_se_financia_de_su_resultado(self):
-        resultado = self.crear_resultado(self.oe1)
-        self._asignar(resultado, "300000")
-        resultado.refresh_from_db()
-
-        actividad = Actividad(resultado=resultado, nombre="A1", presupuesto_corriente=Decimal("250000"))
-        actividad.full_clean()
-        actividad.save()
-
-        excedida = Actividad(resultado=resultado, nombre="A2", presupuesto_corriente=Decimal("100000"))
-        with self.assertRaises(ValidationError):
-            excedida.full_clean()
-
 
 class EdicionActividadTests(BaseProyectoTest):
     """La actividad solo permitía guardar el % de avance: nombre, montos y
@@ -539,7 +462,7 @@ class EdicionActividadTests(BaseProyectoTest):
             presupuesto_corriente=Decimal("300000"), presupuesto_capital=Decimal("200000"))
         self.actividad = Actividad.objects.create(
             resultado=self.resultado, nombre="Original",
-            presupuesto_corriente=Decimal("100000"))
+        )
 
     def _editar(self, **campos):
         datos = {
@@ -553,11 +476,9 @@ class EdicionActividadTests(BaseProyectoTest):
         return self.client.post(
             reverse("proyectos:editar_actividad", args=[self.actividad.pk]), datos)
 
-    def test_se_puede_cambiar_nombre_montos_y_fechas(self):
+    def test_se_puede_cambiar_nombre_y_fechas(self):
         r = self._editar(
             nombre="Renombrada",
-            presupuesto_corriente="150000",
-            presupuesto_capital="50000",
             fecha_limite="2026-09-30",
             fecha_efectiva="2026-10-05",
         )
@@ -565,15 +486,8 @@ class EdicionActividadTests(BaseProyectoTest):
 
         self.actividad.refresh_from_db()
         self.assertEqual(self.actividad.nombre, "Renombrada")
-        self.assertEqual(self.actividad.presupuesto_corriente, Decimal("150000"))
-        self.assertEqual(self.actividad.presupuesto_capital, Decimal("50000"))
         self.assertEqual(str(self.actividad.fecha_limite), "2026-09-30")
         self.assertEqual(str(self.actividad.fecha_efectiva), "2026-10-05")
-
-    def test_se_puede_bajar_el_monto(self):
-        self._editar(presupuesto_corriente="20000")
-        self.actividad.refresh_from_db()
-        self.assertEqual(self.actividad.presupuesto_corriente, Decimal("20000"))
 
     def test_el_formulario_de_edicion_llega_con_los_valores_actuales(self):
         self.actividad.fecha_limite = date(2026, 9, 30)
@@ -584,27 +498,20 @@ class EdicionActividadTests(BaseProyectoTest):
         ).content.decode()
 
         self.assertIn("Editar actividad", html)
-        # Agrupado, igual que los montos del objetivo y del resultado.
-        self.assertIn('value="100\xa0000"', html)
         self.assertIn('value="2026-09-30"', html)
+        # Ya no hay campos de monto: el presupuesto vive en el resultado.
+        self.assertNotIn('name="presupuesto_corriente"', html)
+        self.assertNotIn('name="presupuesto_capital"', html)
 
-    def test_su_propio_monto_no_cuenta_como_ocupado_al_editar(self):
-        # El resultado tiene 300.000 y la actividad ya usa 100.000: debe poder
-        # subir a 300.000 sin que su propio monto se cuente dos veces.
-        r = self._editar(presupuesto_corriente="300000")
-        self.assertEqual(r.status_code, 200, r.content.decode()[:300])
+    def test_la_actividad_no_tiene_presupuesto(self):
+        """Decisión del equipo: el dinero se compromete en el resultado.
 
-    def test_no_puede_exceder_la_bolsa_del_resultado(self):
-        r = self._editar(presupuesto_corriente="400000")
-        self.assertEqual(r.status_code, 400)
-        self.assertIn("corriente", r.content.decode())
-
-    def test_capital_y_corriente_son_bolsas_separadas(self):
-        # El resultado tiene 200.000 de capital: pedir 250.000 no cabe aunque
-        # sobre corriente.
-        r = self._editar(presupuesto_corriente="0", presupuesto_capital="250000")
-        self.assertEqual(r.status_code, 400)
-        self.assertIn("capital", r.content.decode())
+        Las actividades pueden cambiar, fusionarse o aparecer sobre la marcha
+        mientras el resultado se cumpla, así que ponerles monto obligaba a
+        rehacer el reparto cada vez que se reordenaba el trabajo.
+        """
+        self.assertFalse(hasattr(self.actividad, "presupuesto_corriente"))
+        self.assertFalse(hasattr(self.actividad, "presupuesto_capital"))
 
 
 class FechaEfectivaTests(BaseProyectoTest):
@@ -640,7 +547,8 @@ class PlanDeGastoTests(BaseProyectoTest):
         objetivo = self.crear_objetivo(presupuesto_corriente=Decimal("500000"))
         self.resultado = self.crear_resultado(objetivo, presupuesto_corriente=Decimal("500000"))
         self.actividad = Actividad.objects.create(
-            resultado=self.resultado, nombre="A", presupuesto_corriente=Decimal("400000"))
+            resultado=self.resultado, nombre="A",
+        )
 
     def test_la_seccion_del_proyecto_ofrece_el_boton_para_agregar(self):
         """Faltaba el botón: el formulario existía pero no había cómo abrirlo.
@@ -703,8 +611,6 @@ class BaseGastosTest(BaseProyectoTest):
         self.actividad = Actividad.objects.create(
             resultado=self.resultado,
             nombre="Actividad",
-            presupuesto_corriente=Decimal("600000"),
-            presupuesto_capital=Decimal("400000"),
         )
         # El catálogo lo siembra la migración 0007, con «Corriente» y «Capital»
         # como transferencias.
@@ -715,13 +621,13 @@ class BaseGastosTest(BaseProyectoTest):
             gasto__tipo_gasto__transferencia__naturaleza=CAPITAL
         ).first()
         self.plan_corriente = PlanDeGasto.objects.create(
-            actividad=self.actividad,
+            resultado=self.resultado, actividad=self.actividad,
             gasto_elegible=self.elegible_corriente,
             anio=2026,
             monto=Decimal("600000"),
         )
         self.plan_capital = PlanDeGasto.objects.create(
-            actividad=self.actividad,
+            resultado=self.resultado, actividad=self.actividad,
             gasto_elegible=self.elegible_capital,
             anio=2026,
             monto=Decimal("400000"),

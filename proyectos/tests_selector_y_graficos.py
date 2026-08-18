@@ -99,13 +99,12 @@ class GraficosPorAnioTests(BaseProyectoTest):
         )
         self.actividad = Actividad.objects.create(
             resultado=self.resultado, nombre="A",
-            presupuesto_corriente=Decimal("250000"),
         )
         elegible = GastoElegible.objects.filter(
             gasto__tipo_gasto__transferencia__naturaleza=CORRIENTE
         ).first()
         self.plan_2026 = PlanDeGasto.objects.create(
-            actividad=self.actividad, gasto_elegible=elegible,
+            resultado=self.resultado, actividad=self.actividad, gasto_elegible=elegible,
             anio=2026, monto=Decimal("200000"),
         )
         # Un gasto pagado sólo en 2026.

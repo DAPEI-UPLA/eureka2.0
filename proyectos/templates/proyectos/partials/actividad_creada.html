@@ -3,7 +3,7 @@
     <h5 class="text-success mb-1">Actividad creada</h5>
     <p class="small text-muted mb-1">{{ actividad.nombre }}</p>
     <p class="small text-muted mb-4">
-        Presupuesto: <strong>${{ actividad.presupuesto|floatformat:0|intcomma }}</strong>
+        {% if actividad.fecha_limite %}Fecha límite: <strong>{{ actividad.fecha_limite|date:"d-m-Y" }}</strong>{% endif %}
     </p>
     <div class="d-flex justify-content-center gap-2">
         <button class="btn btn-outline-primary"

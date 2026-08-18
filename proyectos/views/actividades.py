@@ -16,18 +16,15 @@ from .utils import _to_decimal, detalle_resultado, disparar
 def _contexto_form(resultado, excluir=None, **extra):
     """Datos comunes del formulario de actividad (crear y editar).
 
-    `excluir` es la actividad que se está editando: su monto no cuenta como
-    ocupado, porque va a ser reemplazado por lo que se envíe.
+    `excluir` es la actividad que se está editando.
+
+    Ya no calcula disponibles: la actividad no lleva presupuesto, así que no hay
+    monto que topar contra el resultado. Lo que se planifica son los planes de
+    gasto, que cuelgan del resultado.
     """
-    otras = resultado.actividades.exclude(pk=excluir.pk) if excluir else resultado.actividades.all()
-    usado = otras.aggregate(
-        cor=Sum("presupuesto_corriente"), cap=Sum("presupuesto_capital")
-    )
     contexto = {
         "resultado": resultado,
         "actividad": excluir,
-        "disponible_corriente": resultado.presupuesto_corriente - (usado["cor"] or Decimal("0")),
-        "disponible_capital": resultado.presupuesto_capital - (usado["cap"] or Decimal("0")),
     }
     contexto.update(extra)
 
@@ -37,8 +34,6 @@ def _contexto_form(resultado, excluir=None, **extra):
     if "datos" not in contexto:
         contexto["datos"] = {
             "nombre": excluir.nombre if excluir else "",
-            "presupuesto_corriente": _entero(excluir.presupuesto_corriente) if excluir else "0",
-            "presupuesto_capital": _entero(excluir.presupuesto_capital) if excluir else "0",
             "fecha_limite": _iso(excluir.fecha_limite) if excluir else "",
             "fecha_efectiva": _iso(excluir.fecha_efectiva) if excluir else "",
         }
@@ -61,8 +56,6 @@ def _iso(fecha):
 def _datos_enviados(request):
     return {
         "nombre": request.POST.get("nombre", "").strip(),
-        "presupuesto_corriente": request.POST.get("presupuesto_corriente", "").strip(),
-        "presupuesto_capital": request.POST.get("presupuesto_capital", "").strip(),
         "fecha_limite": request.POST.get("fecha_limite") or "",
         "fecha_efectiva": request.POST.get("fecha_efectiva") or "",
         # Opcional: si viene, queda anotado en el historial de reprogramaciones.
@@ -110,8 +103,6 @@ def editar_actividad(request, actividad_id):
     datos = _datos_enviados(request)
     try:
         actividad.nombre = datos["nombre"]
-        actividad.presupuesto_corriente = _to_decimal(datos["presupuesto_corriente"])
-        actividad.presupuesto_capital = _to_decimal(datos["presupuesto_capital"])
         actividad.fecha_limite = datos["fecha_limite"] or None
         actividad.fecha_efectiva = datos["fecha_efectiva"] or None
         actividad.actualizado_por = request.user
@@ -154,8 +145,6 @@ def crear_actividad(request, resultado_id):
         actividad = Actividad(
             resultado=resultado,
             nombre=datos["nombre"],
-            presupuesto_corriente=_to_decimal(datos["presupuesto_corriente"]),
-            presupuesto_capital=_to_decimal(datos["presupuesto_capital"]),
             fecha_limite=datos["fecha_limite"] or None,
             fecha_efectiva=datos["fecha_efectiva"] or None,
             orden=siguiente,

@@ -108,7 +108,7 @@ class TechoAnualDelPlanTests(BaseGastosTest):
         """Los proyectos que no repartieron su presupuesto no ven techo nuevo."""
         self.assertFalse(self.proyecto.presupuestos_anuales.exists())
         plan = PlanDeGasto(
-            actividad=self.actividad,
+            resultado=self.resultado, actividad=self.actividad,
             gasto_elegible=self.elegible_corriente,
             anio=2027,
             monto=Decimal("0"),
@@ -453,10 +453,10 @@ class RedistribuirEntreAniosTests(BaseProyectoTest):
         objetivo = self.crear_objetivo(presupuesto_corriente=Decimal("600000"))
         resultado = self.crear_resultado(objetivo, presupuesto_corriente=Decimal("600000"))
         actividad = Actividad.objects.create(
-            resultado=resultado, nombre="A", presupuesto_corriente=Decimal("600000"),
+            resultado=resultado, nombre="A",
         )
         PlanDeGasto.objects.create(
-            actividad=actividad,
+            resultado=actividad.resultado, actividad=actividad,
             gasto_elegible=GastoElegible.objects.filter(
                 gasto__tipo_gasto__transferencia__naturaleza=CORRIENTE
             ).first(),

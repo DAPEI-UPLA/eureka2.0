@@ -39,7 +39,7 @@
                 <option value="">Seleccione</option>
                 {% for o in objetivos %}
                     <option value="{{ o.id }}"
-                            {% if actividad_sel and actividad_sel.resultado.objetivo_id == o.id %}selected{% endif %}>
+                            {% if resultado_sel and resultado_sel.objetivo_id == o.id %}selected{% endif %}>
                         {{ o.descripcion }}
                     </option>
                 {% endfor %}
@@ -52,11 +52,11 @@
                     hx-get="{% url 'proyectos:cargar_actividades' %}"
                     hx-target="#actividad-select"
                     hx-trigger="change">
-                {% if actividad_sel %}
+                {% if resultado_sel %}
                     <option value="">Seleccione</option>
                     {% for r in resultados %}
                         <option value="{{ r.id }}"
-                                {% if actividad_sel and actividad_sel.resultado_id == r.id %}selected{% endif %}>
+                                {% if resultado_sel.pk == r.id %}selected{% endif %}>
                             {{ r.descripcion }}
                         </option>
                     {% endfor %}
@@ -67,18 +67,23 @@
         </div>
 
         <div class="col-md-4">
-            <label class="form-label">Actividad</label>
-            <select name="actividad" id="actividad-select" class="form-select" required>
-                {% if actividad_sel %}
-                    <option value="">Seleccione</option>
+            {% comment %}
+            La actividad es opcional: el presupuesto lo controla el resultado y
+            las actividades pueden cambiar sin mover el POA. Sirve para decir
+            para qué es el gasto, no para toparlo.
+            {% endcomment %}
+            <label class="form-label">
+                Actividad <span class="text-muted fw-normal">(opcional)</span>
+            </label>
+            <select name="actividad" id="actividad-select" class="form-select">
+                <option value="">Sin actividad específica</option>
+                {% if resultado_sel %}
                     {% for a in actividades %}
                         <option value="{{ a.id }}"
                                 {% if actividad_sel and actividad_sel.pk == a.id %}selected{% endif %}>
                             {{ a.nombre }}
                         </option>
                     {% endfor %}
-                {% else %}
-                    <option value="">Seleccione resultado primero</option>
                 {% endif %}
             </select>
         </div>

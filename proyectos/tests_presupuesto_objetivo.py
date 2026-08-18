@@ -146,7 +146,6 @@ class TechoDelObjetivoEnElAnioTests(BaseObjetivoAnualTest):
         )
         self.actividad = Actividad.objects.create(
             resultado=self.resultado, nombre="Actividad",
-            presupuesto_corriente=Decimal("100000"),
         )
         self.elegible = GastoElegible.objects.filter(
             gasto__tipo_gasto__transferencia__naturaleza=CORRIENTE
@@ -154,7 +153,7 @@ class TechoDelObjetivoEnElAnioTests(BaseObjetivoAnualTest):
 
     def _plan(self, anio, monto):
         return PlanDeGasto(
-            actividad=self.actividad, gasto_elegible=self.elegible,
+            resultado=self.resultado, actividad=self.actividad, gasto_elegible=self.elegible,
             anio=anio, monto=Decimal(monto),
         )
 

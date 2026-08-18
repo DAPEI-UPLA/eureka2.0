@@ -14,31 +14,6 @@ decide a qué endpoint se envía y qué valores se muestran precargados.
     <div class="alert alert-danger small mb-3">{{ error }}</div>
     {% endif %}
 
-    {% if disponible_corriente > 0 or disponible_capital > 0 %}
-    <div class="alert alert-light border small mb-3">
-        Disponible en el resultado:
-        <strong>corriente ${{ disponible_corriente|floatformat:0|intcomma }}</strong>
-        · <strong>capital ${{ disponible_capital|floatformat:0|intcomma }}</strong>
-        {% if actividad %}
-        <div class="text-muted mt-1">Sin contar lo que ya tiene esta actividad.</div>
-        {% endif %}
-    </div>
-    {% else %}
-    <div class="alert alert-warning small mb-3">
-        <strong>Este resultado aún no tiene presupuesto disponible.</strong><br>
-        Puedes guardar la actividad con <strong>$0</strong> y cargarle el monto más
-        adelante, o asignar presupuesto al resultado ahora.
-        <div class="mt-2">
-            <button type="button" class="btn btn-sm btn-outline-primary"
-                    hx-get="{% url 'proyectos:form_asignar_presupuesto' resultado.pk %}"
-                    hx-target="#modal-body"
-                    hx-swap="innerHTML">
-                Asignar presupuesto al resultado
-            </button>
-        </div>
-    </div>
-    {% endif %}
-
     <div class="mb-3">
         <label class="form-label">Nombre de la actividad</label>
         <textarea name="nombre" class="form-control campo-descripcion" rows="2"
@@ -47,39 +22,10 @@ decide a qué endpoint se envía y qué valores se muestran precargados.
     </div>
 
     {% comment %}
-    Corriente y capital son bolsas distintas y no intercambiables, así que la
-    actividad declara cuánto toma de cada una.
+    La actividad no lleva presupuesto. El dinero se compromete en el resultado
+    y se planifica con los planes de gasto: las actividades pueden cambiar,
+    fusionarse o aparecer sobre la marcha sin mover el compromiso.
     {% endcomment %}
-    {% comment %}
-    Van como texto, no como `number`: se escriben con separador de miles
-    ("3.000.000") y un input numérico rechaza ese formato y vacía el campo.
-    Es el mismo criterio que usan los montos del objetivo y del resultado.
-    {% endcomment %}
-    <div class="row g-2 mb-3">
-        <div class="col-6">
-            <label class="form-label">Corriente (CLP)</label>
-            <div class="input-group">
-                <span class="input-group-text">$</span>
-                <input type="text" name="presupuesto_corriente" class="form-control"
-                       value="{{ datos.presupuesto_corriente }}"
-                       inputmode="numeric" placeholder="0">
-            </div>
-        </div>
-        <div class="col-6">
-            <label class="form-label">Capital (CLP)</label>
-            <div class="input-group">
-                <span class="input-group-text">$</span>
-                <input type="text" name="presupuesto_capital" class="form-control"
-                       value="{{ datos.presupuesto_capital }}"
-                       inputmode="numeric" placeholder="0">
-            </div>
-        </div>
-        <div class="col-12">
-            <div class="form-text">
-                Opcional. Déjalos en 0 si todavía no defines el monto.
-            </div>
-        </div>
-    </div>
 
     <div class="row g-2 mb-2">
         <div class="col-6">

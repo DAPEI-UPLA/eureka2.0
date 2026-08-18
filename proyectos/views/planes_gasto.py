@@ -6,7 +6,8 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST, require_http_methods
 
 from ..models import (
-    Actividad, GastoElegible, PlanDeGasto, Proyecto, Transferencia, Unidad,
+    Actividad, GastoElegible, PlanDeGasto, Proyecto, Resultado, Transferencia,
+    Unidad,
 )
 from .permisos import usuario_es_responsable
 from .utils import _to_decimal, anio_seleccionado
@@ -22,19 +23,29 @@ def crear_plan_gasto_form(request, proyecto_id):
         "unidades": Unidad.objects.all(),
     }
 
-    # Si el formulario se abre desde una actividad, se llega con ella elegida en
-    # vez de obligar a recorrer de nuevo objetivo → resultado → actividad.
+    # Si el formulario se abre desde un resultado (o desde una actividad, que
+    # lleva a su resultado), se llega con él elegido en vez de obligar a
+    # recorrer de nuevo objetivo → resultado.
+    resultado = None
     actividad_id = request.GET.get("actividad")
+    resultado_id = request.GET.get("resultado")
     if actividad_id:
         actividad = get_object_or_404(
             Actividad.objects.select_related("resultado__objetivo"), pk=actividad_id
         )
-        if actividad.resultado.objetivo.proyecto_id == proyecto.id:
-            contexto.update({
-                "actividad_sel": actividad,
-                "resultados": actividad.resultado.objetivo.resultados.all(),
-                "actividades": actividad.resultado.actividades.all(),
-            })
+        resultado = actividad.resultado
+        contexto["actividad_sel"] = actividad
+    elif resultado_id:
+        resultado = get_object_or_404(
+            Resultado.objects.select_related("objetivo"), pk=resultado_id
+        )
+
+    if resultado and resultado.objetivo.proyecto_id == proyecto.id:
+        contexto.update({
+            "resultado_sel": resultado,
+            "resultados": resultado.objetivo.resultados.all(),
+            "actividades": resultado.actividades.all(),
+        })
 
     return render(request, "proyectos/partials/plan_gasto_form.html", contexto)
 
@@ -47,16 +58,24 @@ def crear_plan_gasto(request, proyecto_id):
         return HttpResponseForbidden("No autorizado")
 
     try:
-        actividad_id = request.POST.get("actividad")
+        resultado_id = request.POST.get("resultado")
+        # La actividad es opcional: sirve para decir para qué es el gasto, pero
+        # el presupuesto lo controla el resultado.
+        actividad_id = request.POST.get("actividad") or None
         gasto_elegible_id = request.POST.get("gasto_elegible")
         transferencia_id = request.POST.get("transferencia")
         unidad_id = request.POST.get("unidad_responsable") or None
         anio = int(request.POST.get("anio") or 0)
         monto = _to_decimal(request.POST.get("monto"))
 
-        actividad = get_object_or_404(Actividad, pk=actividad_id)
-        if actividad.resultado.objetivo.proyecto_id != proyecto.id:
-            return HttpResponseForbidden("Actividad fuera del proyecto")
+        resultado = get_object_or_404(
+            Resultado.objects.select_related("objetivo"), pk=resultado_id
+        )
+        if resultado.objetivo.proyecto_id != proyecto.id:
+            return HttpResponseForbidden("Resultado fuera del proyecto")
+
+        actividad = (get_object_or_404(Actividad, pk=actividad_id)
+                     if actividad_id else None)
 
         gasto_elegible = get_object_or_404(
             GastoElegible.objects.select_related("gasto__tipo_gasto__transferencia"),
@@ -73,6 +92,7 @@ def crear_plan_gasto(request, proyecto_id):
 
         with transaction.atomic():
             plan = PlanDeGasto(
+                resultado=resultado,
                 actividad=actividad,
                 gasto_elegible=gasto_elegible,
                 unidad_responsable=unidad,
@@ -102,18 +122,19 @@ def crear_plan_gasto(request, proyecto_id):
 def editar_plan_gasto_form(request, pk):
     plan = get_object_or_404(
         PlanDeGasto.objects.select_related(
-            "actividad__resultado__objetivo__proyecto",
+            "resultado__objetivo__proyecto",
             "gasto_elegible__gasto__tipo_gasto__transferencia",
             "unidad_responsable",
         ),
         pk=pk,
     )
-    proyecto = plan.actividad.resultado.objetivo.proyecto
+    proyecto = plan.resultado.objetivo.proyecto
     if not usuario_es_responsable(request.user, proyecto):
         return HttpResponseForbidden("No autorizado")
     return render(request, "proyectos/partials/plan_gasto_form.html", {
         "proyecto": proyecto,
         "plan": plan,
+        "resultado_sel": plan.resultado,
         "actividad_sel": plan.actividad,
         "objetivos": proyecto.objetivos.all(),
         "transferencias": Transferencia.objects.all(),
@@ -121,8 +142,8 @@ def editar_plan_gasto_form(request, pk):
         "tipos_gasto": plan.gasto_elegible.gasto.tipo_gasto.transferencia.tipos_gasto.all(),
         "gastos": plan.gasto_elegible.gasto.tipo_gasto.gastos.all(),
         "gastos_elegibles": plan.gasto_elegible.gasto.elegibles.all(),
-        "resultados": plan.actividad.resultado.objetivo.resultados.all(),
-        "actividades": plan.actividad.resultado.actividades.all(),
+        "resultados": plan.resultado.objetivo.resultados.all(),
+        "actividades": plan.resultado.actividades.all(),
     })
 
 
@@ -131,29 +152,36 @@ def editar_plan_gasto_form(request, pk):
 def editar_plan_gasto(request, pk):
     plan = get_object_or_404(
         PlanDeGasto.objects.select_related(
-            "actividad__resultado__objetivo__proyecto",
+            "resultado__objetivo__proyecto",
         ),
         pk=pk,
     )
-    proyecto = plan.actividad.resultado.objetivo.proyecto
+    proyecto = plan.resultado.objetivo.proyecto
     if not usuario_es_responsable(request.user, proyecto):
         return HttpResponseForbidden("No autorizado")
 
     try:
-        actividad_id = request.POST.get("actividad")
+        resultado_id = request.POST.get("resultado")
+        actividad_id = request.POST.get("actividad") or None
         gasto_elegible_id = request.POST.get("gasto_elegible")
         unidad_id = request.POST.get("unidad_responsable") or None
         anio = int(request.POST.get("anio") or 0)
         monto = _to_decimal(request.POST.get("monto"))
 
-        actividad = get_object_or_404(Actividad, pk=actividad_id)
-        if actividad.resultado.objetivo.proyecto_id != proyecto.id:
-            return HttpResponseForbidden("Actividad fuera del proyecto")
+        resultado = get_object_or_404(
+            Resultado.objects.select_related("objetivo"), pk=resultado_id
+        )
+        if resultado.objetivo.proyecto_id != proyecto.id:
+            return HttpResponseForbidden("Resultado fuera del proyecto")
+
+        actividad = (get_object_or_404(Actividad, pk=actividad_id)
+                     if actividad_id else None)
 
         gasto_elegible = get_object_or_404(GastoElegible, pk=gasto_elegible_id)
         unidad = get_object_or_404(Unidad, pk=unidad_id) if unidad_id else None
 
         with transaction.atomic():
+            plan.resultado = resultado
             plan.actividad = actividad
             plan.gasto_elegible = gasto_elegible
             plan.unidad_responsable = unidad
@@ -204,7 +232,7 @@ def eliminar_plan_gasto(request, pk):
 
     plan = get_object_or_404(
         PlanDeGasto.objects.select_related(
-            "actividad__resultado__objetivo__proyecto"
+            "resultado__objetivo__proyecto"
         ),
         pk=pk,
     )
@@ -237,9 +265,9 @@ def listar_planes_gasto(request, proyecto_id):
     proyecto = get_object_or_404(Proyecto, pk=proyecto_id)
     planes = (
         PlanDeGasto.objects
-        .filter(actividad__resultado__objetivo__proyecto=proyecto)
+        .filter(resultado__objetivo__proyecto=proyecto)
         .select_related(
-            "actividad__resultado__objetivo",
+            "resultado__objetivo",
             "gasto_elegible__gasto__tipo_gasto__transferencia",
             "unidad_responsable",
         )

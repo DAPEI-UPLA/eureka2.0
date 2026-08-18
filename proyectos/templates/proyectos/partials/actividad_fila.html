@@ -67,15 +67,17 @@
         {% endif %}
     </td>
 
-    <!-- PRESUPUESTO -->
+    <!-- PLANIFICADO -->
     <td class="text-end">
-        {% include "proyectos/partials/monto_bolsas.html" with total=actividad.presupuesto corriente=actividad.presupuesto_corriente capital=actividad.presupuesto_capital %}
-    </td>
-
-    <!-- SALDO -->
-    <td class="text-end fw-semibold
-        {% if actividad.saldo < 0 %}text-danger{% else %}text-success{% endif %}">
-        ${{ actividad.saldo|floatformat:0|intcomma }}
+        {% comment %}
+        La actividad no tiene presupuesto propio. Se muestra lo que sus planes
+        de gasto le destinan, que es informativo: el tope lo pone el resultado.
+        {% endcomment %}
+        {% if actividad.planificado %}
+        <span class="text-muted small">${{ actividad.planificado|floatformat:0|intcomma }} planificados</span>
+        {% else %}
+        <span class="text-muted small">—</span>
+        {% endif %}
     </td>
 
     <!-- AVANCE -->
