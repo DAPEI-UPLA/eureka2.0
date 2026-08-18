@@ -1,5 +1,96 @@
-{% load humanize %}
+{% load humanize l10n %}
 
+{% if anio_sel %}
+{% comment %} VISTA DE UN AÑO
+   Las mismas cuatro tarjetas pero acotadas al año elegido. El presupuesto es
+   el del año, el POA son sus planes de gasto y lo gastado son los gastos
+   cargados a esos planes. El avance físico no aparece aquí a propósito:
+   `Actividad.cumplimiento` es una sola cifra para toda la vida del proyecto,
+   no una por año, así que mostrarla junto a plata anual haría creer que es el
+   avance de ese año. {% endcomment %}
+<div class="row g-3 dashboard-presupuesto">
+
+    <div class="col-md-6 col-lg-3">
+        <div class="kpi-card kpi-total">
+            <span class="kpi-icon">$</span>
+            <div class="kpi-label">Presupuesto {{ anio_sel.anio_calendario|unlocalize }}</div>
+            <div class="kpi-value">${{ anio_sel.presupuesto_total|floatformat:0|intcomma }}</div>
+            <div class="kpi-sub">
+                <span>Corriente</span>
+                <span class="v">${{ anio_sel.presupuesto_corriente|floatformat:0|intcomma }}</span>
+            </div>
+            <div class="kpi-sub">
+                <span>Capital</span>
+                <span class="v">${{ anio_sel.presupuesto_capital|floatformat:0|intcomma }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="kpi-card kpi-asign">
+            <span class="kpi-icon">◐</span>
+            <div class="kpi-label">POA planificado</div>
+            <div class="kpi-value">${{ anio_sel.planificado|floatformat:0|intcomma }}</div>
+            <div class="kpi-progress">
+                <div style="width: {% if anio_sel.porcentaje_planificado > 100 %}100{% else %}{{ anio_sel.porcentaje_planificado|floatformat:0 }}{% endif %}%; background: #1d4ed8;"></div>
+            </div>
+            <div class="kpi-sub mt-2">
+                <span>{{ anio_sel.porcentaje_planificado|floatformat:0 }}% del presupuesto del año</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="kpi-card kpi-comp">
+            <span class="kpi-icon">⏱</span>
+            <div class="kpi-label">Gastos {{ anio_sel.anio_calendario|unlocalize }}</div>
+            <div class="kpi-value">${{ anio_sel.gastos_total|floatformat:0|intcomma }}</div>
+            <div class="kpi-sub">
+                <span>Comprometido</span>
+                <span class="v" style="color:#b45309;">${{ anio_sel.comprometido|floatformat:0|intcomma }}</span>
+            </div>
+            <div class="kpi-sub">
+                <span>Pagado</span>
+                <span class="v text-success">${{ anio_sel.pagado|floatformat:0|intcomma }}</span>
+            </div>
+            {% if anio_sel.presupuesto_total %}
+            <div class="kpi-progress">
+                <div style="width: {% if anio_sel.porcentaje_ejecutado > 100 %}100{% else %}{{ anio_sel.porcentaje_ejecutado|floatformat:0 }}{% endif %}%; background: #b45309;"></div>
+            </div>
+            <div class="kpi-sub mt-1">
+                <span>{{ anio_sel.porcentaje_ejecutado|floatformat:1 }}% ejecutado</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="kpi-card kpi-disp">
+            <span class="kpi-icon">{% if anio_sel.disponible < 0 %}⚠{% else %}✓{% endif %}</span>
+            <div class="kpi-label">Sin planificar en {{ anio_sel.anio_calendario|unlocalize }}</div>
+            <div class="kpi-value {% if anio_sel.disponible < 0 %}text-danger{% else %}text-success{% endif %}">
+                ${{ anio_sel.disponible|floatformat:0|intcomma }}
+            </div>
+            {% if anio_sel.disponible < 0 %}
+            <div class="alert alert-danger small mt-2 mb-0 py-1 px-2">
+                El POA de este año supera su presupuesto.
+            </div>
+            {% else %}
+            <div class="kpi-sub kpi-sub-detalle">
+                <span>Corriente</span>
+                <span class="v">${{ anio_sel.disponible_corriente|floatformat:0|intcomma }}</span>
+            </div>
+            <div class="kpi-sub kpi-sub-detalle">
+                <span>Capital</span>
+                <span class="v">${{ anio_sel.disponible_capital|floatformat:0|intcomma }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+{% else %}
 <div class="row g-3 dashboard-presupuesto">
 
     <div class="col-md-6 col-lg-3">
@@ -89,3 +180,4 @@
     </div>
 
 </div>
+{% endif %}

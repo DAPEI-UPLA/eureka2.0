@@ -1,5 +1,5 @@
 {% extends "core/base.html" %}
-{% load humanize static %}
+{% load humanize static l10n %}
 
 {% block content %}
 
@@ -18,8 +18,38 @@
             <div id="proy-buscar-menu" class="proy-buscar-menu d-none"></div>
         </div>
 
+        {% comment %} SELECTOR DE AÑO
+           Recarga la página entera con ?anio=<calendario>. Es un enlace y no
+           HTMX a propósito: el año tiene que quedar en la URL para que sobreviva
+           a un F5, se pueda compartir, y lo hereden todos los contenedores de
+           abajo sin que cada uno lo tenga que recordar por su cuenta. {% endcomment %}
+        {% if anios %}
+        <div class="anio-selector" role="group" aria-label="Año del proyecto">
+            <a href="{% url 'proyectos:detalle_proyecto' proyecto.pk %}"
+               class="anio-btn {% if not anio_sel %}activo{% endif %}">
+                Todo el proyecto
+            </a>
+            {% for a in anios %}
+            <a href="{% url 'proyectos:detalle_proyecto' proyecto.pk %}?anio={{ a.anio_calendario|unlocalize }}"
+               class="anio-btn {% if anio_sel and anio_sel.pk == a.pk %}activo{% endif %}">
+                {{ a.etiqueta }}
+                <span class="anio-btn-cal">{{ a.anio_calendario|unlocalize }}</span>
+                {% if a.es_anio_en_curso %}<span class="anio-punto" title="Año en curso"></span>{% endif %}
+            </a>
+            {% endfor %}
+        </div>
+
+        {% if anio_sel %}
+        <div class="anio-aviso">
+            Viendo <strong>{{ anio_sel.etiqueta }} ({{ anio_sel.anio_calendario|unlocalize }})</strong>.
+            Los objetivos, resultados y actividades son los mismos todos los años:
+            lo que cambia por año es el dinero — presupuesto, planes de gasto y gastos.
+        </div>
+        {% endif %}
+        {% endif %}
+
         <div id="dashboard-container"
-             hx-get="{% url 'proyectos:dashboard_proyecto' proyecto.pk %}"
+             hx-get="{% url 'proyectos:dashboard_proyecto' proyecto.pk %}{% if anio_sel %}?anio={{ anio_sel.anio_calendario|unlocalize }}{% endif %}"
              hx-trigger="egresoUpdated from:body, planUpdated from:body, estructuraActualizada from:body"
              hx-swap="innerHTML">
             {% include "proyectos/partials/detalle_dashboard.html" %}
@@ -115,7 +145,7 @@
         </div>
 
         <div id="planes-gasto-container"
-             hx-get="{% url 'proyectos:listar_planes_gasto' proyecto.pk %}"
+             hx-get="{% url 'proyectos:listar_planes_gasto' proyecto.pk %}{% if anio_sel %}?anio={{ anio_sel.anio_calendario|unlocalize }}{% endif %}"
              hx-trigger="load, planUpdated from:body, egresoUpdated from:body, estructuraActualizada from:body"
              hx-swap="innerHTML">
             <div class="planes-card">
@@ -137,7 +167,7 @@
         </div>
 
         <div id="egresos-container"
-             hx-get="{% url 'proyectos:listar_egresos' proyecto.pk %}"
+             hx-get="{% url 'proyectos:listar_egresos' proyecto.pk %}{% if anio_sel %}?anio={{ anio_sel.anio_calendario|unlocalize }}{% endif %}"
              hx-trigger="load, egresoUpdated from:body"
              hx-swap="innerHTML">
             <div class="planes-card">

@@ -1,7 +1,7 @@
-{% load humanize %}
+{% load humanize l10n %}
 
-{# Reparto del presupuesto del proyecto por año calendario. Se edita en línea:
-   cada fila es un form que postea a guardar_anio y devuelve esta misma lista. #}
+{% comment %} Reparto del presupuesto del proyecto por año calendario. Se edita en línea:
+   cada fila es un form que postea a guardar_anio y devuelve esta misma lista. {% endcomment %}
 
 <div class="anios-panel">
 
@@ -30,7 +30,7 @@
                     <td>
                         <div class="fw-semibold">{{ a.etiqueta }}</div>
                         <div class="small text-muted">
-                            {{ a.anio_calendario }}
+                            {{ a.anio_calendario|unlocalize }}
                             {% if a.es_anio_en_curso %}<span class="badge bg-primary ms-1">en curso</span>{% endif %}
                         </div>
                     </td>
@@ -45,11 +45,11 @@
                             <input type="number" step="1" min="0" name="presupuesto_corriente"
                                    value="{{ a.presupuesto_corriente|floatformat:0 }}"
                                    class="form-control form-control-sm text-end"
-                                   aria-label="Presupuesto corriente {{ a.anio_calendario }}">
+                                   aria-label="Presupuesto corriente {{ a.anio_calendario|unlocalize }}">
                             <input type="number" step="1" min="0" name="presupuesto_capital"
                                    value="{{ a.presupuesto_capital|floatformat:0 }}"
                                    class="form-control form-control-sm text-end"
-                                   aria-label="Presupuesto capital {{ a.anio_calendario }}">
+                                   aria-label="Presupuesto capital {{ a.anio_calendario|unlocalize }}">
                             <button type="submit" class="btn btn-sm btn-outline-primary">Guardar</button>
                         </form>
                     </td>
@@ -78,7 +78,7 @@
                                 hx-post="{% url 'proyectos:eliminar_anio' a.pk %}"
                                 hx-target="#presupuesto-anual-container"
                                 hx-swap="innerHTML"
-                                hx-confirm="¿Eliminar el año {{ a.anio_calendario }}?"
+                                hx-confirm="¿Eliminar el año {{ a.anio_calendario|unlocalize }}?"
                                 hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
                                 title="Eliminar año">✕</button>
                         {% endif %}
@@ -105,8 +105,8 @@
         </table>
     </div>
 
-    {# El descuadre es la razón de ser de esta pantalla: mientras la suma de los
-       años no calce con el presupuesto, la línea base del proyecto no sirve. #}
+    {% comment %} El descuadre es la razón de ser de esta pantalla: mientras la suma de los
+       años no calce con el presupuesto, la línea base del proyecto no sirve. {% endcomment %}
     {% if proyecto.anios_cuadrados %}
     <div class="alert alert-success py-2 px-3 small mb-0 d-flex align-items-center gap-2">
         <span>✓</span>

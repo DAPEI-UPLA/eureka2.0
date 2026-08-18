@@ -10,6 +10,7 @@ from django.views.decorators.http import require_POST
 from ..forms import ProyectoForm
 from ..models import Proyecto
 from .permisos import es_jefe, usuario_es_responsable
+from .utils import anio_seleccionado
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +97,8 @@ def detalle_proyecto(request, pk):
         "proyecto": proyecto,
         "es_encargado": usuario_es_responsable(request.user, proyecto),
         "es_jefe": es_jefe(request.user),
+        "anio_sel": anio_seleccionado(request, proyecto),
+        "anios": proyecto.presupuestos_anuales.all(),
     })
 
 
@@ -104,6 +107,7 @@ def dashboard_proyecto(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk)
     return render(request, "proyectos/partials/detalle_dashboard.html", {
         "proyecto": proyecto,
+        "anio_sel": anio_seleccionado(request, proyecto),
     })
 
 

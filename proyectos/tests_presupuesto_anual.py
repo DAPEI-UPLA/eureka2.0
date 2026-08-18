@@ -235,3 +235,119 @@ class PresupuestoAnualVistasTests(BaseProyectoTest):
         )
         self.assertContains(respuesta, "Presupuesto por año")
         self.assertContains(respuesta, "presupuesto-anual-container")
+
+
+class SelectorDeAnioTests(BaseGastosTest):
+    """El selector filtra el dinero, nunca la estructura.
+
+    `BaseGastosTest` deja planes por $600.000 corriente y $400.000 capital,
+    todos en 2026.
+    """
+
+    def setUp(self):
+        super().setUp()
+        for numero, calendario in ((1, 2026), (2, 2027)):
+            PresupuestoAnual.objects.create(
+                proyecto=self.proyecto,
+                numero_anio=numero,
+                anio_calendario=calendario,
+                presupuesto_corriente=Decimal("300000"),
+                presupuesto_capital=Decimal("200000"),
+            )
+        # Los planes de BaseGastosTest no caben en un año de $300.000/$200.000.
+        PlanDeGasto.objects.filter(pk=self.plan_corriente.pk).update(
+            monto=Decimal("300000")
+        )
+        PlanDeGasto.objects.filter(pk=self.plan_capital.pk).update(
+            monto=Decimal("200000")
+        )
+        self.url = reverse("proyectos:detalle_proyecto", args=[self.proyecto.pk])
+
+    def test_el_detalle_ofrece_un_boton_por_anio(self):
+        respuesta = self.client.get(self.url)
+        self.assertContains(respuesta, "Todo el proyecto")
+        self.assertContains(respuesta, "Año 1")
+        self.assertContains(respuesta, "Año 2")
+
+    def test_sin_anio_se_ve_el_proyecto_completo(self):
+        respuesta = self.client.get(self.url)
+        self.assertIsNone(respuesta.context["anio_sel"])
+
+    def test_elegir_un_anio_lo_deja_seleccionado(self):
+        respuesta = self.client.get(self.url, {"anio": 2027})
+        self.assertEqual(respuesta.context["anio_sel"].numero_anio, 2)
+        self.assertContains(respuesta, "Viendo")
+
+    def test_un_anio_que_no_existe_cae_a_todo_el_proyecto(self):
+        """Mejor mostrar el proyecto entero que una pantalla vacía."""
+        respuesta = self.client.get(self.url, {"anio": 2099})
+        self.assertIsNone(respuesta.context["anio_sel"])
+
+    def test_un_anio_con_basura_no_revienta(self):
+        respuesta = self.client.get(self.url, {"anio": "no-soy-un-año"})
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertIsNone(respuesta.context["anio_sel"])
+
+    def test_los_planes_de_gasto_se_filtran_por_anio(self):
+        url = reverse("proyectos:listar_planes_gasto", args=[self.proyecto.pk])
+
+        completo = self.client.get(url)
+        self.assertEqual(len(completo.context["planes"]), 2)
+
+        en_2026 = self.client.get(url, {"anio": 2026})
+        self.assertEqual(len(en_2026.context["planes"]), 2)
+
+        en_2027 = self.client.get(url, {"anio": 2027})
+        self.assertEqual(len(en_2027.context["planes"]), 0)
+
+    def test_el_dashboard_muestra_las_cifras_del_anio(self):
+        url = reverse("proyectos:dashboard_proyecto", args=[self.proyecto.pk])
+        respuesta = self.client.get(url, {"anio": 2026})
+        anio = respuesta.context["anio_sel"]
+
+        self.assertEqual(anio.presupuesto_total, Decimal("500000"))
+        self.assertEqual(anio.planificado, Decimal("500000"))
+        self.assertEqual(anio.disponible, Decimal("0"))
+        self.assertContains(respuesta, "Presupuesto 2026")
+
+    def test_el_ano_sin_poa_queda_con_todo_disponible(self):
+        url = reverse("proyectos:dashboard_proyecto", args=[self.proyecto.pk])
+        respuesta = self.client.get(url, {"anio": 2027})
+        anio = respuesta.context["anio_sel"]
+
+        self.assertEqual(anio.planificado, Decimal("0"))
+        self.assertEqual(anio.disponible, Decimal("500000"))
+
+    def test_la_estructura_no_se_filtra_por_anio(self):
+        """Los objetivos y actividades son los mismos todos los años: elegir un
+        año no puede hacerlos desaparecer."""
+        url = reverse("proyectos:listar_objetivos", args=[self.proyecto.pk])
+        completo = self.client.get(url)
+        en_2027 = self.client.get(url, {"anio": 2027})
+        self.assertEqual(
+            completo.context["proyecto"].objetivos.count(),
+            en_2027.context["proyecto"].objetivos.count(),
+        )
+
+    def test_el_anio_no_lleva_separador_de_miles(self):
+        """Django localiza los enteros y el año salía como «2 026».
+
+        En el texto sólo se ve feo, pero en el enlace del selector rompía el
+        filtro: `?anio=2 026` no se puede leer como número, así que apretar un
+        año no hacía nada. El año es un identificador, no una cantidad.
+        """
+        respuesta = self.client.get(self.url)
+        self.assertContains(respuesta, "?anio=2026")
+        self.assertNotContains(respuesta, "?anio=2&nbsp;026")
+        self.assertNotContains(respuesta, "?anio=2\xa0026")
+
+    def test_los_comentarios_del_template_no_se_imprimen(self):
+        """`{# … #}` de Django es de una sola línea.
+
+        Los comentarios de varias líneas se colaban tal cual en el HTML de la
+        página: se veía el texto explicativo del template encima del selector.
+        """
+        respuesta = self.client.get(self.url)
+        cuerpo = respuesta.content.decode()
+        self.assertNotIn("{#", cuerpo)
+        self.assertNotIn("SELECTOR DE AÑO", cuerpo)

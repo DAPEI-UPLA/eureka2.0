@@ -975,3 +975,69 @@
     background: #1d4ed8;
     border-radius: 3px;
 }
+
+/* ===== SELECTOR DE AÑO ===== */
+/* Filtra el dinero del detalle, nunca la estructura. Va arriba del dashboard
+   porque cambia lo que significan todas las cifras de abajo. */
+
+.anio-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    margin: 0 0 .85rem;
+}
+
+.anio-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .4rem .85rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    background: #fff;
+    color: #475569;
+    font-size: .875rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background .15s, border-color .15s, color .15s;
+}
+
+.anio-btn:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+
+.anio-btn.activo {
+    background: #009fe3;
+    border-color: #009fe3;
+    color: #fff;
+}
+
+.anio-btn-cal {
+    font-weight: 400;
+    font-size: .78rem;
+    opacity: .75;
+}
+
+.anio-punto {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #198754;
+}
+
+.anio-btn.activo .anio-punto {
+    background: #fff;
+}
+
+.anio-aviso {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-left: 3px solid #009fe3;
+    border-radius: 8px;
+    padding: .55rem .85rem;
+    margin-bottom: .85rem;
+    font-size: .82rem;
+    color: #075985;
+}

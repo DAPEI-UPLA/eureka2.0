@@ -9,7 +9,7 @@ from ..models import (
     Actividad, GastoElegible, PlanDeGasto, Proyecto, Transferencia, Unidad,
 )
 from .permisos import usuario_es_responsable
-from .utils import _to_decimal
+from .utils import _to_decimal, anio_seleccionado
 
 
 @login_required
@@ -245,8 +245,15 @@ def listar_planes_gasto(request, proyecto_id):
         )
         .order_by("-anio", "actividad__nombre")
     )
+
+    # El POA de un año concreto cuando se está mirando ese año; si no, todos.
+    anio_sel = anio_seleccionado(request, proyecto)
+    if anio_sel:
+        planes = planes.filter(anio=anio_sel.anio_calendario)
+
     return render(request, "proyectos/partials/planes_gasto_lista.html", {
         "proyecto": proyecto,
         "planes": planes,
         "puede_editar": usuario_es_responsable(request.user, proyecto),
+        "anio_sel": anio_sel,
     })
