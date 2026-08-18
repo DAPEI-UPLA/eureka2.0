@@ -230,6 +230,45 @@ sudo chown root:root /etc/prisma.env
 
 ---
 
+
+## Antes de migrar el POA al resultado (migraciones 0020–0028)
+
+Este grupo de migraciones mueve el plan de gasto desde la actividad al
+resultado, y elimina el presupuesto de las actividades. **Sobre una base con
+datos hay un caso que hace fallar la migración a medio camino**, así que
+primero se revisa:
+
+```bash
+cd /opt/prisma
+venv/bin/python manage.py revisar_migracion_poa
+```
+
+No modifica nada. Informa tres cosas:
+
+1. **Lo que bloquea.** La restricción nueva es `(resultado, gasto elegible,
+   año)`; la vieja era `(actividad, gasto elegible, año)`. Dos actividades del
+   mismo resultado con la misma línea son legales hoy y chocan al fusionarse:
+   `migrate` aborta con `UNIQUE constraint failed`. Hay que fusionar esos
+   planes en uno solo sumando sus montos, o moverlos a años distintos, antes
+   de migrar.
+
+2. **Lo que se pierde.** El presupuesto de cada actividad, que es el reparto
+   interno del resultado y es justo lo que se decidió dejar de llevar. El
+   presupuesto del resultado no cambia. Si se quiere de referencia, exportarlo
+   antes.
+
+3. **Lo que queda por revisar.** Las migraciones dejan todo el presupuesto
+   concentrado en el primer año a propósito. Hasta que cada equipo reparta sus
+   años, los planes de los demás años quedan sin respaldo y no se podrán
+   editar.
+
+Respaldo obligatorio antes de correr `migrate`:
+
+```bash
+cp db.sqlite3 db.sqlite3.bak-$(date +%Y%m%d-%H%M)
+```
+
+
 ## Paso 6 — Migraciones, estáticos y superusuario
 
 ```bash
