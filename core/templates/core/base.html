@@ -529,6 +529,33 @@
       event.detail.isError = false;
     }
   });
+
+  // Una sección que falla tiene que decirlo.
+  //
+  // HTMX no reemplaza el contenido cuando la respuesta es un error, así que el
+  // "Cargando…" de la caja se queda ahí para siempre y no hay forma de saber
+  // que el servidor respondió 500. Se veía como una carga eterna y el motivo
+  // quedaba enterrado en la consola del servidor.
+  document.body.addEventListener('htmx:responseError', (event) => {
+    const caja = event.detail.target;
+    if (!caja) return;
+    const codigo = event.detail.xhr.status;
+    caja.innerHTML =
+      '<div class="alert alert-danger py-2 px-3 small mb-0">' +
+      '<strong>No se pudo cargar esta sección</strong> (error ' + codigo + '). ' +
+      'Recarga la página; si sigue igual, revisa la consola del servidor.' +
+      '</div>';
+  });
+
+  // Lo mismo cuando la petición ni siquiera llega (servidor caído, red).
+  document.body.addEventListener('htmx:sendError', (event) => {
+    const caja = event.detail.target;
+    if (!caja) return;
+    caja.innerHTML =
+      '<div class="alert alert-warning py-2 px-3 small mb-0">' +
+      'Sin conexión con el servidor. Revisa que esté corriendo y recarga.' +
+      '</div>';
+  });
 </script>
 <script>
     // Separador de miles mientras se escribe el monto.
@@ -540,14 +567,31 @@
     // porque "300.000" sí se lee como un decimal válido).
     document.addEventListener("input", function(e) {
         const campo = e.target;
+        // Los campos del reparto por año se llaman corriente_<id>/capital_<id>,
+        // así que se marcan con data-monto en vez de listarlos por nombre.
         const esMonto = campo.name === "presupuesto_corriente" ||
-                        campo.name === "presupuesto_capital";
+                        campo.name === "presupuesto_capital" ||
+                        (campo.dataset && campo.dataset.monto === "1");
         if (!esMonto || campo.type === "number") return;
+
+        // Cuántos dígitos hay a la izquierda del cursor. Los puntos se corren
+        // al reagrupar, así que la posición sólo se puede conservar contando
+        // dígitos: sin esto, escribir en medio de la cifra manda el cursor al
+        // final en cada tecla.
+        const cursor = campo.selectionStart;
+        const digitosAntes = (campo.value.slice(0, cursor).match(/\d/g) || []).length;
 
         const digitos = campo.value.replace(/\D/g, "");
         // Sin dígitos se deja vacío: formatear "" daría un "0" que impide
         // borrar lo escrito para empezar de nuevo.
         campo.value = digitos ? new Intl.NumberFormat("es-CL").format(digitos) : "";
+
+        let pos = 0, vistos = 0;
+        while (pos < campo.value.length && vistos < digitosAntes) {
+            if (/\d/.test(campo.value[pos])) vistos++;
+            pos++;
+        }
+        try { campo.setSelectionRange(pos, pos); } catch (err) { /* input sin selección */ }
     });
 
     // Auto-hide toasts globales
