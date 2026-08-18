@@ -90,6 +90,12 @@
         de este resultado; el saldo descuenta los dos.
     </p>
 
+    {% comment %}
+    En un proyecto ajeno esta pantalla se ve pero no se toca: `puede_editar`
+    llega en False y el boton no se dibuja. El endpoint lo bloquea igual; esto
+    es para no ofrecer algo que va a terminar en un 403.
+    {% endcomment %}
+    {% if puede_editar %}
     <div class="d-flex justify-content-end mb-3">
         <button class="btn btn-primary btn-sm px-3"
                 hx-get="{% url 'proyectos:form_asignar_presupuesto' resultado.pk %}"
@@ -98,6 +104,7 @@
             + Asignar presupuesto
         </button>
     </div>
+    {% endif %}
 
     {% comment %}Los movimientos son los gastos mismos; acá es donde se ve de
     qué se compone el ejecutado y en qué va el trámite de cada uno.{% endcomment %}

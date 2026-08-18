@@ -178,7 +178,16 @@ def guardar_presupuesto(request, pk):
 
 @login_required
 def detalle_presupuesto_resultado(request, pk):
+    """El desglose del presupuesto de un resultado.
+
+    Es una pantalla de lectura, así que la ve cualquiera: el equipo pidió poder
+    mirar los proyectos de sus compañeros. Lo que no se puede es editar, y eso
+    lo topan los endpoints de escritura, no éste.
+    """
     resultado = get_object_or_404(Resultado, pk=pk)
-    if not usuario_es_responsable(request.user, resultado.objetivo.proyecto):
-        return HttpResponseForbidden("No autorizado")
-    return render(request, "proyectos/partials/presupuesto_detalle.html", {"resultado": resultado})
+    return render(request, "proyectos/partials/presupuesto_detalle.html", {
+        "resultado": resultado,
+        "puede_editar": usuario_es_responsable(
+            request.user, resultado.objetivo.proyecto
+        ),
+    })

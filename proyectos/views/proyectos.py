@@ -3,6 +3,7 @@ import logging
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db.models import Case, IntegerField, Value, When
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -52,11 +53,25 @@ def lista_proyectos(request):
     user = request.user
     jefe = es_jefe(user)
 
+    # Todos ven todos los proyectos, pero los propios van primero.
+    #
+    # Antes cada persona sólo veía los suyos. El equipo pide ver también los de
+    # sus compañeros —para saber qué se está haciendo y no repetir gestiones—
+    # pero sin poder tocarlos: la edición ya está topada en cada endpoint por
+    # `usuario_es_responsable`, así que abrir la vista no abre la escritura.
+    #
+    # El orden se resuelve en la base y no en Python porque la lista está
+    # paginada: ordenar después de paginar dejaría proyectos propios en la
+    # página 3.
     qs = Proyecto.objects.with_resumen().prefetch_related(
         'objetivos__resultados__actividades'
-    ).order_by('-fecha_creacion')
-    if not jefe:
-        qs = qs.filter(responsable=user)
+    ).annotate(
+        _es_mio=Case(
+            When(responsable=user, then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
+        )
+    ).order_by('_es_mio', '-fecha_creacion')
 
     abrir_crear = False
     if request.method == 'POST' and jefe:
@@ -79,6 +94,7 @@ def lista_proyectos(request):
 
     return render(request, 'proyectos/lista_proyectos.html', {
         'proyectos': page_obj.object_list,
+        'mios': sum(1 for p in page_obj.object_list if p.responsable_id == user.id),
         'page_obj': page_obj,
         'es_jefe': jefe,
         'form': form,

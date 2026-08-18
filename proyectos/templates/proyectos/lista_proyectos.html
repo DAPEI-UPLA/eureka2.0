@@ -76,6 +76,39 @@
 
 .proy-table tbody tr { vertical-align: middle; }
 .proy-table .progress { height: 6px; border-radius: 50px; }
+
+    /* Propios vs ajenos.
+       Los propios se marcan en el color institucional; los ajenos con un gris
+       apagado, para que la lista no se llene de color y el orden -- que ya los
+       pone primero -- siga siendo la senal principal. */
+    .badge-mio {
+        background: #009fe3;
+        color: #fff;
+        font-size: .68rem;
+        font-weight: 700;
+    }
+    .badge-ajeno {
+        background: #f1f5f9;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+        font-size: .68rem;
+        font-weight: 600;
+    }
+    .separador-ajenos {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        margin: 1.75rem 0 .5rem;
+        color: #94a3b8;
+        font-size: .8rem;
+        font-weight: 600;
+    }
+    .separador-ajenos::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: #e2e8f0;
+    }
 </style>
 
 <div class="container-fluid">
@@ -85,7 +118,7 @@
         <div>
             <h2 class="fw-semibold mb-0">Proyectos</h2>
             <small class="text-muted">
-                {% if es_jefe %}Visualizando todos los proyectos{% else %}Visualizando tus proyectos asignados{% endif %}
+                Todos los proyectos · los tuyos primero
                 · <span id="proy-count">{{ proyectos|length }}</span> visible{{ proyectos|length|pluralize }}
                 {% if page_obj.paginator.count != proyectos|length %}
                   de {{ page_obj.paginator.count }}
@@ -230,7 +263,12 @@
                         </td>
                         <td><span class="badge badge-tipo">{{ proyecto.get_tipo_display }}</span></td>
                         <td><span class="badge estado-{{ proyecto.estado }}">{{ proyecto.get_estado_display }}</span></td>
-                        <td class="small">{{ proyecto.responsable|default:"—" }}</td>
+                        <td class="small">
+                            {{ proyecto.responsable|default:"—" }}
+                            {% if proyecto.responsable_id == request.user.id %}
+                            <span class="badge badge-mio ms-1">Tuyo</span>
+                            {% endif %}
+                        </td>
                         <td class="text-end small">${{ proyecto.presupuesto_total|floatformat:0|intcomma }}</td>
                         <td class="text-end small text-success">${{ proyecto.presupuesto_disponible_real|floatformat:0|intcomma }}</td>
                         <td class="text-center">
@@ -247,7 +285,11 @@
                             </div>
                         </td>
                         <td class="text-end">
+                            {% if es_jefe or proyecto.responsable_id == request.user.id %}
                             {% include "proyectos/partials/proyecto_acciones.html" with proyecto=proyecto %}
+                            {% else %}
+                            <span class="text-muted small" title="Solo lectura: no eres responsable">—</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -261,6 +303,18 @@
     <!-- VISTA TARJETAS -->
     <div class="row g-4" id="proy-grid">
         {% for proyecto in proyectos %}
+        {% comment %}
+        Separador entre los propios y los de los demas. Se apoya en que la
+        consulta ya los ordena con los propios primero, asi que basta con
+        mirar donde cambia. `mios` cuenta los de esta pagina: en la 2 puede
+        ser 0 y entonces el separador no aparece, que es lo correcto.
+        {% endcomment %}
+        {% if forloop.counter0 == mios and mios > 0 %}
+        <div class="col-12">
+            <div class="separador-ajenos">De tus compañeros</div>
+        </div>
+        {% endif %}
+
         <div class="col-md-6 col-lg-4 proy-item"
              data-search="{{ proyecto.nombre|lower }} {{ proyecto.descripcion|lower }} {{ proyecto.responsable|lower }}"
              data-estado="{{ proyecto.estado }}"
@@ -274,9 +328,18 @@
                 <div class="card-body d-flex flex-column">
 
                     <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="badge badge-tipo rounded-pill px-3 py-2">
-                            {{ proyecto.get_tipo_display }}
-                        </span>
+                        <div class="d-flex gap-1 align-items-center">
+                            <span class="badge badge-tipo rounded-pill px-3 py-2">
+                                {{ proyecto.get_tipo_display }}
+                            </span>
+                            {% if proyecto.responsable_id == request.user.id %}
+                            <span class="badge badge-mio rounded-pill px-2 py-2"
+                                  title="Eres responsable de este proyecto">Tuyo</span>
+                            {% else %}
+                            <span class="badge badge-ajeno rounded-pill px-2 py-2"
+                                  title="Solo lectura: es de {{ proyecto.responsable|default:'otra persona' }}">Solo lectura</span>
+                            {% endif %}
+                        </div>
 
                         <div class="d-flex gap-1 align-items-center">
                             {% if proyecto.atrasado %}
@@ -288,7 +351,12 @@
                             <span class="badge rounded-pill px-3 py-2 estado-{{ proyecto.estado }}">
                                 {{ proyecto.get_estado_display }}
                             </span>
-                            {% if es_jefe %}
+                            {% comment %}
+                            Editar y eliminar solo en los propios. Los ajenos se
+                            ven pero no se tocan: es lo que pidio el equipo, y
+                            coincide con lo que ya bloquean los endpoints.
+                            {% endcomment %}
+                            {% if es_jefe or proyecto.responsable_id == request.user.id %}
                             {% include "proyectos/partials/proyecto_acciones.html" with proyecto=proyecto compact=True %}
                             {% endif %}
                         </div>
