@@ -1,5 +1,11 @@
 # Despliegue de Prisma en servidor Ubuntu (SSH)
 
+> **Nombres:** el sistema se llama **Prisma**, pero toda la infraestructura
+> conserva los nombres originales: carpeta `~/Eureka`, servicio
+> `eureka.service`, entorno `/etc/eureka.env` y sitio nginx `eureka`. En el
+> equipo local la carpeta del código es `Desktop\Eureka`. No hay renombrado
+> pendiente: estos son los nombres buenos.
+
 > Servidor: **`dapei@172.16.31.160`** — hostname `dapei1`, **Ubuntu 26.04 LTS**, red interna.
 > Arquitectura: **nginx** (puerto 80) → **gunicorn** (`127.0.0.1:8000`) → **Django 6.0 + SQLite**.
 > nginx sirve directamente `/static/` y `/media/`.
@@ -16,52 +22,6 @@ Hay dos scripts que automatizan esto, en la raíz del proyecto:
 | `ampliar_disco.sh` | Paso 1: detecta LVM o partición directa y amplía la raíz |
 
 ---
-
-## Paso -1 — Migración de nombres (Eureka → Prisma)
-
-> ⚠️ **Este documento ya usa los nombres nuevos, pero el servidor todavía no.**
-> El despliegue del 2026-08-03 quedó con `eureka.service`, `/etc/eureka.env`,
-> `~/Eureka` y el sitio nginx `eureka`. Hasta correr esta migración, lee
-> `eureka` donde el documento dice `prisma`.
->
-> Solo aplica a servidores ya desplegados. En una instalación nueva,
-> `setup_ubuntu.sh` ya crea todo con los nombres nuevos.
-
-```bash
-sudo systemctl stop eureka.service
-
-# Proyecto, variables de entorno y unidad systemd
-mv ~/Eureka ~/Eureka
-sudo mv /etc/eureka.env /etc/prisma.env
-sudo mv /etc/systemd/system/eureka.service /etc/systemd/system/prisma.service
-sudo sed -i 's|/Eureka|/Prisma|g; s|/etc/eureka\.env|/etc/prisma.env|; s|^Description=Eureka|Description=Prisma|' \
-    /etc/systemd/system/prisma.service
-
-# nginx
-sudo mv /etc/nginx/sites-available/eureka /etc/nginx/sites-available/prisma
-sudo rm -f /etc/nginx/sites-enabled/eureka
-sudo ln -sfn /etc/nginx/sites-available/prisma /etc/nginx/sites-enabled/prisma
-sudo sed -i 's|/Eureka/|/Prisma/|g' /etc/nginx/sites-available/prisma
-
-# cron del respaldo diario
-crontab -l | sed 's|/Eureka/|/Prisma/|g' | crontab -
-
-# Levantar
-sudo systemctl daemon-reload
-sudo systemctl disable eureka.service 2>/dev/null || true
-sudo systemctl enable --now prisma.service
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-Comprobación:
-
-```bash
-systemctl is-active prisma.service     # active
-curl -sI http://172.16.31.160/ | head -1   # HTTP/1.1 200 OK
-crontab -l | grep backup.sh            # debe decir /Prisma/
-```
-
-Si algo falla, se vuelve atrás deshaciendo los `mv` y reactivando `eureka.service`.
 
 ### En el equipo local (Windows)
 
@@ -159,15 +119,15 @@ En **PowerShell** de tu máquina. Este es el primer despliegue, así que **sí**
 
 ```powershell
 cd "$env:USERPROFILE\Desktop\Eureka"
-tar -czf "$env:TEMP\prisma.tar.gz" --exclude=venv --exclude=staticfiles --exclude=__pycache__ --exclude=*.pyc --exclude=.git --exclude=.env --exclude=.claude --exclude=db.sqlite3.bak-* .
-scp "$env:TEMP\prisma.tar.gz" dapei@172.16.31.160:~/
+tar -czf "$env:TEMP\eureka.tar.gz" --exclude=venv --exclude=staticfiles --exclude=__pycache__ --exclude=*.pyc --exclude=.git --exclude=.env --exclude=.claude --exclude=db.sqlite3.bak-* .
+scp "$env:TEMP\eureka.tar.gz" dapei@172.16.31.160:~/
 ```
 
 En el **servidor**:
 
 ```bash
 mkdir -p ~/Eureka
-tar -xzf ~/prisma.tar.gz -C ~/Eureka
+tar -xzf ~/eureka.tar.gz -C ~/Eureka
 cd ~/Eureka && ls -la
 ```
 
@@ -191,7 +151,7 @@ venv/bin/pip install gunicorn==23.0.0
 
 ---
 
-## Paso 5 — Variables de entorno (`/etc/prisma.env`)
+## Paso 5 — Variables de entorno (`/etc/eureka.env`)
 
 Genera la clave secreta:
 
@@ -203,7 +163,7 @@ venv/bin/python -c "from django.core.management.utils import get_random_secret_k
 Crea el archivo (pega la clave generada en `DJANGO_SECRET_KEY`):
 
 ```bash
-sudo nano /etc/prisma.env
+sudo nano /etc/eureka.env
 ```
 
 ```ini
@@ -216,8 +176,8 @@ DJANGO_LOG_LEVEL=INFO
 ```
 
 ```bash
-sudo chmod 600 /etc/prisma.env
-sudo chown root:root /etc/prisma.env
+sudo chmod 600 /etc/eureka.env
+sudo chown root:root /etc/eureka.env
 ```
 
 > ⚠️ **`DJANGO_SECURE_SSL_REDIRECT=False` es imprescindible mientras sirvas por HTTP plano.**
@@ -226,7 +186,7 @@ sudo chown root:root /etc/prisma.env
 > certificado (dominio interno + Let's Encrypt, o cert propio), cámbialo a `True`
 > y actualiza `DJANGO_CSRF_TRUSTED_ORIGINS` a `https://...`.
 >
-> ⚠️ En `/etc/prisma.env` **no** uses comillas ni escapes: systemd toma todo lo que va
+> ⚠️ En `/etc/eureka.env` **no** uses comillas ni escapes: systemd toma todo lo que va
 > tras el primer `=` como valor literal. Si necesitas cargarlo en una shell, hazlo
 > línea por línea (ver Paso 12), nunca con `source`.
 
@@ -280,7 +240,7 @@ set -a
 while IFS= read -r line; do
   case "$line" in ''|\#*) continue ;; esac
   export "${line%%=*}=${line#*=}"
-done < <(sudo cat /etc/prisma.env)
+done < <(sudo cat /etc/eureka.env)
 set +a
 
 venv/bin/python manage.py migrate
@@ -297,7 +257,7 @@ venv/bin/python manage.py check --deploy
 ## Paso 7 — Servicio systemd (gunicorn)
 
 ```bash
-sudo nano /etc/systemd/system/prisma.service
+sudo nano /etc/systemd/system/eureka.service
 ```
 
 ```ini
@@ -309,7 +269,7 @@ After=network.target
 User=dapei
 Group=dapei
 WorkingDirectory=/home/dapei/Eureka
-EnvironmentFile=/etc/prisma.env
+EnvironmentFile=/etc/eureka.env
 ExecStart=/home/dapei/Eureka/venv/bin/gunicorn sistema.wsgi:application \
     --workers 3 \
     --bind 127.0.0.1:8000 \
@@ -325,8 +285,8 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now prisma.service
-systemctl status prisma.service --no-pager
+sudo systemctl enable --now eureka.service
+systemctl status eureka.service --no-pager
 curl -s -o /dev/null -w "gunicorn: HTTP %{http_code}\n" http://127.0.0.1:8000/
 ```
 
@@ -335,7 +295,7 @@ curl -s -o /dev/null -w "gunicorn: HTTP %{http_code}\n" http://127.0.0.1:8000/
 ## Paso 8 — nginx como proxy inverso
 
 ```bash
-sudo nano /etc/nginx/sites-available/prisma
+sudo nano /etc/nginx/sites-available/eureka
 ```
 
 ```nginx
@@ -369,7 +329,7 @@ server {
 ```
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/prisma /etc/nginx/sites-enabled/prisma
+sudo ln -s /etc/nginx/sites-available/eureka /etc/nginx/sites-enabled/eureka
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl reload nginx
@@ -434,12 +394,12 @@ tail -n 5 ~/Eureka/backups/backup.log
 ### Restaurar
 
 ```bash
-sudo systemctl stop prisma.service
+sudo systemctl stop eureka.service
 cd ~/Eureka
 mv db.sqlite3 db.sqlite3.antes-de-restaurar
 gunzip -c backups/db_2026-08-03_0200.sqlite3.gz > db.sqlite3
 tar -xzf backups/media_2026-08-03_0200.tar.gz -C .   # solo si también hay que recuperar archivos
-sudo systemctl start prisma.service
+sudo systemctl start eureka.service
 ```
 
 ### Bajar un respaldo a Windows
@@ -448,7 +408,7 @@ sudo systemctl start prisma.service
 scp dapei@172.16.31.160:~/Eureka/backups/db_2026-08-03_0200.sqlite3.gz "$env:USERPROFILE\Desktop\"
 ```
 
-> `/etc/prisma.env` **no** se respalda (el script corre como `dapei` y el archivo es solo
+> `/etc/eureka.env` **no** se respalda (el script corre como `dapei` y el archivo es solo
 > de root). Si se perdiera, basta generar una `SECRET_KEY` nueva: el único efecto es que
 > las sesiones activas se cierran. Los datos no dependen de ella.
 
@@ -456,31 +416,15 @@ scp dapei@172.16.31.160:~/Eureka/backups/db_2026-08-03_0200.sqlite3.gz "$env:USE
 
 ## Paso 12 — Redespliegues futuros (solo código)
 
-### Antes de nada: confirma los nombres reales
-
-Tres cosas pueden llamarse `eureka` o `prisma` y no tienen por qué coincidir
-entre sí — la carpeta, el servicio de systemd y el archivo de entorno. Este
-documento asume carpeta `~/Eureka`, servicio `prisma.service` y entorno
-`/etc/prisma.env`. Compruébalo antes de copiar comandos:
-
-```bash
-ls -d ~/Eureka ~/Prisma 2>/dev/null
-systemctl list-units --type=service --all | grep -iE 'eureka|prisma'
-ls /etc/*.env
-```
-
-Si alguno no calza, cambia ese nombre en los comandos de más abajo.
-
-
 **Regla de oro:** nunca sobrescribas en el servidor `db.sqlite3`, `media/`, `venv/`,
-`staticfiles/`, `backups/` ni `/etc/prisma.env`.
+`staticfiles/`, `backups/` ni `/etc/eureka.env`.
 
 En Windows:
 
 ```powershell
 cd "$env:USERPROFILE\Desktop\Eureka"
-tar -czf "$env:TEMP\prisma.tar.gz" --exclude=venv --exclude=db.sqlite3* --exclude=*.sqlite3 --exclude=media --exclude=staticfiles --exclude=backups --exclude=__pycache__ --exclude=*.pyc --exclude=.git --exclude=.env --exclude=.claude .
-scp "$env:TEMP\prisma.tar.gz" dapei@172.16.31.160:~/
+tar -czf "$env:TEMP\eureka.tar.gz" --exclude=venv --exclude=db.sqlite3* --exclude=*.sqlite3 --exclude=media --exclude=staticfiles --exclude=backups --exclude=__pycache__ --exclude=*.pyc --exclude=.git --exclude=.env --exclude=.claude .
+scp "$env:TEMP\eureka.tar.gz" dapei@172.16.31.160:~/
 ```
 
 En el servidor:
@@ -488,20 +432,20 @@ En el servidor:
 ```bash
 cd ~/Eureka
 cp db.sqlite3 backups/db_pre_deploy_$(date +%F_%H%M).sqlite3
-tar -xzf ~/prisma.tar.gz -C ~/Eureka
+tar -xzf ~/eureka.tar.gz -C ~/Eureka
 venv/bin/pip install -r requirements.txt
 
 set -a
 while IFS= read -r line; do
   case "$line" in ''|\#*) continue ;; esac
   export "${line%%=*}=${line#*=}"
-done < <(sudo cat /etc/prisma.env)
+done < <(sudo cat /etc/eureka.env)
 set +a
 
 venv/bin/python manage.py migrate
 venv/bin/python manage.py collectstatic --noinput
-sudo systemctl restart prisma.service
-systemctl is-active prisma.service
+sudo systemctl restart eureka.service
+systemctl is-active eureka.service
 ```
 
 ---
@@ -532,7 +476,7 @@ Desde ahí basta `ssh prisma` y `scp archivo prisma:~/`.
 
 ```bash
 # Estado y logs de la app
-systemctl status prisma.service
+systemctl status eureka.service
 journalctl -u prisma -n 100 --no-pager
 journalctl -u prisma -f
 
@@ -541,7 +485,7 @@ sudo nginx -t && sudo systemctl reload nginx
 sudo tail -f /var/log/nginx/error.log
 
 # Reiniciar todo
-sudo systemctl restart prisma.service nginx
+sudo systemctl restart eureka.service nginx
 
 # Espacio en disco
 df -h /
@@ -558,5 +502,5 @@ du -sh ~/Eureka/*
 | `403 CSRF verification failed` | Falta el origen en `DJANGO_CSRF_TRUSTED_ORIGINS` (con esquema `http://`) |
 | Página sin estilos, 404 en `/static/...` | Falta `collectstatic`, o `www-data` no puede atravesar `/home/dapei` → `chmod o+x /home/dapei` |
 | `502 Bad Gateway` | gunicorn caído → `journalctl -u prisma -n 50` |
-| `ImproperlyConfigured: Falta DJANGO_SECRET_KEY` | El servicio no está leyendo `/etc/prisma.env`, o lo ejecutaste a mano sin cargar el entorno |
+| `ImproperlyConfigured: Falta DJANGO_SECRET_KEY` | El servicio no está leyendo `/etc/eureka.env`, o lo ejecutaste a mano sin cargar el entorno |
 | `attempt to write a readonly database` | Permisos: `db.sqlite3` y su carpeta deben pertenecer a `dapei` |
