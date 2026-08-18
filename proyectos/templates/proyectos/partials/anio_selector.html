@@ -1,0 +1,38 @@
+{% load l10n %}
+
+{% comment %}
+Selector de año del proyecto.
+
+Vive en su propio contenedor HTMX y no suelto en la página porque los años se
+crean y se borran desde la sección de abajo: si el selector fuera parte del
+HTML fijo, agregar un año no lo haría aparecer hasta recargar con F5.
+
+Cada botón es un enlace y no un hx-get: el año tiene que quedar en la URL para
+sobrevivir a una recarga, poder compartirse, y que lo hereden los contenedores
+de abajo sin recordarlo por su cuenta.
+{% endcomment %}
+
+{% if anios %}
+<div class="anio-selector" role="group" aria-label="Año del proyecto">
+    <a href="{% url 'proyectos:detalle_proyecto' proyecto.pk %}"
+       class="anio-btn {% if not anio_sel %}activo{% endif %}">
+        Todo el proyecto
+    </a>
+    {% for a in anios %}
+    <a href="{% url 'proyectos:detalle_proyecto' proyecto.pk %}?anio={{ a.anio_calendario|unlocalize }}"
+       class="anio-btn {% if anio_sel and anio_sel.pk == a.pk %}activo{% endif %}">
+        {{ a.etiqueta }}
+        <span class="anio-btn-cal">{{ a.anio_calendario|unlocalize }}</span>
+        {% if a.es_anio_en_curso %}<span class="anio-punto" title="Año en curso"></span>{% endif %}
+    </a>
+    {% endfor %}
+</div>
+
+{% if anio_sel %}
+<div class="anio-aviso">
+    Viendo <strong>{{ anio_sel.etiqueta }} ({{ anio_sel.anio_calendario|unlocalize }})</strong>.
+    Los objetivos, resultados y actividades son los mismos todos los años:
+    lo que cambia por año es el dinero — presupuesto, planes de gasto y gastos.
+</div>
+{% endif %}
+{% endif %}

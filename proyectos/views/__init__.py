@@ -69,6 +69,7 @@ from .egresos import (
     planes_por_elegible,
 )
 from .proyectos import (
+    selector_anios,
     dashboard_proyecto,
     detalle_proyecto,
     editar_proyecto,

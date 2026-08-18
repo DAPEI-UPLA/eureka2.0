@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404, render
 
 from ..models import Egreso, Proyecto
 from .permisos import es_jefe
+from .utils import anio_seleccionado
 
 # Paleta institucional (coincide con core/base.html)
 ESTADOS_ORDEN = ['PLANIFICADO', 'EN_EJECUCION', 'FINALIZADO', 'SUSPENDIDO']
@@ -203,20 +204,49 @@ def graficos_proyectos(request):
 
 @login_required
 def graficos_proyecto(request, pk):
+    """Gráficos de un proyecto, completos o acotados a un año.
+
+    Con un año elegido, todo lo que sea dinero pasa a ser el de ese año. El
+    avance físico no: `Actividad.cumplimiento` es una sola cifra para toda la
+    vida del proyecto, así que se sigue mostrando el global y el subtítulo lo
+    dice, en vez de fingir un avance anual que no existe en los datos.
+    """
     proyecto = get_object_or_404(
         Proyecto.objects.prefetch_related('objetivos__resultados__actividades'),
         pk=pk,
     )
+    anio = anio_seleccionado(request, proyecto)
+
+    if anio:
+        presupuesto = anio.presupuesto_total
+        corriente_total, capital_total = anio.presupuesto_corriente, anio.presupuesto_capital
+        asignado = anio.asignado_a_objetivos
+        corriente_asignado, capital_asignado = anio.asignado_corriente, anio.asignado_capital
+        corriente_libre, capital_libre = anio.sin_asignar_corriente, anio.sin_asignar_capital
+        comprometido, pagado = anio.comprometido, anio.pagado
+        disponible = presupuesto - anio.gastos_total
+        egresos = proyecto.egresos.filter(
+            eliminado=False, plan_de_gasto__anio=anio.anio_calendario
+        )
+    else:
+        presupuesto = proyecto.presupuesto_total
+        corriente_total, capital_total = (proyecto.presupuesto_corriente,
+                                          proyecto.presupuesto_capital)
+        asignado = proyecto.presupuesto_asignado
+        corriente_asignado, capital_asignado = (proyecto.corriente_asignado,
+                                                proyecto.capital_asignado)
+        corriente_libre, capital_libre = (proyecto.corriente_disponible,
+                                          proyecto.capital_disponible)
+        comprometido, pagado = proyecto.gastos_comprometidos, proyecto.gastos_pagados
+        disponible = proyecto.disponible_para_gastar
+        egresos = proyecto.egresos.filter(eliminado=False)
 
     # ===== Cascada de presupuesto (barras horizontales) =====
     cascada = {
         'labels': ['Total', 'Asignado', 'Comprometido', 'Ejecutado', 'Disponible'],
         'data': [
-            _f(proyecto.presupuesto_total),
-            _f(proyecto.presupuesto_asignado),
-            _f(proyecto.gastos_comprometidos),
-            _f(proyecto.gastos_pagados),
-            _f(max(proyecto.disponible_para_gastar, Decimal('0'))),
+            _f(presupuesto), _f(asignado), _f(comprometido), _f(pagado),
+            _f(max(disponible, Decimal('0'))),
         ],
         'colors': ['#0f172a', '#1d4ed8', '#f59e0b', '#198754', '#94a3b8'],
     }
@@ -225,45 +255,43 @@ def graficos_proyecto(request, pk):
     corriente_capital = {
         'corriente': {
             'labels': ['Asignado', 'Disponible'],
-            'data': [
-                _f(proyecto.corriente_asignado),
-                _f(max(proyecto.corriente_disponible, Decimal('0'))),
-            ],
+            'data': [_f(corriente_asignado), _f(max(corriente_libre, Decimal('0')))],
             'colors': ['#1d4ed8', '#dbeafe'],
         },
         'capital': {
             'labels': ['Asignado', 'Disponible'],
-            'data': [
-                _f(proyecto.capital_asignado),
-                _f(max(proyecto.capital_disponible, Decimal('0'))),
-            ],
+            'data': [_f(capital_asignado), _f(max(capital_libre, Decimal('0')))],
             'colors': ['#7c3aed', '#ede9fe'],
         },
     }
 
-    # ===== Avance por objetivo (cumplimiento ponderado) =====
+    # ===== Avance por objetivo =====
+    # El avance es del proyecto entero (no hay cumplimiento por año); lo que sí
+    # cambia con el año es el presupuesto de cada objetivo.
     obj_labels, obj_avance, obj_pres = [], [], []
     for i, objetivo in enumerate(proyecto.objetivos.all(), start=1):
         etq = objetivo.descripcion or f'Objetivo {i}'
         obj_labels.append(f'OE{i}: ' + (etq[:34] + ('…' if len(etq) > 34 else '')))
         obj_avance.append(round(_f(_cumplimiento_objetivo(objetivo)), 1))
-        obj_pres.append(_f(objetivo.presupuesto_asignado))
+        if anio:
+            fila = objetivo.presupuesto_del_anio(anio)
+            obj_pres.append(_f(fila.presupuesto_total if fila else Decimal('0')))
+        else:
+            obj_pres.append(_f(objetivo.presupuesto_asignado))
     avance_objetivos = {
         'labels': obj_labels,
         'avance': obj_avance,
         'presupuesto': obj_pres,
     }
 
-    # ===== Gastos por transferencia (egresos activos con plan de gasto) =====
+    # ===== Gastos por transferencia =====
     trans_totales = defaultdict(Decimal)
-    for egreso in proyecto.egresos.filter(eliminado=False):
+    for egreso in egresos:
         if egreso.plan_de_gasto_id:
             nombre = str(egreso.plan_de_gasto.transferencia)
         else:
             nombre = egreso.get_tipo_display()
-        if egreso.tipo == Egreso.TIPO_COMPRA:
-            monto = egreso.total_con_iva
-        elif egreso.tipo == Egreso.TIPO_HONORARIO:
+        if egreso.tipo == Egreso.TIPO_HONORARIO:
             monto = egreso.monto_total
         else:
             monto = egreso.total_con_iva
@@ -278,15 +306,13 @@ def graficos_proyecto(request, pk):
     # ===== Comprometido vs Pagado (donut) =====
     comprometido_pagado = {
         'labels': ['Pagado', 'Comprometido'],
-        'data': [
-            _f(proyecto.gastos_pagados),
-            _f(proyecto.gastos_comprometidos),
-        ],
+        'data': [_f(pagado), _f(comprometido)],
         'colors': ['#198754', '#f59e0b'],
     }
 
     return render(request, 'proyectos/partials/graficos_proyecto.html', {
         'proyecto': proyecto,
+        'anio_sel': anio,
         'cascada': cascada,
         'corriente_capital': corriente_capital,
         'avance_objetivos': avance_objetivos,

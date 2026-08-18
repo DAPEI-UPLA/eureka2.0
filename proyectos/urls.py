@@ -22,6 +22,7 @@ urlpatterns = [
     path('anio/<int:pk>/eliminar/', views.eliminar_anio, name="eliminar_anio"),
     path('proyectos/<int:pk>/eliminar/', views.eliminar_proyecto, name="eliminar_proyecto"),
     path('proyectos/<int:pk>/dashboard/', views.dashboard_proyecto, name="dashboard_proyecto"),
+    path('proyectos/<int:pk>/selector-anios/', views.selector_anios, name="selector_anios"),
 
     # OBJETIVOS
     path("proyectos/<int:pk>/objetivos/", views.listar_objetivos, name="listar_objetivos"),

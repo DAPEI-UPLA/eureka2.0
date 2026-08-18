@@ -106,6 +106,22 @@ def detalle_proyecto(request, pk):
 
 
 @login_required
+def selector_anios(request, pk):
+    """Sólo los botones de año.
+
+    Va aparte del detalle porque los años se crean y se borran desde la sección
+    de reparto: si el selector fuera HTML fijo de la página, un año nuevo no
+    aparecería hasta recargar.
+    """
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    return render(request, "proyectos/partials/anio_selector.html", {
+        "proyecto": proyecto,
+        "anios": proyecto.presupuestos_anuales.all(),
+        "anio_sel": anio_seleccionado(request, proyecto),
+    })
+
+
+@login_required
 def dashboard_proyecto(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk)
     anio_sel = anio_seleccionado(request, proyecto)

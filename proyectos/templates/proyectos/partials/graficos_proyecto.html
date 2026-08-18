@@ -1,4 +1,4 @@
-{% load humanize %}
+{% load humanize l10n %}
 
 <style>
     .g-proj-card {
@@ -21,7 +21,7 @@
     <div class="col-lg-7">
         <div class="g-proj-card">
             <h6>Cascada de presupuesto</h6>
-            <p class="sub">Del total asignado a lo ejecutado y disponible.</p>
+            <p class="sub">Del total asignado a lo ejecutado y disponible{% if anio_sel %} en {{ anio_sel.anio_calendario|unlocalize }}{% endif %}.</p>
             <div class="g-canvas h-cascada"><canvas id="gpCascada"></canvas></div>
         </div>
     </div>
@@ -30,7 +30,7 @@
     <div class="col-lg-5">
         <div class="g-proj-card">
             <h6>Gastos: comprometido vs pagado</h6>
-            <p class="sub">Estado de los egresos del proyecto.</p>
+            <p class="sub">Estado de los egresos {% if anio_sel %}de {{ anio_sel.anio_calendario|unlocalize }}{% else %}del proyecto{% endif %}.</p>
             <div class="g-canvas h-donut"><canvas id="gpCompPag"></canvas></div>
         </div>
     </div>
@@ -57,7 +57,13 @@
     <div class="col-lg-6">
         <div class="g-proj-card">
             <h6>Avance físico por objetivo</h6>
-            <p class="sub">Cumplimiento ponderado por presupuesto.</p>
+            <p class="sub">
+                Cumplimiento ponderado por presupuesto.
+                {% if anio_sel %}
+                <br><span class="text-warning">El avance es del proyecto completo:
+                el cumplimiento no se registra por año.</span>
+                {% endif %}
+            </p>
             <div class="g-canvas h-bar"><canvas id="gpObjetivos"></canvas></div>
         </div>
     </div>
@@ -67,7 +73,7 @@
     <div class="col-12">
         <div class="g-proj-card">
             <h6>Gastos por transferencia</h6>
-            <p class="sub">Distribución de los egresos por fuente.</p>
+            <p class="sub">Distribución de los egresos por fuente{% if anio_sel %} en {{ anio_sel.anio_calendario|unlocalize }}{% endif %}.</p>
             <div class="g-canvas h-bar"><canvas id="gpTransferencia"></canvas></div>
         </div>
     </div>
