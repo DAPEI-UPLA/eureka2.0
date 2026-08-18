@@ -7,6 +7,7 @@ from .models import (
     PlanDeGasto,
     PresupuestoAnual,
     PresupuestoObjetivoAnual,
+    PresupuestoResultadoAnual,
     ReprogramacionActividad,
     Proyecto,
     TipoGasto,
@@ -248,3 +249,12 @@ class PresupuestoObjetivoAnualAdmin(admin.ModelAdmin):
     )
     list_filter = ("anio__anio_calendario",)
     search_fields = ("objetivo__descripcion", "objetivo__proyecto__nombre")
+
+
+@admin.register(PresupuestoResultadoAnual)
+class PresupuestoResultadoAnualAdmin(admin.ModelAdmin):
+    list_display = (
+        "resultado", "anio", "presupuesto_corriente", "presupuesto_capital",
+    )
+    list_filter = ("anio__anio_calendario",)
+    search_fields = ("resultado__descripcion", "resultado__objetivo__proyecto__nombre")

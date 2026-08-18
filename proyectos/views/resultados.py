@@ -110,6 +110,15 @@ def eliminar_resultado(request, pk):
 @login_required
 def form_asignar_presupuesto(request, pk):
     resultado = get_object_or_404(Resultado, pk=pk)
+
+    # Si su objetivo ya reparte por año, el total del resultado es la suma de
+    # sus años y no se edita a mano: se manda al editor por año, que es donde
+    # se decide. Dejar los dos caminos abiertos permitiría que el total dijera
+    # algo distinto del reparto y ninguna cifra sería confiable.
+    if resultado.objetivo.tiene_reparto_anual:
+        from .presupuesto_resultado import presupuesto_resultado_anual
+        return presupuesto_resultado_anual(request, pk)
+
     return render(request, "proyectos/partials/form_asignar_presupuesto.html", {
         "resultado": resultado,
     })

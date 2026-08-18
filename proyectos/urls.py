@@ -47,6 +47,8 @@ urlpatterns = [
     # PRESUPUESTO
     path("resultado/<int:pk>/presupuesto/form/", views.form_asignar_presupuesto, name="form_asignar_presupuesto"),
     path("resultado/<int:pk>/presupuesto/guardar/", views.guardar_presupuesto, name="guardar_presupuesto"),
+    path("resultado/<int:pk>/presupuesto/anual/", views.presupuesto_resultado_anual, name="presupuesto_resultado_anual"),
+    path("resultado/<int:pk>/presupuesto/anual/guardar/", views.guardar_presupuesto_resultado_anual, name="guardar_presupuesto_resultado_anual"),
 
     # PLAN DE GASTO
     path("plan-gasto/<int:proyecto_id>/form/", views.crear_plan_gasto_form, name="crear_plan_gasto_form"),

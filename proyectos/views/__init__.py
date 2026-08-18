@@ -31,6 +31,10 @@ from .exportar import (
     informe_proyecto,
 )
 from .permisos import es_encargada, es_jefe, usuario_es_responsable
+from .presupuesto_resultado import (
+    guardar_presupuesto_resultado_anual,
+    presupuesto_resultado_anual,
+)
 from .presupuesto_objetivo import (
     guardar_presupuesto_objetivo_anual,
     presupuesto_objetivo_anual,

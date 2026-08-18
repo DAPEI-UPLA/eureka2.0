@@ -1322,8 +1322,167 @@ class Resultado(AuditableModel):
                         f"${repartido:,.0f}. Baja primero el monto de las actividades."
                     )
 
+    # REPARTO POR AÑO
+    #
+    # El último escalón que se reparte por año. Las actividades no: pueden
+    # cambiar, aparecer o fusionarse mientras el resultado se cumpla, así que
+    # comprometer plata anual a ese nivel sería fijar algo que por diseño es
+    # móvil. El año de una actividad ya lo dice su fecha límite.
+    #
+    # Igual que en el objetivo, las columnas de total se conservan y se
+    # recalculan solas desde el reparto.
+
+    @property
+    def tiene_reparto_anual(self):
+        return self.presupuestos_anuales.exists()
+
+    def presupuesto_del_anio(self, anio):
+        return self.presupuestos_anuales.filter(anio=anio).first()
+
+    def sincronizar_totales(self):
+        totales = self.presupuestos_anuales.aggregate(
+            corriente=Sum("presupuesto_corriente"),
+            capital=Sum("presupuesto_capital"),
+        )
+        self.presupuesto_corriente = totales["corriente"] or Decimal("0")
+        self.presupuesto_capital = totales["capital"] or Decimal("0")
+        self.save(update_fields=["presupuesto_corriente", "presupuesto_capital"])
+
+    def planificado_en(self, anio_calendario, naturaleza=None):
+        """Lo que suman los planes de gasto de este resultado en un año."""
+        planes = PlanDeGasto.objects.filter(
+            anio=anio_calendario,
+            actividad__resultado=self,
+        ).select_related("gasto_elegible__gasto__tipo_gasto__transferencia")
+        if naturaleza is None:
+            return planes.aggregate(total=Sum("monto"))["total"] or Decimal("0")
+        return sum(
+            (p.monto for p in planes if p.naturaleza == naturaleza),
+            Decimal("0"),
+        )
+
     def __str__(self):
         return f"Resultado - {self.objetivo.proyecto.nombre if self.objetivo else 'Sin proyecto'}"
+
+
+class PresupuestoResultadoAnual(AuditableModel):
+    """Cuánto le toca a un resultado en un año concreto del proyecto.
+
+    El escalón más bajo del reparto anual. Debajo están las actividades, que no
+    se reparten: lo que se compromete por año es el resultado, y las actividades
+    son el medio para cumplirlo — pueden cambiar sin que cambie el compromiso.
+    """
+
+    resultado = models.ForeignKey(
+        Resultado,
+        on_delete=models.CASCADE,
+        related_name="presupuestos_anuales",
+    )
+
+    anio = models.ForeignKey(
+        PresupuestoAnual,
+        on_delete=models.CASCADE,
+        related_name="asignaciones_resultado",
+    )
+
+    presupuesto_corriente = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    presupuesto_capital = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ["anio__numero_anio"]
+        verbose_name = "Presupuesto anual del resultado"
+        verbose_name_plural = "Presupuestos anuales de resultados"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["resultado", "anio"],
+                name="uniq_presupuesto_resultado_anio",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.resultado} — {self.anio.etiqueta}"
+
+    @property
+    def presupuesto_total(self):
+        return (self.presupuesto_corriente or Decimal("0")) + (
+            self.presupuesto_capital or Decimal("0")
+        )
+
+    @property
+    def planificado(self):
+        return self.resultado.planificado_en(self.anio.anio_calendario)
+
+    @property
+    def disponible(self):
+        return self.presupuesto_total - self.planificado
+
+    def clean(self):
+        if self.resultado_id and self.anio_id:
+            if self.anio.proyecto_id != self.resultado.objetivo.proyecto_id:
+                raise ValidationError(
+                    "El año no pertenece al proyecto de este resultado."
+                )
+
+        for etiqueta, campo, naturaleza in (
+            ("corriente", "presupuesto_corriente", CORRIENTE),
+            ("capital", "presupuesto_capital", CAPITAL),
+        ):
+            propuesto = getattr(self, campo) or Decimal("0")
+            if propuesto < 0:
+                raise ValidationError({campo: "El presupuesto no puede ser negativo."})
+
+            if not (self.anio_id and self.resultado_id):
+                continue
+
+            objetivo = self.resultado.objetivo
+
+            # Hacia arriba: el techo es lo que ese año le dio a **su objetivo**,
+            # menos lo que ya tienen los demás resultados del mismo objetivo.
+            del_objetivo = objetivo.presupuesto_del_anio(self.anio)
+            if del_objetivo is None:
+                raise ValidationError({campo: (
+                    f"El objetivo no tiene presupuesto asignado para "
+                    f"{self.anio.anio_calendario}. Repártelo primero en el objetivo."
+                )})
+
+            usado_por_otros = PresupuestoResultadoAnual.objects.filter(
+                anio=self.anio,
+                resultado__objetivo=objetivo,
+                resultado__eliminado=False,
+            ).exclude(pk=self.pk).aggregate(total=Sum(campo))["total"] or Decimal("0")
+
+            tope_objetivo = getattr(del_objetivo, campo) or Decimal("0")
+            if usado_por_otros + propuesto > tope_objetivo:
+                tope = tope_objetivo - usado_por_otros
+                raise ValidationError({campo: (
+                    f"Supera el presupuesto {etiqueta} del objetivo para "
+                    f"{self.anio.anio_calendario}. El objetivo tiene "
+                    f"{pesos(tope_objetivo)} ese año y los demás resultados ya usan "
+                    f"{pesos(usado_por_otros)}, así que este resultado puede llegar "
+                    f"hasta {pesos(tope)}."
+                )})
+
+            # Hacia abajo: no por debajo de lo que sus planes ya comprometieron.
+            if self.pk:
+                planificado = self.resultado.planificado_en(
+                    self.anio.anio_calendario, naturaleza
+                )
+                if propuesto < planificado:
+                    raise ValidationError({campo: (
+                        f"No puedes dejar el presupuesto {etiqueta} de este resultado "
+                        f"en {pesos(propuesto)} para {self.anio.anio_calendario}: sus "
+                        f"planes de gasto de ese año ya suman {pesos(planificado)}."
+                    )})
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.resultado.sincronizar_totales()
+
+    def delete(self, *args, **kwargs):
+        resultado = self.resultado
+        borrado = super().delete(*args, **kwargs)
+        resultado.sincronizar_totales()
+        return borrado
 
 
 # =========================
@@ -1880,6 +2039,7 @@ class PlanDeGasto(models.Model):
             )})
 
         self._validar_techo_del_objetivo_en_el_anio(del_anio, es_capital, etiqueta, campo)
+        self._validar_techo_del_resultado_en_el_anio(del_anio, es_capital, etiqueta, campo)
 
     def _validar_techo_del_objetivo_en_el_anio(self, del_anio, es_capital, etiqueta, campo):
         """Cierra la cadena: el POA de un objetivo en un año tiene su propio techo.
@@ -1907,6 +2067,34 @@ class PlanDeGasto(models.Model):
         if planificado + self.monto > tope:
             raise ValidationError({"monto": (
                 f"Supera el presupuesto {etiqueta} de este objetivo para {self.anio}. "
+                f"Tiene {pesos(tope)} asignados ese año y sus planes ya suman "
+                f"{pesos(planificado)}, así que quedan {pesos(tope - planificado)}."
+            )})
+
+    def _validar_techo_del_resultado_en_el_anio(self, del_anio, es_capital, etiqueta, campo):
+        """El último eslabón: el POA de un resultado en un año tiene su techo.
+
+        Debajo de aquí no se comprueba nada por año, y es a propósito: las
+        actividades pueden cambiar mientras el resultado se cumpla, así que lo
+        que se compromete anualmente es el resultado.
+        """
+        resultado = self.actividad.resultado
+        del_resultado = resultado.presupuesto_del_anio(del_anio)
+        if del_resultado is None:
+            return
+
+        naturaleza = CAPITAL if es_capital else CORRIENTE
+        planificado = resultado.planificado_en(self.anio, naturaleza)
+        if self.pk:
+            anterior = PlanDeGasto.objects.filter(pk=self.pk).first()
+            if (anterior and anterior.anio == self.anio
+                    and anterior.naturaleza == self.naturaleza):
+                planificado -= anterior.monto
+
+        tope = getattr(del_resultado, campo) or Decimal("0")
+        if planificado + self.monto > tope:
+            raise ValidationError({"monto": (
+                f"Supera el presupuesto {etiqueta} de este resultado para {self.anio}. "
                 f"Tiene {pesos(tope)} asignados ese año y sus planes ya suman "
                 f"{pesos(planificado)}, así que quedan {pesos(tope - planificado)}."
             )})
