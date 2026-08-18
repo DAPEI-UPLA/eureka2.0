@@ -1,4 +1,4 @@
-{% load humanize %}
+{% load humanize l10n %}
 
 <tr id="actividad-{{ actividad.pk }}">
 
@@ -15,6 +15,21 @@
     <!-- FECHA LÍMITE -->
     <td>
         {{ actividad.fecha_limite|date:"d-m-Y"|default:"—" }}
+        {% if actividad.arrastrada %}
+        {% comment %}
+        La actividad no se hizo en el año que se comprometió y pasó al
+        siguiente. Se muestra la fecha original para que la corrida no
+        desaparezca de la vista: sin esto, una actividad reprogramada se ve
+        idéntica a una que siempre estuvo prevista para este año.
+        {% endcomment %}
+        <div class="actividad-arrastre"
+             title="Se comprometió para el {{ actividad.fecha_limite_original|date:'d-m-Y' }}{% if actividad.veces_reprogramada %} · reprogramada {{ actividad.veces_reprogramada }} ve{{ actividad.veces_reprogramada|pluralize:"z,ces" }}{% endif %}">
+            ↪ arrastrada de {{ actividad.anio_comprometido|unlocalize }}
+            {% if actividad.anios_de_arrastre > 1 %}
+            <span class="badge bg-danger ms-1">{{ actividad.anios_de_arrastre }} años</span>
+            {% endif %}
+        </div>
+        {% endif %}
     </td>
 
     <!-- FECHA EFECTIVA -->

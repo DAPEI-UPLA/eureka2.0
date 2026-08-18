@@ -697,6 +697,47 @@ class PresupuestoAnual(AuditableModel):
             return Decimal("0")
         return (self.gastos_total / self.presupuesto_total * 100).quantize(Decimal("0.01"))
 
+    # LAS ACTIVIDADES QUE CAEN EN ESTE AÑO
+    #
+    # Una actividad se hace una sola vez, así que pertenece al año de su fecha
+    # límite. Lo interesante es que ese año puede no ser el que se prometió: las
+    # que no alcanzaron a hacerse se corren al siguiente y llegan arrastradas.
+
+    def actividades(self):
+        return Actividad.objects.filter(
+            resultado__eliminado=False,
+            resultado__objetivo__eliminado=False,
+            resultado__objetivo__proyecto_id=self.proyecto_id,
+            fecha_limite__year=self.anio_calendario,
+        ).select_related("resultado__objetivo")
+
+    def actividades_propias(self):
+        """Las comprometidas para este año desde el principio."""
+        return self.actividades().filter(
+            fecha_limite_original__year=self.anio_calendario
+        )
+
+    def actividades_arrastradas(self):
+        """Las que venían de un año anterior y cayeron aquí."""
+        return self.actividades().filter(
+            fecha_limite_original__year__lt=self.anio_calendario
+        )
+
+    def actividades_perdidas(self):
+        """Las que se prometieron para este año y ya se fueron a otro.
+
+        Es la contracara de `actividades_arrastradas`: mirando el año 1 se
+        quiere saber qué se comprometió y no se cumplió, aunque hoy la
+        actividad figure en el año 2.
+        """
+        return Actividad.objects.filter(
+            resultado__eliminado=False,
+            resultado__objetivo__eliminado=False,
+            resultado__objetivo__proyecto_id=self.proyecto_id,
+            fecha_limite_original__year=self.anio_calendario,
+            fecha_limite__year__gt=self.anio_calendario,
+        ).select_related("resultado__objetivo")
+
     def clean(self):
         for etiqueta, campo in (("corriente", "presupuesto_corriente"),
                                 ("capital", "presupuesto_capital")):
@@ -1101,6 +1142,20 @@ class Actividad(AuditableModel):
 
     fecha_limite = models.DateField(null=True, blank=True)
 
+    # La primera fecha límite que tuvo, y que ya no se mueve nunca.
+    #
+    # Una actividad se hace una sola vez, pero si no alcanza a hacerse en su
+    # año pasa al siguiente y alguien corre `fecha_limite`. Sin guardar la
+    # original, esa corrida borra el compromiso anterior: la actividad vuelve a
+    # estar «a tiempo» justo por haberse atrasado, el atraso deja de existir en
+    # los datos y no hay forma de saber cuántas actividades se arrastraron de
+    # un año a otro. Ésta es la línea base contra la que se mide de verdad.
+    fecha_limite_original = models.DateField(
+        null=True, blank=True,
+        verbose_name="Fecha límite comprometida",
+        help_text="La primera que se fijó. No se modifica al reprogramar.",
+    )
+
     # Cuándo terminó de verdad. Se llena a mano al cerrar la actividad, para
     # poder contrastar lo planificado con lo ocurrido (y corregirlo si se
     # anotó mal); queda vacía mientras la actividad sigue abierta.
@@ -1188,6 +1243,96 @@ class Actividad(AuditableModel):
         d = self.desviacion_dias
         return None if d is None else d <= 0
 
+    # ARRASTRE ENTRE AÑOS
+    #
+    # `desviacion_dias` mide contra la fecha límite vigente, que es la que ya
+    # se corrió: una actividad reprogramada tres veces y cerrada el último día
+    # sale «a tiempo». Lo de abajo mide contra el compromiso original, que es
+    # lo que hay que reportar.
+
+    @property
+    def desviacion_vs_compromiso(self):
+        """Días entre la fecha efectiva y la que se comprometió al principio."""
+        if not self.fecha_limite_original or not self.fecha_efectiva:
+            return None
+        return (self.fecha_efectiva - self.fecha_limite_original).days
+
+    @property
+    def anio_planificado(self):
+        """El año en que la actividad está prevista hoy."""
+        return self.fecha_limite.year if self.fecha_limite else None
+
+    @property
+    def anio_comprometido(self):
+        """El año en que se prometió hacerla."""
+        return self.fecha_limite_original.year if self.fecha_limite_original else None
+
+    @property
+    def arrastrada(self):
+        """True si hoy cae en un año posterior al que se comprometió."""
+        planificado, comprometido = self.anio_planificado, self.anio_comprometido
+        if planificado is None or comprometido is None:
+            return False
+        return planificado > comprometido
+
+    @property
+    def anios_de_arrastre(self):
+        if not self.arrastrada:
+            return 0
+        return self.anio_planificado - self.anio_comprometido
+
+    @property
+    def veces_reprogramada(self):
+        return self.reprogramaciones.count()
+
+    @property
+    def dias_reprogramados(self):
+        """Cuánto se ha corrido la fecha límite desde el compromiso original."""
+        if not self.fecha_limite or not self.fecha_limite_original:
+            return 0
+        return (self.fecha_limite - self.fecha_limite_original).days
+
+    def save(self, *args, **kwargs):
+        """Fija la línea base la primera vez y anota cada corrida de fecha.
+
+        Se hace aquí y no en la vista porque la fecha límite se toca desde el
+        formulario de edición, desde el admin y desde los importadores: si el
+        registro dependiera de que cada uno se acuerde de llamarlo, el historial
+        tendría huecos justo en las actividades que más se mueven.
+        """
+        anterior = None
+        if self.pk:
+            anterior = (
+                Actividad.objects.filter(pk=self.pk)
+                .values_list("fecha_limite", flat=True)
+                .first()
+            )
+
+        if self.fecha_limite and not self.fecha_limite_original:
+            self.fecha_limite_original = self.fecha_limite
+
+        # Si se guarda con update_fields hay que incluir el campo que acabamos
+        # de tocar, o el backfill de la línea base se perdería en silencio.
+        campos = kwargs.get("update_fields")
+        if campos is not None and "fecha_limite" in campos:
+            kwargs["update_fields"] = list(campos) + ["fecha_limite_original"]
+
+        super().save(*args, **kwargs)
+
+        movida = (
+            anterior is not None
+            and self.fecha_limite is not None
+            and anterior != self.fecha_limite
+        )
+        if movida:
+            ReprogramacionActividad.objects.create(
+                actividad=self,
+                fecha_anterior=anterior,
+                fecha_nueva=self.fecha_limite,
+                motivo=getattr(self, "_motivo_reprogramacion", "") or "",
+                creado_por=self.actualizado_por,
+            )
+
     @property
     def presupuesto_planificado(self):
         return self.planes_gasto.aggregate(total=Sum("monto"))["total"] or Decimal("0")
@@ -1202,6 +1347,62 @@ class Actividad(AuditableModel):
 
     def __str__(self):
         return self.nombre
+
+
+# =========================
+# REPROGRAMACIÓN DE ACTIVIDADES
+# =========================
+# Una fila por cada vez que se corre la fecha límite de una actividad.
+#
+# El arrastre de un año a otro es el modo normal de fallar de estos proyectos,
+# y hasta ahora era invisible: se editaba la fecha y la anterior desaparecía.
+# Con esto se puede responder lo que se pregunta en las reuniones —cuántas
+# actividades venían arrastradas del año pasado, cuáles llevan más de una
+# corrida— y, sobre todo, impide que el atraso se borre solo.
+
+
+class ReprogramacionActividad(models.Model):
+
+    actividad = models.ForeignKey(
+        "Actividad",
+        on_delete=models.CASCADE,
+        related_name="reprogramaciones",
+    )
+
+    fecha_anterior = models.DateField(null=True, blank=True)
+    fecha_nueva = models.DateField()
+
+    motivo = models.TextField(blank=True, default="")
+
+    creado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reprogramaciones_registradas",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-creado_en"]
+        verbose_name = "Reprogramación de actividad"
+        verbose_name_plural = "Reprogramaciones de actividades"
+        indexes = [models.Index(fields=["actividad", "creado_en"])]
+
+    def __str__(self):
+        return f"{self.actividad}: {self.fecha_anterior} → {self.fecha_nueva}"
+
+    @property
+    def dias(self):
+        if not self.fecha_anterior:
+            return 0
+        return (self.fecha_nueva - self.fecha_anterior).days
+
+    @property
+    def cambia_de_anio(self):
+        if not self.fecha_anterior:
+            return False
+        return self.fecha_nueva.year != self.fecha_anterior.year
 
 
 # =========================

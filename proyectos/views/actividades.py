@@ -65,6 +65,10 @@ def _datos_enviados(request):
         "presupuesto_capital": request.POST.get("presupuesto_capital", "").strip(),
         "fecha_limite": request.POST.get("fecha_limite") or "",
         "fecha_efectiva": request.POST.get("fecha_efectiva") or "",
+        # Opcional: si viene, queda anotado en el historial de reprogramaciones.
+        # No se exige, porque obligar a justificar cada corrida de fecha llevaría
+        # a que la gente escriba «se atrasó» y el dato no sirva de nada.
+        "motivo_reprogramacion": request.POST.get("motivo_reprogramacion", "").strip(),
     }
 
 
@@ -111,6 +115,7 @@ def editar_actividad(request, actividad_id):
         actividad.fecha_limite = datos["fecha_limite"] or None
         actividad.fecha_efectiva = datos["fecha_efectiva"] or None
         actividad.actualizado_por = request.user
+        actividad._motivo_reprogramacion = datos["motivo_reprogramacion"]
         actividad.full_clean()
         actividad.save()
     except ValidationError as e:

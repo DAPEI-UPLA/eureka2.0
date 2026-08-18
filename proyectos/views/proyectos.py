@@ -105,9 +105,22 @@ def detalle_proyecto(request, pk):
 @login_required
 def dashboard_proyecto(request, pk):
     proyecto = get_object_or_404(Proyecto, pk=pk)
+    anio_sel = anio_seleccionado(request, proyecto)
+
+    # El arrastre sólo tiene sentido mirando un año concreto: en la vista del
+    # proyecto completo todas las actividades están, se hayan corrido o no.
+    arrastre = None
+    if anio_sel:
+        arrastre = {
+            "propias": anio_sel.actividades_propias().count(),
+            "arrastradas": list(anio_sel.actividades_arrastradas()),
+            "perdidas": list(anio_sel.actividades_perdidas()),
+        }
+
     return render(request, "proyectos/partials/detalle_dashboard.html", {
         "proyecto": proyecto,
-        "anio_sel": anio_seleccionado(request, proyecto),
+        "anio_sel": anio_sel,
+        "arrastre": arrastre,
     })
 
 

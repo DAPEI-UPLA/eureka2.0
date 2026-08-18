@@ -1041,3 +1041,82 @@
     font-size: .82rem;
     color: #075985;
 }
+
+/* ===== ARRASTRE ENTRE AÑOS ===== */
+/* Las actividades que no se hicieron en su año y pasaron al siguiente. Se
+   muestran aparte porque es el modo normal de fallar de estos proyectos. */
+
+.arrastre-panel {
+    display: grid;
+    gap: .75rem;
+    margin-top: .9rem;
+}
+
+.arrastre-bloque {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-left: 3px solid #f59e0b;
+    border-radius: 10px;
+    padding: .7rem .9rem;
+}
+
+.arrastre-bloque.arrastre-perdidas {
+    background: #fef2f2;
+    border-color: #fecaca;
+    border-left-color: #dc3545;
+}
+
+.arrastre-titulo {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .84rem;
+    font-weight: 600;
+    color: #78350f;
+    margin-bottom: .4rem;
+}
+
+.arrastre-perdidas .arrastre-titulo {
+    color: #7f1d1d;
+}
+
+.arrastre-n {
+    background: #f59e0b;
+    color: #fff;
+    border-radius: 999px;
+    padding: 0 .45rem;
+    font-size: .74rem;
+}
+
+.arrastre-perdidas .arrastre-n {
+    background: #dc3545;
+}
+
+.arrastre-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: .25rem;
+}
+
+.arrastre-lista li {
+    font-size: .8rem;
+    line-height: 1.35;
+}
+
+.arrastre-nombre {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.arrastre-detalle {
+    color: #64748b;
+}
+
+.actividad-arrastre {
+    font-size: .72rem;
+    color: #b45309;
+    font-weight: 600;
+    margin-top: 2px;
+}

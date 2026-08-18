@@ -90,6 +90,63 @@
 
 </div>
 
+{% comment %}
+ARRASTRE DEL AÑO
+Una actividad se hace una sola vez, así que pertenece al año de su fecha
+límite. Pero ese año puede no ser el que se prometió: las que no alcanzaron
+a hacerse se corren al siguiente. Este bloque separa lo que este año tenía
+comprometido de lo que le llegó heredado, que es lo que se pregunta en las
+reuniones de seguimiento.
+{% endcomment %}
+{% if arrastre and arrastre.arrastradas or arrastre and arrastre.perdidas %}
+<div class="arrastre-panel">
+
+    {% if arrastre.arrastradas %}
+    <div class="arrastre-bloque">
+        <div class="arrastre-titulo">
+            ↪ Llegaron arrastradas a {{ anio_sel.anio_calendario|unlocalize }}
+            <span class="arrastre-n">{{ arrastre.arrastradas|length }}</span>
+        </div>
+        <ul class="arrastre-lista">
+            {% for a in arrastre.arrastradas %}
+            <li>
+                <span class="arrastre-nombre">{{ a.nombre }}</span>
+                <span class="arrastre-detalle">
+                    comprometida para {{ a.fecha_limite_original|date:"d-m-Y" }}
+                    · {{ a.dias_reprogramados }} días corrida
+                    {% if a.cumplimiento %}· {{ a.cumplimiento|floatformat:0 }}% avanzada{% endif %}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if arrastre.perdidas %}
+    <div class="arrastre-bloque arrastre-perdidas">
+        <div class="arrastre-titulo">
+            ⤴ Se comprometieron para {{ anio_sel.anio_calendario|unlocalize }} y se fueron a otro año
+            <span class="arrastre-n">{{ arrastre.perdidas|length }}</span>
+        </div>
+        <ul class="arrastre-lista">
+            {% for a in arrastre.perdidas %}
+            <li>
+                <span class="arrastre-nombre">{{ a.nombre }}</span>
+                <span class="arrastre-detalle">
+                    ahora en {{ a.fecha_limite|date:"d-m-Y" }}
+                    {% if a.veces_reprogramada > 1 %}
+                    · reprogramada {{ a.veces_reprogramada }} veces
+                    {% endif %}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+</div>
+{% endif %}
+
 {% else %}
 <div class="row g-3 dashboard-presupuesto">
 
