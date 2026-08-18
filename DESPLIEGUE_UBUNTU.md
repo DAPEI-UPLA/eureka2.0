@@ -65,7 +65,9 @@ Si algo falla, se vuelve atrás deshaciendo los `mv` y reactivando `eureka.servi
 
 ### En el equipo local (Windows)
 
-Este documento asume que la carpeta del proyecto es `%USERPROFILE%\Desktop\Prisma`.
+Este documento asume que la carpeta del proyecto es `%USERPROFILE%\Desktop\Eureka`.
+(El sistema se llama Prisma, pero la carpeta local conserva el nombre viejo;
+`Desktop\Prisma` es otra cosa: documentos, no código.)
 Con el editor y las terminales cerradas:
 
 ```powershell
@@ -75,7 +77,7 @@ Rename-Item "$env:USERPROFILE\Desktop\Eureka" "Prisma"
 El `venv` guarda rutas absolutas, así que después hay que recrearlo:
 
 ```powershell
-cd "$env:USERPROFILE\Desktop\Prisma"
+cd "$env:USERPROFILE\Desktop\Eureka"
 Remove-Item -Recurse -Force venv
 python -m venv venv
 .\venv\Scripts\pip install -r requirements.txt
@@ -156,7 +158,7 @@ En **PowerShell** de tu máquina. Este es el primer despliegue, así que **sí**
 `db.sqlite3` y `media/` (en redespliegues futuros, no — ver Paso 12).
 
 ```powershell
-cd "$env:USERPROFILE\Desktop\Prisma"
+cd "$env:USERPROFILE\Desktop\Eureka"
 tar -czf "$env:TEMP\prisma.tar.gz" --exclude=venv --exclude=staticfiles --exclude=__pycache__ --exclude=*.pyc --exclude=.git --exclude=.env --exclude=.claude --exclude=db.sqlite3.bak-* .
 scp "$env:TEMP\prisma.tar.gz" dapei@172.16.31.160:~/
 ```
@@ -239,7 +241,7 @@ datos hay un caso que hace fallar la migración a medio camino**, así que
 primero se revisa:
 
 ```bash
-cd /opt/prisma
+cd ~/Prisma
 venv/bin/python manage.py revisar_migracion_poa
 ```
 
@@ -460,7 +462,7 @@ scp dapei@172.16.31.160:~/Prisma/backups/db_2026-08-03_0200.sqlite3.gz "$env:USE
 En Windows:
 
 ```powershell
-cd "$env:USERPROFILE\Desktop\Prisma"
+cd "$env:USERPROFILE\Desktop\Eureka"
 tar -czf "$env:TEMP\prisma.tar.gz" --exclude=venv --exclude=db.sqlite3* --exclude=*.sqlite3 --exclude=media --exclude=staticfiles --exclude=backups --exclude=__pycache__ --exclude=*.pyc --exclude=.git --exclude=.env --exclude=.claude .
 scp "$env:TEMP\prisma.tar.gz" dapei@172.16.31.160:~/
 ```
