@@ -172,3 +172,112 @@ class JefaturaTests(BaseVisibilidadTest):
         )
         self.assertNotEqual(respuesta.status_code, 403)
         self.assertEqual(self.ajeno.presupuestos_anuales.count(), 1)
+
+
+class SoloMiraTests(BaseVisibilidadTest):
+    """Alguien sin rol y sin proyectos propios: entra sólo a mirar.
+
+    No hace falta un rol de «visor»: la ausencia de rol ya es solo lectura.
+    Lo que hay que cuidar es que la pantalla no le ofrezca lo que no puede
+    hacer, y que ningún endpoint se le abra por descuido.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.miron = User.objects.create_user("miron", password="x")
+        self.client.force_login(self.miron)
+
+    def test_no_tiene_rol_ni_proyectos(self):
+        self.assertFalse(self.miron.groups.exists())
+        self.assertFalse(Proyecto.objects.filter(responsable=self.miron).exists())
+
+    def test_ve_todos_los_proyectos(self):
+        respuesta = self.client.get(reverse("proyectos:lista_proyectos"))
+        self.assertEqual(len(respuesta.context["proyectos"]), Proyecto.objects.count())
+        self.assertEqual(respuesta.context["mios"], 0)
+
+    def test_la_pantalla_no_le_promete_proyectos_propios(self):
+        """Con cero propios, «los tuyos primero» no significa nada."""
+        respuesta = self.client.get(reverse("proyectos:lista_proyectos"))
+        self.assertContains(respuesta, "solo lectura")
+        self.assertNotContains(respuesta, "los tuyos primero")
+
+    def test_no_aparece_el_separador_de_companeros(self):
+        """Sin propios no hay nada que separar."""
+        respuesta = self.client.get(reverse("proyectos:lista_proyectos"))
+        self.assertNotContains(respuesta, "De tus compañeros")
+
+    def test_no_se_le_ofrece_crear_un_proyecto(self):
+        respuesta = self.client.get(reverse("proyectos:lista_proyectos"))
+        self.assertNotContains(respuesta, "Crear proyecto")
+        self.assertFalse(respuesta.context["es_jefe"])
+
+    def test_ninguna_tarjeta_le_ofrece_editar_ni_eliminar(self):
+        respuesta = self.client.get(reverse("proyectos:lista_proyectos"))
+        cuerpo = respuesta.content.decode()
+        self.assertNotIn("editar_proyecto", cuerpo)
+        self.assertNotIn("eliminar_proyecto", cuerpo)
+
+    def test_puede_recorrer_un_proyecto_entero(self):
+        objetivo = ObjetivoEspecifico.objects.create(
+            proyecto=self.proyecto, descripcion="OE",
+        )
+        resultado = Resultado.objects.create(objetivo=objetivo, descripcion="R")
+        Actividad.objects.create(resultado=resultado, nombre="A")
+
+        for nombre, args in (
+            ("proyectos:detalle_proyecto", [self.proyecto.pk]),
+            ("proyectos:dashboard_proyecto", [self.proyecto.pk]),
+            ("proyectos:graficos_proyecto", [self.proyecto.pk]),
+            ("proyectos:graficos_proyectos", []),
+            ("proyectos:listar_objetivos", [self.proyecto.pk]),
+            ("proyectos:listar_resultados", [objetivo.pk]),
+            ("proyectos:listar_actividades", [resultado.pk]),
+            ("proyectos:listar_presupuesto_anual", [self.proyecto.pk]),
+            ("proyectos:selector_anios", [self.proyecto.pk]),
+            ("proyectos:listar_planes_gasto", [self.proyecto.pk]),
+            ("proyectos:listar_egresos", [self.proyecto.pk]),
+            ("proyectos:detalle_presupuesto_resultado", [resultado.pk]),
+        ):
+            with self.subTest(vista=nombre):
+                self.assertEqual(
+                    self.client.get(reverse(nombre, args=args)).status_code, 200
+                )
+
+    def test_no_puede_escribir_en_ningun_proyecto(self):
+        objetivo = ObjetivoEspecifico.objects.create(
+            proyecto=self.proyecto, descripcion="OE",
+        )
+        for nombre, args in (
+            ("proyectos:crear_objetivo", [self.proyecto.pk]),
+            ("proyectos:crear_anio", [self.proyecto.pk]),
+            ("proyectos:guardar_anios", [self.proyecto.pk]),
+            ("proyectos:crear_resultado", [objetivo.pk]),
+            ("proyectos:eliminar_objetivo", [objetivo.pk]),
+            ("proyectos:editar_proyecto", [self.proyecto.pk]),
+            ("proyectos:eliminar_proyecto", [self.proyecto.pk]),
+        ):
+            with self.subTest(vista=nombre):
+                self.assertEqual(
+                    self.client.post(reverse(nombre, args=args)).status_code, 403
+                )
+
+    def test_puede_exportar_e_imprimir(self):
+        """Mirar incluye llevarse el informe: no muta nada."""
+        for nombre, args in (
+            ("proyectos:exportar_proyecto_excel", [self.proyecto.pk]),
+            ("proyectos:informe_proyecto", [self.proyecto.pk]),
+            ("proyectos:exportar_cartera_excel", []),
+        ):
+            with self.subTest(vista=nombre):
+                self.assertEqual(
+                    self.client.get(reverse(nombre, args=args)).status_code, 200
+                )
+
+    def test_sin_sesion_no_ve_nada(self):
+        """La lectura es para gente con cuenta, no para cualquiera."""
+        self.client.logout()
+        respuesta = self.client.get(reverse("proyectos:lista_proyectos"))
+        self.assertEqual(respuesta.status_code, 302)
+        # El login vive en la raíz, no en /login.
+        self.assertIn("next=/proyectos/", respuesta.url)

@@ -118,7 +118,7 @@
         <div>
             <h2 class="fw-semibold mb-0">Proyectos</h2>
             <small class="text-muted">
-                Todos los proyectos · los tuyos primero
+                {% if mios %}Todos los proyectos · los tuyos primero{% else %}Todos los proyectos · solo lectura{% endif %}
                 · <span id="proy-count">{{ proyectos|length }}</span> visible{{ proyectos|length|pluralize }}
                 {% if page_obj.paginator.count != proyectos|length %}
                   de {{ page_obj.paginator.count }}
