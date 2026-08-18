@@ -157,13 +157,17 @@ def guardar_anios(request, pk):
     if not _puede_editar(request.user, proyecto):
         return HttpResponseForbidden("No autorizado")
 
+    # Sólo se tocan los años que vinieron en el envío. Sin esto, un año que no
+    # esté en el formulario —porque se creó en otra pestaña, o porque el POST
+    # llega recortado— se interpretaría como «déjalo en cero» y su presupuesto
+    # desaparecería sin que nadie lo pidiera.
     filas = list(proyecto.presupuestos_anuales.all())
     for fila in filas:
-        fila.presupuesto_corriente = _to_decimal(
-            request.POST.get(f"corriente_{fila.pk}")
-        )
+        if f"corriente_{fila.pk}" not in request.POST:
+            continue
+        fila.presupuesto_corriente = _to_decimal(request.POST[f"corriente_{fila.pk}"])
         fila.presupuesto_capital = _to_decimal(
-            request.POST.get(f"capital_{fila.pk}")
+            request.POST.get(f"capital_{fila.pk}") or 0
         )
         fila.actualizado_por = request.user
 

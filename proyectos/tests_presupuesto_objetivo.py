@@ -213,33 +213,49 @@ class VistasDelRepartoTests(BaseObjetivoAnualTest):
         self.assertContains(respuesta, "presupuesto_corriente")
         self.assertNotContains(respuesta, "obj-anual")
 
-    def test_guardar_una_fila_la_crea_y_actualiza_el_total(self):
-        self.client.post(
+    def _guardar(self, **montos):
+        """Envía la tabla completa, que es como la manda la pantalla."""
+        datos = {}
+        for anio in (self.anio_1, self.anio_2):
+            datos[f"corriente_{anio.pk}"] = montos.get(f"c{anio.numero_anio}", "0")
+            datos[f"capital_{anio.pk}"] = montos.get(f"k{anio.numero_anio}", "0")
+        return self.client.post(
             reverse("proyectos:guardar_presupuesto_objetivo_anual",
                     args=[self.objetivo.pk]),
-            {
-                "anio": self.anio_1.pk,
-                "presupuesto_corriente": "150.000",
-                "presupuesto_capital": "50.000",
-            },
+            datos,
         )
+
+    def test_guardar_el_reparto_lo_crea_y_actualiza_el_total(self):
+        self._guardar(c1="150.000", k1="50.000")
         self.objetivo.refresh_from_db()
         self.assertEqual(self.objetivo.presupuesto_corriente, Decimal("150000"))
         self.assertEqual(self.objetivo.presupuesto_capital, Decimal("50000"))
 
-    def test_guardar_de_mas_muestra_el_error_y_no_guarda(self):
-        respuesta = self.client.post(
-            reverse("proyectos:guardar_presupuesto_objetivo_anual",
-                    args=[self.objetivo.pk]),
-            {
-                "anio": self.anio_1.pk,
-                "presupuesto_corriente": "999999999",
-                "presupuesto_capital": "0",
-            },
+    def test_se_puede_repartir_entre_los_dos_anios_de_una_vez(self):
+        """Lo que antes era imposible: mover plata de un año a otro."""
+        self._guardar(c1="150000", c2="120000")
+        self.objetivo.refresh_from_db()
+        self.assertEqual(self.objetivo.presupuesto_corriente, Decimal("270000"))
+        self.assertEqual(
+            self.objetivo.presupuesto_del_anio(self.anio_2).presupuesto_corriente,
+            Decimal("120000"),
         )
-        self.assertContains(respuesta, "Supera el presupuesto corriente")
+
+    def test_guardar_de_mas_muestra_el_error_y_no_guarda(self):
+        respuesta = self._guardar(c1="999999999")
+        self.assertContains(respuesta, "puede llegar hasta")
         self.objetivo.refresh_from_db()
         self.assertEqual(self.objetivo.presupuesto_corriente, Decimal("0"))
+
+    def test_un_anio_sin_presupuesto_en_el_proyecto_lo_dice_claro(self):
+        """El mensaje tiene que mandar a repartir el proyecto primero, no
+        limitarse a decir que el tope es $0."""
+        self.anio_2.presupuesto_corriente = Decimal("0")
+        self.anio_2.presupuesto_capital = Decimal("0")
+        self.anio_2.save()
+
+        respuesta = self._guardar(c2="10000")
+        self.assertContains(respuesta, "Presupuesto por año")
 
     def test_la_pantalla_ofrece_una_fila_por_anio_del_proyecto(self):
         respuesta = self.client.get(

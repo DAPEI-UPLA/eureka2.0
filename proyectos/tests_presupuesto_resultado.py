@@ -188,31 +188,26 @@ class VistasDelRepartoResultadoTests(BaseResultadoAnualTest):
         self.assertEqual(len(respuesta.context["filas"]), 1)
         self.assertEqual(respuesta.context["filas"][0]["anio"].pk, self.anio_1.pk)
 
-    def test_guardar_una_fila_actualiza_el_total(self):
-        self.client.post(
+    def _guardar(self, corriente="0", capital="0"):
+        """Envía la tabla completa; el objetivo sólo reparte el año 1."""
+        return self.client.post(
             reverse("proyectos:guardar_presupuesto_resultado_anual",
                     args=[self.resultado.pk]),
             {
-                "anio": self.anio_1.pk,
-                "presupuesto_corriente": "150.000",
-                "presupuesto_capital": "60.000",
+                f"corriente_{self.anio_1.pk}": corriente,
+                f"capital_{self.anio_1.pk}": capital,
             },
         )
+
+    def test_guardar_el_reparto_actualiza_el_total(self):
+        self._guardar("150.000", "60.000")
         self.resultado.refresh_from_db()
         self.assertEqual(self.resultado.presupuesto_corriente, Decimal("150000"))
         self.assertEqual(self.resultado.presupuesto_capital, Decimal("60000"))
 
     def test_guardar_de_mas_muestra_el_error_y_no_guarda(self):
-        respuesta = self.client.post(
-            reverse("proyectos:guardar_presupuesto_resultado_anual",
-                    args=[self.resultado.pk]),
-            {
-                "anio": self.anio_1.pk,
-                "presupuesto_corriente": "999999999",
-                "presupuesto_capital": "0",
-            },
-        )
-        self.assertContains(respuesta, "Supera el presupuesto corriente")
+        respuesta = self._guardar("999999999")
+        self.assertContains(respuesta, "puede llegar hasta")
         self.resultado.refresh_from_db()
         self.assertEqual(self.resultado.presupuesto_corriente, Decimal("0"))
 

@@ -1,10 +1,12 @@
 {% load humanize l10n %}
 
 {% comment %}
-Reparto del presupuesto de un resultado, año por año. Reemplaza al formulario
-del total cuando el objetivo tiene reparto anual: el total pasa a ser la suma de
-estas filas. El techo que se muestra bajo cada casilla es lo que ese año le dio
-al objetivo, no al proyecto.
+Reparto del presupuesto de un resultado, año por año. El techo que se muestra
+bajo cada casilla es lo que ese año le dio al objetivo, no al proyecto.
+
+El <form> envuelve la tabla ENTERA y no cada fila: un <form> como hijo directo
+de <tr> es HTML inválido y el navegador lo descarta al parsear, dejando los
+inputs sin formulario y el botón sin nada que enviar.
 {% endcomment %}
 
 <div id="presupuesto-res-{{ resultado.pk }}" class="obj-anual">
@@ -14,66 +16,64 @@ al objetivo, no al proyecto.
     {% endif %}
 
     {% if filas %}
-    <table class="obj-anual-tabla">
-        <thead>
-            <tr>
-                <th>Año</th>
-                <th class="text-end">Corriente</th>
-                <th class="text-end">Capital</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for fila in filas %}
-            <tr class="{% if fila.anio.pk == anio_con_error %}fila-error{% endif %}">
-                <form hx-post="{% url 'proyectos:guardar_presupuesto_resultado_anual' resultado.pk %}"
-                      hx-target="#presupuesto-res-{{ resultado.pk }}"
-                      hx-swap="outerHTML">
-                    {% csrf_token %}
-                    <input type="hidden" name="anio" value="{{ fila.anio.pk }}">
+    <form hx-post="{% url 'proyectos:guardar_presupuesto_resultado_anual' resultado.pk %}"
+          hx-target="#presupuesto-res-{{ resultado.pk }}"
+          hx-swap="outerHTML">
+        {% csrf_token %}
 
+        <table class="obj-anual-tabla">
+            <thead>
+                <tr>
+                    <th>Año</th>
+                    <th class="text-end">Corriente</th>
+                    <th class="text-end">Capital</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in filas %}
+                <tr>
                     <td>
                         <span class="obj-anual-etq">{{ fila.anio.etiqueta }}</span>
                         <span class="obj-anual-cal">{{ fila.anio.anio_calendario|unlocalize }}</span>
                     </td>
-
                     <td>
-                        <input type="text" name="presupuesto_corriente"
-                               value="{{ fila.asignacion.presupuesto_corriente|default_if_none:0|floatformat:0 }}"
+                        <input type="text" name="corriente_{{ fila.anio.pk }}"
+                               value="{{ fila.corriente|floatformat:0 }}"
                                class="form-control form-control-sm text-end"
                                aria-label="Corriente {{ fila.anio.anio_calendario|unlocalize }}">
                         <div class="obj-anual-tope">
                             objetivo: ${{ fila.del_objetivo.presupuesto_corriente|floatformat:0|intcomma }}
                         </div>
                     </td>
-
                     <td>
-                        <input type="text" name="presupuesto_capital"
-                               value="{{ fila.asignacion.presupuesto_capital|default_if_none:0|floatformat:0 }}"
+                        <input type="text" name="capital_{{ fila.anio.pk }}"
+                               value="{{ fila.capital|floatformat:0 }}"
                                class="form-control form-control-sm text-end"
                                aria-label="Capital {{ fila.anio.anio_calendario|unlocalize }}">
                         <div class="obj-anual-tope">
                             objetivo: ${{ fila.del_objetivo.presupuesto_capital|floatformat:0|intcomma }}
                         </div>
                     </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td class="obj-anual-etq">Total</td>
+                    <td class="text-end">${{ resultado.presupuesto_corriente|floatformat:0|intcomma }}</td>
+                    <td class="text-end">${{ resultado.presupuesto_capital|floatformat:0|intcomma }}</td>
+                </tr>
+            </tfoot>
+        </table>
 
-                    <td>
-                        <button type="submit" class="btn btn-soft-success btn-icon btn-sm"
-                                title="Guardar {{ fila.anio.etiqueta }}">✓</button>
-                    </td>
-                </form>
-            </tr>
-            {% endfor %}
-        </tbody>
-        <tfoot>
-            <tr>
-                <td class="obj-anual-etq">Total</td>
-                <td class="text-end">${{ resultado.presupuesto_corriente|floatformat:0|intcomma }}</td>
-                <td class="text-end">${{ resultado.presupuesto_capital|floatformat:0|intcomma }}</td>
-                <td></td>
-            </tr>
-        </tfoot>
-    </table>
+        <div class="d-flex align-items-center gap-2 mt-2">
+            <button type="submit" class="btn btn-sm btn-primary">Guardar reparto</button>
+            <button type="button" class="btn btn-link btn-sm p-0"
+                    hx-get="{% url 'proyectos:detalle_presupuesto_resultado' resultado.pk %}"
+                    hx-target="#presupuesto-res-{{ resultado.pk }}"
+                    hx-swap="outerHTML">cancelar</button>
+        </div>
+    </form>
 
     <div class="obj-anual-pie">
         Sin distribuir a actividades:
@@ -85,11 +85,10 @@ al objetivo, no al proyecto.
         El objetivo de este resultado todavía no tiene presupuesto repartido por
         año. Repártelo primero en el objetivo.
     </div>
-    {% endif %}
-
-    <button type="button" class="btn btn-link btn-sm p-0 mt-1"
+    <button type="button" class="btn btn-link btn-sm p-0"
             hx-get="{% url 'proyectos:detalle_presupuesto_resultado' resultado.pk %}"
             hx-target="#presupuesto-res-{{ resultado.pk }}"
             hx-swap="outerHTML">cerrar</button>
+    {% endif %}
 
 </div>

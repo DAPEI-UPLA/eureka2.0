@@ -417,6 +417,24 @@ class RedistribuirEntreAniosTests(BaseProyectoTest):
         cuerpo = respuesta.content.decode().replace("\xa0", "").replace(".", "")
         self.assertIn('value="50000"', cuerpo)
 
+    def test_un_anio_ausente_del_envio_no_se_pone_en_cero(self):
+        """Un POST que no trae un año no puede borrarle el presupuesto.
+
+        Sin esto, cualquier envío parcial —un año creado en otra pestaña, un
+        formulario recortado— se interpretaba como «déjalo en cero» y la plata
+        de ese año desaparecía sin que nadie lo pidiera.
+        """
+        self.client.post(self.url, {
+            f"corriente_{self.a2.pk}": "100000",
+            f"capital_{self.a2.pk}": "0",
+        })
+
+        self.a1.refresh_from_db()
+        self.a2.refresh_from_db()
+        self.assertEqual(self.a1.presupuesto_corriente, Decimal("600000"))
+        self.assertEqual(self.a1.presupuesto_capital, Decimal("400000"))
+        self.assertEqual(self.a2.presupuesto_corriente, Decimal("0"))
+
     def test_reenviar_los_montos_ya_formateados_no_los_pierde(self):
         """La trampa del separador de miles.
 
