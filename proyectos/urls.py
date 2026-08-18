@@ -29,6 +29,8 @@ urlpatterns = [
     path("objetivo/<int:pk>/guardar/", views.guardar_objetivo, name="guardar_objetivo"),
     path("objetivo/<int:pk>/meta/", views.meta_objetivo, name="meta_objetivo"),
     path("objetivo/<int:pk>/presupuesto/", views.editar_presupuesto_objetivo, name="editar_presupuesto_objetivo"),
+    path("objetivo/<int:pk>/presupuesto/anual/", views.presupuesto_objetivo_anual, name="presupuesto_objetivo_anual"),
+    path("objetivo/<int:pk>/presupuesto/anual/guardar/", views.guardar_presupuesto_objetivo_anual, name="guardar_presupuesto_objetivo_anual"),
     path("objetivo/<int:pk>/eliminar/", views.eliminar_objetivo, name="eliminar_objetivo"),
     path("objetivo/<int:pk>/mover/<str:direccion>/", views.mover_objetivo, name="mover_objetivo"),
 

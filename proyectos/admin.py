@@ -6,6 +6,7 @@ from .models import (
     GastoElegible,
     PlanDeGasto,
     PresupuestoAnual,
+    PresupuestoObjetivoAnual,
     ReprogramacionActividad,
     Proyecto,
     TipoGasto,
@@ -238,3 +239,12 @@ class ReprogramacionActividadAdmin(admin.ModelAdmin):
     list_filter = ("creado_en",)
     search_fields = ("actividad__nombre", "motivo")
     readonly_fields = ("creado_en",)
+
+
+@admin.register(PresupuestoObjetivoAnual)
+class PresupuestoObjetivoAnualAdmin(admin.ModelAdmin):
+    list_display = (
+        "objetivo", "anio", "presupuesto_corriente", "presupuesto_capital",
+    )
+    list_filter = ("anio__anio_calendario",)
+    search_fields = ("objetivo__descripcion", "objetivo__proyecto__nombre")

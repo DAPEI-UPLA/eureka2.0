@@ -81,6 +81,14 @@ def editar_presupuesto_objetivo(request, pk):
     if not usuario_es_responsable(request.user, objetivo.proyecto):
         return HttpResponseForbidden("No autorizado")
 
+    # Con reparto anual, el total del objetivo es la suma de sus años y no se
+    # edita a mano: dejarlo editable permitiría dejarlo diciendo algo distinto
+    # de lo repartido, y a partir de ahí ninguna de las dos cifras sería
+    # confiable. Se manda al editor por año, que es donde se decide.
+    if objetivo.proyecto and objetivo.proyecto.presupuestos_anuales.exists():
+        from .presupuesto_objetivo import presupuesto_objetivo_anual
+        return presupuesto_objetivo_anual(request, pk)
+
     if request.method == "POST":
         try:
             objetivo.presupuesto_corriente = _to_decimal(request.POST.get("presupuesto_corriente"))

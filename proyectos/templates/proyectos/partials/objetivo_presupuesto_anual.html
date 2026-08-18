@@ -1,0 +1,94 @@
+{% load humanize l10n %}
+
+{% comment %}
+Reparto del presupuesto de un objetivo, año por año. Reemplaza al editor del
+total cuando el proyecto tiene años: el total pasa a ser la suma de estas filas
+y se muestra abajo sólo para leer.
+{% endcomment %}
+
+<div id="presupuesto-obj-{{ objetivo.pk }}" class="obj-anual">
+
+    {% if error %}
+    <div class="alert alert-danger py-1 px-2 small mb-2">{{ error }}</div>
+    {% endif %}
+
+    {% if filas %}
+    <table class="obj-anual-tabla">
+        <thead>
+            <tr>
+                <th>Año</th>
+                <th class="text-end">Corriente</th>
+                <th class="text-end">Capital</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fila in filas %}
+            <tr class="{% if fila.anio.pk == anio_con_error %}fila-error{% endif %}">
+                <form hx-post="{% url 'proyectos:guardar_presupuesto_objetivo_anual' objetivo.pk %}"
+                      hx-target="#presupuesto-obj-{{ objetivo.pk }}"
+                      hx-swap="outerHTML">
+                    {% csrf_token %}
+                    <input type="hidden" name="anio" value="{{ fila.anio.pk }}">
+
+                    <td>
+                        <span class="obj-anual-etq">{{ fila.anio.etiqueta }}</span>
+                        <span class="obj-anual-cal">{{ fila.anio.anio_calendario|unlocalize }}</span>
+                    </td>
+
+                    <td>
+                        <input type="text" name="presupuesto_corriente"
+                               value="{{ fila.asignacion.presupuesto_corriente|default_if_none:0|floatformat:0 }}"
+                               class="form-control form-control-sm text-end"
+                               aria-label="Corriente {{ fila.anio.anio_calendario|unlocalize }}">
+                        <div class="obj-anual-tope">
+                            de ${{ fila.anio.presupuesto_corriente|floatformat:0|intcomma }}
+                        </div>
+                    </td>
+
+                    <td>
+                        <input type="text" name="presupuesto_capital"
+                               value="{{ fila.asignacion.presupuesto_capital|default_if_none:0|floatformat:0 }}"
+                               class="form-control form-control-sm text-end"
+                               aria-label="Capital {{ fila.anio.anio_calendario|unlocalize }}">
+                        <div class="obj-anual-tope">
+                            de ${{ fila.anio.presupuesto_capital|floatformat:0|intcomma }}
+                        </div>
+                    </td>
+
+                    <td>
+                        <button type="submit" class="btn btn-soft-success btn-icon btn-sm"
+                                title="Guardar {{ fila.anio.etiqueta }}">✓</button>
+                    </td>
+                </form>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td class="obj-anual-etq">Total</td>
+                <td class="text-end">${{ objetivo.presupuesto_corriente|floatformat:0|intcomma }}</td>
+                <td class="text-end">${{ objetivo.presupuesto_capital|floatformat:0|intcomma }}</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="obj-anual-pie">
+        Disponible para repartir a resultados:
+        <strong>${{ objetivo.presupuesto_disponible|floatformat:0|intcomma }}</strong>
+    </div>
+
+    {% else %}
+    <div class="small text-muted py-2">
+        El proyecto todavía no tiene años cargados. Reparte primero su
+        presupuesto en «Presupuesto por año».
+    </div>
+    {% endif %}
+
+    <button type="button" class="btn btn-link btn-sm p-0 mt-1"
+            hx-get="{% url 'proyectos:meta_objetivo' objetivo.pk %}"
+            hx-target="#objetivo-meta-{{ objetivo.pk }}"
+            hx-swap="innerHTML">cerrar</button>
+
+</div>
