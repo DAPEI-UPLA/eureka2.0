@@ -236,7 +236,7 @@ def eliminar_plan_gasto(request, pk):
         ),
         pk=pk,
     )
-    proyecto = plan.actividad.resultado.objetivo.proyecto
+    proyecto = plan.resultado.objetivo.proyecto
     if not usuario_es_responsable(request.user, proyecto):
         return HttpResponseForbidden("No autorizado")
 

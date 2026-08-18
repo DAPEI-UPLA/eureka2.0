@@ -194,14 +194,15 @@ def exportar_proyecto_excel(request, pk):
     r = 2
     tot_plan = tot_comp = tot_ejec = tot_saldo = Decimal('0')
     for p in planes:
+        # La actividad es opcional en un plan: el POA cuelga del resultado.
         act = p.actividad
-        res = act.resultado
+        res = p.resultado
         obj = res.objetivo
         ge = p.gasto_elegible
         ws2.cell(row=r, column=1, value=p.anio)
         ws2.cell(row=r, column=2, value=f'OE{obj_index.get(obj.id, "?")}')
         ws2.cell(row=r, column=3, value=(res.descripcion or f'R{res.id}')[:60])
-        ws2.cell(row=r, column=4, value=act.nombre[:60])
+        ws2.cell(row=r, column=4, value=act.nombre[:60] if act else '—')
         ws2.cell(row=r, column=5, value=str(ge.gasto.tipo_gasto.transferencia))
         ws2.cell(row=r, column=6, value=str(ge.gasto.tipo_gasto.nombre))
         ws2.cell(row=r, column=7, value=str(ge.gasto.nombre))

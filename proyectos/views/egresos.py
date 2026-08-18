@@ -55,7 +55,7 @@ def _parsear_egreso(request, proyecto):
             ),
             pk=plan_id,
         )
-        if plan.actividad.resultado.objetivo.proyecto_id != proyecto.id:
+        if plan.resultado.objetivo.proyecto_id != proyecto.id:
             raise ValidationError("El plan no pertenece a este proyecto.")
         # Si el elegible no coincide con el del plan no se rechaza nada: el
         # modelo los alinea tomando el del plan, que es el que manda.

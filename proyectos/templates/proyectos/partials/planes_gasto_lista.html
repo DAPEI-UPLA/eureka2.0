@@ -35,7 +35,7 @@
                 <tr>
                     <th style="width:80px;">Año</th>
                     <th>Etiqueta</th>
-                    <th>Actividad</th>
+                    <th>Resultado</th>
                     <th>Categoría</th>
                     <th>Unidad</th>
                     <th class="text-end">Planificado</th>
@@ -52,7 +52,18 @@
                         <span class="estado-pill estado-EN_EJECUCION">{{ plan.anio }}</span>
                     </td>
                     <td><span class="codigo">{{ plan.nombre_corto }}</span></td>
-                    <td class="small">{{ plan.actividad.nombre }}</td>
+                    {% comment %}
+                    El POA cuelga del resultado; la actividad es una referencia
+                    opcional y puede no estar.
+                    {% endcomment %}
+                    <td class="small">
+                        {{ plan.resultado.descripcion|truncatechars:60|default:"Resultado" }}
+                        {% if plan.actividad %}
+                        <div class="text-muted" style="font-size:.72rem;">
+                            ↳ {{ plan.actividad.nombre|truncatechars:48 }}
+                        </div>
+                        {% endif %}
+                    </td>
                     <td class="breadcrumb-gasto">
                         <span class="d-block">
                             {{ plan.transferencia.nombre }} ›

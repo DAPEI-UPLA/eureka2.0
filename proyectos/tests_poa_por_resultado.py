@@ -273,3 +273,142 @@ class FormularioDelPlanTests(BasePoaTest):
         )
         self.assertEqual(respuesta.status_code, 400)
         self.assertEqual(PlanDeGasto.objects.count(), 0)
+
+
+class GastoSobrePlanSinActividadTests(BasePoaTest):
+    """El error reportado: crear un gasto sobre un plan sin actividad reventaba.
+
+    Al mover el POA al resultado quedaron cadenas de atributos en Python
+    —`plan.actividad.resultado.objetivo.proyecto`— que la reescritura de rutas
+    ORM no tocó. Con la actividad en None eso es un AttributeError y la vista
+    devolvía 500.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.plan = self.plan("200000")   # sin actividad, que es lo normal ahora
+        self.plan.save()
+
+    def _crear_gasto(self, **extra):
+        datos = {
+            "tipo": Egreso.TIPO_COMPRA,
+            "subtipo_compra": Egreso.SUB_BIENES_INSUMOS,
+            "estado": Egreso.ESTADO_COMPROMETIDO,
+            "plan_de_gasto": self.plan.pk,
+            "gasto_elegible": self.corriente.pk,
+            "cantidad": "1",
+            "valor_sin_iva": "100000",
+            "fecha": "2026-05-10",
+        }
+        datos.update(extra)
+        return self.client.post(
+            reverse("proyectos:crear_egreso", args=[self.proyecto.pk]), datos
+        )
+
+    def test_se_puede_cargar_un_gasto_a_un_plan_sin_actividad(self):
+        respuesta = self._crear_gasto()
+        self.assertNotEqual(respuesta.status_code, 500)
+        self.assertEqual(Egreso.objects.count(), 1)
+        self.assertEqual(Egreso.objects.get().plan_de_gasto, self.plan)
+
+    def test_el_modelo_valida_el_proyecto_sin_pasar_por_la_actividad(self):
+        egreso = Egreso(
+            proyecto=self.proyecto, tipo=Egreso.TIPO_COMPRA,
+            subtipo_compra=Egreso.SUB_BIENES_INSUMOS,
+            plan_de_gasto=self.plan, gasto_elegible=self.corriente,
+            cantidad=1, valor_sin_iva=Decimal("100000"),
+        )
+        egreso.full_clean()  # no revienta
+
+    def test_la_lista_de_planes_no_deja_la_fila_en_blanco(self):
+        respuesta = self.client.get(
+            reverse("proyectos:listar_planes_gasto", args=[self.proyecto.pk])
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, "Resultado")
+
+    def test_el_informe_excel_no_revienta_sin_actividad(self):
+        respuesta = self.client.get(
+            reverse("proyectos:exportar_proyecto_excel", args=[self.proyecto.pk])
+        )
+        self.assertEqual(respuesta.status_code, 200)
+
+    def test_borrar_el_plan_pide_soltar_sus_gastos_primero(self):
+        self._crear_gasto()
+        respuesta = self.client.post(
+            reverse("proyectos:eliminar_plan_gasto", args=[self.plan.pk])
+        )
+        self.assertNotEqual(respuesta.status_code, 500)
+
+
+class MontosEnPesosEnterosTests(BasePoaTest):
+    """El peso chileno no tiene centavos.
+
+    El caso reportado: un plan de $5.000.000 y una compra de exactamente
+    $5.000.000 con IVA (neto $4.201.681). El sistema la rechazaba diciendo
+    «El gasto es de $5.000.000 y el plan sólo tiene $5.000.000 disponibles»,
+    que se lee como un absurdo. La causa: 4.201.681 × 1,19 = 5.000.000,39, y
+    esos 39 centavos —que no existen en ninguna factura— se comían el cupo.
+    Al mostrarlos, los dos montos se redondeaban a la misma cifra.
+    """
+
+    def test_el_iva_se_redondea_a_pesos_enteros(self):
+        e = Egreso(cantidad=1, valor_sin_iva=Decimal("4201681"))
+        self.assertEqual(e.iva_monto, Decimal("798319"))
+        self.assertEqual(e.total_con_iva, Decimal("5000000"))
+
+    def test_neto_mas_iva_siempre_cuadra_con_el_total(self):
+        """Lo que se muestra al lado de una factura tiene que sumar."""
+        for neto in ("4201681", "4201682", "1", "999999", "1000000"):
+            e = Egreso(cantidad=1, valor_sin_iva=Decimal(neto))
+            self.assertEqual(e.total_sin_iva + e.iva_monto, e.total_con_iva, neto)
+
+    def test_ningun_monto_arrastra_centavos(self):
+        for neto in ("4201681", "333333", "7", "123457"):
+            e = Egreso(cantidad=1, valor_sin_iva=Decimal(neto))
+            for monto in (e.iva_monto, e.total_con_iva):
+                self.assertEqual(monto, monto.to_integral_value(), f"{neto}: {monto}")
+
+    def test_una_compra_que_llena_el_plan_justo_se_acepta(self):
+        """El caso exacto que fallaba."""
+        plan = self.plan("5000000")
+        # El resultado necesita cupo para ese plan.
+        fila = self.resultado.presupuesto_del_anio(self.a2026)
+        fila.presupuesto_corriente = Decimal("5000000")
+        fila.save()
+        objetivo_fila = self.objetivo.presupuesto_del_anio(self.a2026)
+        objetivo_fila.presupuesto_corriente = Decimal("5000000")
+        objetivo_fila.save()
+        self.a2026.presupuesto_corriente = Decimal("5000000")
+        self.a2026.save()
+        plan.full_clean()
+        plan.save()
+
+        egreso = Egreso(
+            proyecto=self.proyecto, tipo=Egreso.TIPO_COMPRA,
+            subtipo_compra=Egreso.SUB_BIENES_INSUMOS,
+            plan_de_gasto=plan, gasto_elegible=self.corriente,
+            cantidad=1, valor_sin_iva=Decimal("4201681"),
+        )
+        egreso.full_clean()   # antes reventaba por 39 centavos
+        egreso.save()
+        self.assertEqual(egreso.total_con_iva, Decimal("5000000"))
+        self.assertEqual(plan.egresos_disponible, Decimal("0"))
+
+    def test_una_compra_que_si_se_pasa_lo_dice_con_cifras_distintas(self):
+        """Cuando el rechazo es legítimo, los dos montos del mensaje difieren."""
+        plan = self.plan("200000")
+        plan.full_clean()
+        plan.save()
+
+        egreso = Egreso(
+            proyecto=self.proyecto, tipo=Egreso.TIPO_COMPRA,
+            subtipo_compra=Egreso.SUB_BIENES_INSUMOS,
+            plan_de_gasto=plan, gasto_elegible=self.corriente,
+            cantidad=1, valor_sin_iva=Decimal("300000"),
+        )
+        with self.assertRaises(ValidationError) as caso:
+            egreso.full_clean()
+        mensaje = " ".join(caso.exception.messages)
+        self.assertIn("357.000", mensaje)   # 300.000 + IVA
+        self.assertIn("200.000", mensaje)

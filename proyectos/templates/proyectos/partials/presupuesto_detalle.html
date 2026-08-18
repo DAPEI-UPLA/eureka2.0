@@ -136,7 +136,7 @@
                             {{ e.gasto_elegible.nombre|default:e.get_tipo_display }}
                         {% endif %}
                         <div class="text-muted" style="font-size:.72rem;">
-                            {{ e.plan_de_gasto.actividad.nombre|truncatechars:48 }}
+                            {% if e.plan_de_gasto.actividad %}{{ e.plan_de_gasto.actividad.nombre|truncatechars:48 }}{% else %}{{ e.plan_de_gasto.gasto_elegible.nombre|truncatechars:48 }}{% endif %}
                             {% if e.es_capital %}· capital{% else %}· corriente{% endif %}
                         </div>
                     </td>

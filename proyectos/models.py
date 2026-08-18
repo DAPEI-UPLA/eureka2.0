@@ -1,5 +1,5 @@
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -2403,11 +2403,31 @@ class Egreso(AuditableModel):
 
     @property
     def iva_monto(self):
-        return self.total_sin_iva * self.IVA
+        """El IVA en pesos enteros.
+
+        El peso chileno no tiene centavos y las facturas vienen en pesos
+        redondos, pero 19% de un neto entero casi nunca lo es: $4.201.681
+        × 1,19 da $5.000.000,39. Esos 39 centavos no existen en ninguna
+        parte salvo en la base de datos, y bastaban para que una compra de
+        exactamente $5.000.000 no cupiera en un plan de $5.000.000 — con un
+        mensaje que decía que el gasto y el disponible eran la misma cifra,
+        porque al mostrarlos se redondeaban los dos.
+
+        Se redondea al medio hacia arriba, que es el criterio del SII.
+        """
+        return (self.total_sin_iva * self.IVA).quantize(
+            Decimal("1"), rounding=ROUND_HALF_UP
+        )
 
     @property
     def total_con_iva(self):
-        return self.total_sin_iva * (Decimal('1') + self.IVA)
+        """Neto + IVA, los tres en pesos enteros y coherentes entre sí.
+
+        Se suma el IVA ya redondeado en vez de redondear el total por
+        separado: así el detalle que se muestra (neto, IVA, total) cuadra
+        siempre, que es lo que se espera al lado de una factura.
+        """
+        return self.total_sin_iva + self.iva_monto
 
     # --- HONORARIO ---
     @property
@@ -2535,7 +2555,7 @@ class Egreso(AuditableModel):
             )
 
         if (self.plan_de_gasto_id
-                and self.plan_de_gasto.actividad.resultado.objetivo.proyecto_id
+                and self.plan_de_gasto.resultado.objetivo.proyecto_id
                 != self.proyecto_id):
             raise ValidationError("El Plan de gasto no pertenece a este proyecto.")
 
