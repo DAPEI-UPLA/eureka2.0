@@ -1,4 +1,4 @@
-{% load humanize %}
+{% load humanize l10n %}
 
 <div id="presupuesto-obj-{{ objetivo.pk }}" class="presupuesto-mini">
 
@@ -10,7 +10,7 @@
               hx-target="#presupuesto-obj-{{ objetivo.pk }}"
               hx-swap="outerHTML"
               title="Click para editar">
-            ${{ objetivo.presupuesto_corriente|floatformat:0|intcomma }}
+            ${{ objetivo.montos.presupuesto_corriente|default_if_none:objetivo.presupuesto_corriente|floatformat:0|intcomma }}
         </span>
     </div>
 
@@ -22,12 +22,16 @@
               hx-target="#presupuesto-obj-{{ objetivo.pk }}"
               hx-swap="outerHTML"
               title="Click para editar">
-            ${{ objetivo.presupuesto_capital|floatformat:0|intcomma }}
+            ${{ objetivo.montos.presupuesto_capital|default_if_none:objetivo.presupuesto_capital|floatformat:0|intcomma }}
         </span>
     </div>
 
     <span class="pm-disponible">
+        {% if anio_sel %}
+        de {{ anio_sel.etiqueta }} ({{ anio_sel.anio_calendario|unlocalize }})
+        {% else %}
         Disponible ${{ objetivo.presupuesto_disponible|floatformat:0|intcomma }}
+        {% endif %}
     </span>
 
 </div>

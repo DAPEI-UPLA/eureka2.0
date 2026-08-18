@@ -1,4 +1,4 @@
-{% for resultado in objetivo.resultados.all %}
+{% for resultado in resultados|default:objetivo.resultados.all %}
     {% if nuevo_resultado_id == resultado.pk %}
         {% include "proyectos/partials/resultado_input.html" %}
         {% include "proyectos/partials/resultado_actividades.html" %}

@@ -5,17 +5,33 @@ from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbid
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
 
-from ..models import ObjetivoEspecifico, Proyecto
+from ..models import ObjetivoEspecifico, Proyecto, montos_en_el_anio
 from .permisos import usuario_es_responsable
-from .utils import _to_decimal, disparar
+from .utils import _to_decimal, anio_seleccionado, disparar
+
+
+def objetivos_con_montos(proyecto, anio_sel):
+    """Los objetivos con el monto que corresponde mostrar.
+
+    Con un año elegido son los de ese año, no los de toda la vida del proyecto:
+    mostrar el total bajo un encabezado que dice «Viendo Año 2» es enseñar una
+    cifra que no es la que se está mirando.
+    """
+    objetivos = list(proyecto.objetivos.all())
+    for objetivo in objetivos:
+        objetivo.montos = montos_en_el_anio(objetivo, anio_sel)
+    return objetivos
 
 
 @login_required
 def listar_objetivos(request, pk):
     """Lista completa de objetivos; la usa el refresco automático en vivo."""
     proyecto = get_object_or_404(Proyecto, pk=pk)
+    anio_sel = anio_seleccionado(request, proyecto)
     return render(request, "proyectos/partials/objetivos_lista.html", {
         "proyecto": proyecto,
+        "objetivos": objetivos_con_montos(proyecto, anio_sel),
+        "anio_sel": anio_sel,
         "es_encargado": usuario_es_responsable(request.user, proyecto),
     })
 
@@ -72,7 +88,12 @@ def guardar_objetivo(request, pk):
 def meta_objetivo(request, pk):
     """Contadores + presupuesto de la cabecera del objetivo."""
     objetivo = get_object_or_404(ObjetivoEspecifico, pk=pk)
-    return render(request, "proyectos/partials/objetivo_meta.html", {"objetivo": objetivo})
+    anio_sel = anio_seleccionado(request, objetivo.proyecto)
+    objetivo.montos = montos_en_el_anio(objetivo, anio_sel)
+    return render(request, "proyectos/partials/objetivo_meta.html", {
+        "objetivo": objetivo,
+        "anio_sel": anio_sel,
+    })
 
 
 @login_required

@@ -9,14 +9,18 @@ completa ya repintada y publica `estructuraActualizada` para que el dashboard y
 los gráficos se enteren.
 """
 
+from decimal import Decimal
+
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Max
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
 
 from ..models import PresupuestoAnual, Proyecto
+from ..numeros import pesos
 from .permisos import es_jefe, usuario_es_responsable
 from .utils import _to_decimal, disparar
 
@@ -30,10 +34,14 @@ def _puede_editar(user, proyecto):
     return usuario_es_responsable(user, proyecto) or es_jefe(user)
 
 
-def _contexto(proyecto, user, **extra):
+def _contexto(proyecto, user, filas_en_pantalla=None, **extra):
     contexto = {
         "proyecto": proyecto,
-        "anios": proyecto.presupuestos_anuales.all(),
+        # Tras un error se repintan los montos que se escribieron, no los
+        # guardados: ver el error junto a las cifras viejas hace pensar que se
+        # está hablando de otra cosa.
+        "anios": filas_en_pantalla if filas_en_pantalla is not None
+        else proyecto.presupuestos_anuales.all(),
         "puede_editar": _puede_editar(user, proyecto),
     }
     contexto.update(extra)
@@ -92,6 +100,91 @@ def crear_anio(request, pk):
     response = _responder(request, proyecto, nuevo_anio_id=anio.pk)
     return disparar(response, estructuraActualizada=True,
                     guardado=f"Año {siguiente} agregado ({calendario}).")
+
+
+def _validar_el_reparto(proyecto, filas):
+    """Comprueba el reparto completo de una vez y devuelve los errores.
+
+    No se usa `full_clean()` de cada fila porque cada una se valida contra sus
+    hermanas **tal como están guardadas**, y eso hace imposible redistribuir:
+    para pasar de «todo en el año 1» a «mitad y mitad» hay que bajar el año 1 y
+    subir el año 2, y cualquiera de los dos pasos por separado es inválido. Al
+    mirar el conjunto, esa redistribución es un solo movimiento válido.
+    """
+    errores = []
+    for etiqueta, campo in (("corriente", "presupuesto_corriente"),
+                            ("capital", "presupuesto_capital")):
+        total = Decimal("0")
+        for fila in filas:
+            monto = getattr(fila, campo) or Decimal("0")
+            if monto < 0:
+                errores.append(
+                    f"{fila.etiqueta}: el presupuesto {etiqueta} no puede ser negativo."
+                )
+                continue
+            total += monto
+
+            # Nadie puede quedar por debajo de lo que sus planes ya tomaron.
+            planificado = (fila.planificado_capital if campo == "presupuesto_capital"
+                           else fila.planificado_corriente)
+            if monto < planificado:
+                errores.append(
+                    f"{fila.etiqueta}: sus planes de gasto {etiqueta} de "
+                    f"{fila.anio_calendario} ya suman {pesos(planificado)}, "
+                    f"así que no puede quedar en {pesos(monto)}."
+                )
+
+        del_proyecto = getattr(proyecto, campo) or Decimal("0")
+        if total > del_proyecto:
+            errores.append(
+                f"La suma {etiqueta} de todos los años es {pesos(total)} y el "
+                f"proyecto tiene {pesos(del_proyecto)}: sobran "
+                f"{pesos(total - del_proyecto)}."
+            )
+    return errores
+
+
+@login_required
+@require_POST
+def guardar_anios(request, pk):
+    """Guarda el reparto de todos los años de una vez.
+
+    Es la única forma de poder mover plata de un año a otro: el tope es la suma,
+    así que guardar año por año obliga a pasar por un estado que la validación
+    rechaza. La tabla entera se envía junta y se acepta o se rechaza junta.
+    """
+    proyecto = get_object_or_404(Proyecto, pk=pk)
+    if not _puede_editar(request.user, proyecto):
+        return HttpResponseForbidden("No autorizado")
+
+    filas = list(proyecto.presupuestos_anuales.all())
+    for fila in filas:
+        fila.presupuesto_corriente = _to_decimal(
+            request.POST.get(f"corriente_{fila.pk}")
+        )
+        fila.presupuesto_capital = _to_decimal(
+            request.POST.get(f"capital_{fila.pk}")
+        )
+        fila.actualizado_por = request.user
+
+    errores = _validar_el_reparto(proyecto, filas)
+    if errores:
+        # Se devuelven las filas tal como las escribió el usuario, no las
+        # guardadas: si se recargaran desde la base, el error hablaría de unos
+        # montos y la pantalla mostraría otros.
+        return _responder(request, proyecto, error=" ".join(errores),
+                          filas_en_pantalla=filas)
+
+    with transaction.atomic():
+        for fila in filas:
+            fila.save(update_fields=[
+                "presupuesto_corriente", "presupuesto_capital",
+                "actualizado_por", "actualizado_en",
+            ])
+
+    response = _responder(request, proyecto)
+    return disparar(response, estructuraActualizada=True,
+                    guardado="Reparto por año guardado.")
 
 
 @login_required

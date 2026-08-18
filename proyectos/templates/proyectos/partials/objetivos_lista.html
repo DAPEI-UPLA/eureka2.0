@@ -1,4 +1,4 @@
-{% for objetivo in proyecto.objetivos.all %}
+{% for objetivo in objetivos|default:proyecto.objetivos.all %}
     {% include "proyectos/partials/objetivo_bloque.html" %}
 {% empty %}
 <div class="objetivo-grupo">

@@ -12,7 +12,15 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.urls import reverse
 
-from .models import PlanDeGasto, PresupuestoAnual
+from .models import (
+    CORRIENTE,
+    Actividad,
+    GastoElegible,
+    PlanDeGasto,
+    PresupuestoAnual,
+    PresupuestoObjetivoAnual,
+    PresupuestoResultadoAnual,
+)
 from .tests import BaseGastosTest, BaseProyectoTest
 
 
@@ -351,3 +359,157 @@ class SelectorDeAnioTests(BaseGastosTest):
         cuerpo = respuesta.content.decode()
         self.assertNotIn("{#", cuerpo)
         self.assertNotIn("SELECTOR DE AÑO", cuerpo)
+
+
+class RedistribuirEntreAniosTests(BaseProyectoTest):
+    """Mover plata de un año a otro.
+
+    El defecto reportado: con todo el presupuesto en el Año 1 —como lo dejó la
+    migración— no había forma de ponerle plata al Año 2. El tope es la SUMA de
+    los años, así que bajar el 1 y subir el 2 son dos pasos y cada uno por
+    separado es inválido. Ahora la tabla entera se guarda junta.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.a1 = PresupuestoAnual.objects.create(
+            proyecto=self.proyecto, numero_anio=1, anio_calendario=2026,
+            presupuesto_corriente=Decimal("600000"),
+            presupuesto_capital=Decimal("400000"),
+        )
+        self.client.post(reverse("proyectos:crear_anio", args=[self.proyecto.pk]))
+        self.a2 = self.proyecto.presupuestos_anuales.get(numero_anio=2)
+        self.url = reverse("proyectos:guardar_anios", args=[self.proyecto.pk])
+
+    def _post(self, c1, k1, c2, k2):
+        return self.client.post(self.url, {
+            f"corriente_{self.a1.pk}": c1, f"capital_{self.a1.pk}": k1,
+            f"corriente_{self.a2.pk}": c2, f"capital_{self.a2.pk}": k2,
+        })
+
+    def test_se_puede_pasar_plata_del_anio_1_al_anio_2(self):
+        self._post("400000", "250000", "200000", "150000")
+
+        self.a1.refresh_from_db()
+        self.a2.refresh_from_db()
+        self.assertEqual(self.a1.presupuesto_corriente, Decimal("400000"))
+        self.assertEqual(self.a2.presupuesto_corriente, Decimal("200000"))
+        self.assertEqual(self.a2.presupuesto_capital, Decimal("150000"))
+        self.assertTrue(self.proyecto.anios_cuadrados)
+
+    def test_la_suma_sigue_topada_por_el_presupuesto_del_proyecto(self):
+        respuesta = self._post("600000", "400000", "1", "0")
+
+        self.assertContains(respuesta, "sobran")
+        self.a2.refresh_from_db()
+        self.assertEqual(self.a2.presupuesto_corriente, Decimal("0"))
+
+    def test_un_reparto_rechazado_no_guarda_nada(self):
+        """O entra entero o no entra: si el Año 1 bajara y el Año 2 fuera
+        rechazado, el proyecto quedaría con plata desaparecida."""
+        self._post("100000", "0", "999999999", "0")
+
+        self.a1.refresh_from_db()
+        self.assertEqual(self.a1.presupuesto_corriente, Decimal("600000"))
+
+    def test_el_error_muestra_los_montos_escritos_no_los_guardados(self):
+        respuesta = self._post("600000", "400000", "50000", "0")
+        cuerpo = respuesta.content.decode().replace("\xa0", "").replace(".", "")
+        self.assertIn('value="50000"', cuerpo)
+
+    def test_reenviar_los_montos_ya_formateados_no_los_pierde(self):
+        """La trampa del separador de miles.
+
+        Los inputs se pintan formateados y con `USE_THOUSAND_SEPARATOR` Django
+        agrupa con espacio duro (U+00A0). Si se guarda sin tocar nada, eso vuelve
+        tal cual al servidor: si no se limpiara, el presupuesto se iría a $0.
+        """
+        self._post("400\xa0000", "250\xa0000", "200\xa0000", "150\xa0000")
+
+        self.a1.refresh_from_db()
+        self.a2.refresh_from_db()
+        self.assertEqual(self.a1.presupuesto_corriente, Decimal("400000"))
+        self.assertEqual(self.a2.presupuesto_capital, Decimal("150000"))
+
+    def test_no_se_puede_bajar_un_anio_por_debajo_de_su_poa(self):
+        objetivo = self.crear_objetivo(presupuesto_corriente=Decimal("600000"))
+        resultado = self.crear_resultado(objetivo, presupuesto_corriente=Decimal("600000"))
+        actividad = Actividad.objects.create(
+            resultado=resultado, nombre="A", presupuesto_corriente=Decimal("600000"),
+        )
+        PlanDeGasto.objects.create(
+            actividad=actividad,
+            gasto_elegible=GastoElegible.objects.filter(
+                gasto__tipo_gasto__transferencia__naturaleza=CORRIENTE
+            ).first(),
+            anio=2026, monto=Decimal("500000"),
+        )
+
+        respuesta = self._post("100000", "400000", "500000", "0")
+        self.assertContains(respuesta, "ya suman")
+        self.a1.refresh_from_db()
+        self.assertEqual(self.a1.presupuesto_corriente, Decimal("600000"))
+
+
+class MontosSegunElAnioTests(BaseProyectoTest):
+    """Con un año elegido, objetivos y resultados muestran lo de ESE año.
+
+    El defecto reportado: estando en el Año 2 se veía el presupuesto total del
+    objetivo, que incluye el Año 1.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.a1 = PresupuestoAnual.objects.create(
+            proyecto=self.proyecto, numero_anio=1, anio_calendario=2026,
+            presupuesto_corriente=Decimal("300000"),
+            presupuesto_capital=Decimal("200000"),
+        )
+        self.a2 = PresupuestoAnual.objects.create(
+            proyecto=self.proyecto, numero_anio=2, anio_calendario=2027,
+            presupuesto_corriente=Decimal("300000"),
+            presupuesto_capital=Decimal("200000"),
+        )
+        self.objetivo = self.crear_objetivo()
+        PresupuestoObjetivoAnual.objects.create(
+            objetivo=self.objetivo, anio=self.a1,
+            presupuesto_corriente=Decimal("100000"),
+        )
+        PresupuestoObjetivoAnual.objects.create(
+            objetivo=self.objetivo, anio=self.a2,
+            presupuesto_corriente=Decimal("50000"),
+        )
+        self.url = reverse("proyectos:listar_objetivos", args=[self.proyecto.pk])
+
+    def _sin_formato(self, respuesta):
+        return respuesta.content.decode().replace("\xa0", "").replace(".", "").replace(",", "")
+
+    def test_sin_anio_se_ve_el_total(self):
+        self.objetivo.refresh_from_db()
+        self.assertEqual(self.objetivo.presupuesto_corriente, Decimal("150000"))
+        self.assertIn("150000", self._sin_formato(self.client.get(self.url)))
+
+    def test_con_un_anio_se_ve_solo_lo_de_ese_anio(self):
+        cuerpo = self._sin_formato(self.client.get(self.url, {"anio": 2027}))
+        self.assertNotIn("150000", cuerpo)
+
+    def test_un_objetivo_sin_asignacion_en_el_anio_sale_en_cero(self):
+        otro = self.crear_objetivo()
+        respuesta = self.client.get(self.url, {"anio": 2027})
+        montos = [
+            o.montos for o in respuesta.context["objetivos"] if o.pk == otro.pk
+        ][0]
+        self.assertEqual(montos.presupuesto_corriente, Decimal("0"))
+
+    def test_los_resultados_tambien_respetan_el_anio(self):
+        resultado = self.crear_resultado(self.objetivo)
+        PresupuestoResultadoAnual.objects.create(
+            resultado=resultado, anio=self.a2,
+            presupuesto_corriente=Decimal("40000"),
+        )
+        respuesta = self.client.get(
+            reverse("proyectos:listar_resultados", args=[self.objetivo.pk]),
+            {"anio": 2027},
+        )
+        montos = respuesta.context["resultados"][0].montos
+        self.assertEqual(montos.presupuesto_corriente, Decimal("40000"))

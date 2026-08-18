@@ -115,6 +115,46 @@ def resumir_egresos(egresos):
 
 
 # =========================
+# MONTOS SEGÚN EL AÑO EN PANTALLA
+# =========================
+# Cuando el detalle se mira año por año, los montos de objetivos y resultados
+# tienen que ser los de **ese** año. Mostrar el total de toda la vida del
+# proyecto bajo un encabezado que dice «Viendo Año 2» es decir una cifra que no
+# corresponde a lo que se está mirando.
+
+
+class SinAsignacionAnual:
+    """Los ceros de algo que no participa del año que se está mirando.
+
+    Se devuelve un objeto y no None para que las pantallas no tengan que
+    distinguir entre «no tiene asignación» y «tiene cero»: en ambos casos lo
+    que hay que mostrar es $0.
+    """
+
+    presupuesto_corriente = Decimal("0")
+    presupuesto_capital = Decimal("0")
+    presupuesto_asignado = Decimal("0")
+    presupuesto_total = Decimal("0")
+
+    def __bool__(self):
+        return False
+
+
+SIN_ASIGNACION = SinAsignacionAnual()
+
+
+def montos_en_el_anio(entidad, anio):
+    """Los montos a mostrar de un objetivo o resultado.
+
+    Sin año elegido manda la propia entidad, que lleva los totales. Con año
+    elegido, su asignación de ese año.
+    """
+    if anio is None:
+        return entidad
+    return entidad.presupuesto_del_anio(anio) or SIN_ASIGNACION
+
+
+# =========================
 # CATÁLOGO
 # =========================
 
@@ -1021,6 +1061,16 @@ class PresupuestoObjetivoAnual(AuditableModel):
         )
 
     @property
+    def presupuesto_asignado(self):
+        """Alias de `presupuesto_total`.
+
+        Las pantallas leen `presupuesto_asignado` tanto del objetivo/resultado
+        como de su fila anual; con el alias no necesitan saber cuál de los dos
+        tienen delante.
+        """
+        return self.presupuesto_total
+
+    @property
     def planificado(self):
         return self.objetivo.planificado_en(self.anio.anio_calendario)
 
@@ -1407,6 +1457,16 @@ class PresupuestoResultadoAnual(AuditableModel):
         return (self.presupuesto_corriente or Decimal("0")) + (
             self.presupuesto_capital or Decimal("0")
         )
+
+    @property
+    def presupuesto_asignado(self):
+        """Alias de `presupuesto_total`.
+
+        Las pantallas leen `presupuesto_asignado` tanto del objetivo/resultado
+        como de su fila anual; con el alias no necesitan saber cuál de los dos
+        tienen delante.
+        """
+        return self.presupuesto_total
 
     @property
     def planificado(self):

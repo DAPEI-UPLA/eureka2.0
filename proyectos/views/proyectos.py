@@ -10,6 +10,7 @@ from django.views.decorators.http import require_POST
 from ..forms import ProyectoForm
 from ..models import Proyecto
 from .permisos import es_jefe, usuario_es_responsable
+from .objetivos import objetivos_con_montos
 from .utils import anio_seleccionado
 
 logger = logging.getLogger(__name__)
@@ -93,12 +94,14 @@ def detalle_proyecto(request, pk):
         Proyecto.objects.prefetch_related('objetivos__resultados__actividades'),
         pk=pk,
     )
+    anio_sel = anio_seleccionado(request, proyecto)
     return render(request, "proyectos/detalle_proyecto.html", {
         "proyecto": proyecto,
         "es_encargado": usuario_es_responsable(request.user, proyecto),
         "es_jefe": es_jefe(request.user),
-        "anio_sel": anio_seleccionado(request, proyecto),
+        "anio_sel": anio_sel,
         "anios": proyecto.presupuestos_anuales.all(),
+        "objetivos": objetivos_con_montos(proyecto, anio_sel),
     })
 
 

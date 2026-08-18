@@ -48,7 +48,7 @@
         data-bs-toggle="modal"
         data-bs-target="#modalPresupuesto"
         title="Ver detalle">
-        {% include "proyectos/partials/monto_bolsas.html" with total=resultado.presupuesto_asignado corriente=resultado.presupuesto_corriente capital=resultado.presupuesto_capital %}
+        {% include "proyectos/partials/monto_bolsas.html" with total=resultado.montos.presupuesto_asignado|default_if_none:resultado.presupuesto_asignado corriente=resultado.montos.presupuesto_corriente|default_if_none:resultado.presupuesto_corriente capital=resultado.montos.presupuesto_capital|default_if_none:resultado.presupuesto_capital %}
     </td>
 
     {% comment %}Ejecutado, comprometido y saldo salen de los gastos cargados a

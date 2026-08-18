@@ -125,7 +125,7 @@
         </div>
 
         <div id="contenedor-objetivos"
-             hx-get="{% url 'proyectos:listar_objetivos' proyecto.pk %}"
+             hx-get="{% url 'proyectos:listar_objetivos' proyecto.pk %}{% if anio_sel %}?anio={{ anio_sel.anio_calendario|unlocalize }}{% endif %}"
              hx-trigger="objetivosActualizados from:body"
              hx-target="this"
              hx-swap="innerHTML">

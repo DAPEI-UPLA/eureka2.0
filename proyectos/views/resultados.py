@@ -6,17 +6,28 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST, require_http_methods
 
-from ..models import ObjetivoEspecifico, Resultado
+from ..models import ObjetivoEspecifico, Resultado, montos_en_el_anio
 from .permisos import usuario_es_responsable
-from .utils import _to_decimal, detalle_resultado, disparar
+from .utils import anio_seleccionado, _to_decimal, detalle_resultado, disparar
+
+
+def resultados_con_montos(objetivo, anio_sel):
+    """Los resultados con el monto que corresponde mostrar (ver objetivos)."""
+    resultados = list(objetivo.resultados.all())
+    for resultado in resultados:
+        resultado.montos = montos_en_el_anio(resultado, anio_sel)
+    return resultados
 
 
 @login_required
 def listar_resultados(request, pk):
     """Cuerpo de la tabla de resultados de un objetivo (refresco en vivo)."""
     objetivo = get_object_or_404(ObjetivoEspecifico, pk=pk)
+    anio_sel = anio_seleccionado(request, objetivo.proyecto)
     return render(request, "proyectos/partials/resultados_lista.html", {
         "objetivo": objetivo,
+        "resultados": resultados_con_montos(objetivo, anio_sel),
+        "anio_sel": anio_sel,
         "es_encargado": usuario_es_responsable(request.user, objetivo.proyecto),
     })
 

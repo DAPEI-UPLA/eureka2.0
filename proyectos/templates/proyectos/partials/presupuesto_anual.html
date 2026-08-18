@@ -10,6 +10,10 @@
     {% endif %}
 
     {% if anios %}
+    <form hx-post="{% url 'proyectos:guardar_anios' proyecto.pk %}"
+          hx-target="#presupuesto-anual-container"
+          hx-swap="innerHTML">
+        {% csrf_token %}
     <div class="table-responsive">
         <table class="table table-sm align-middle anios-tabla mb-2">
             <thead>
@@ -36,22 +40,17 @@
                     </td>
 
                     {% if puede_editar %}
-                    <td colspan="2" class="p-0">
-                        <form hx-post="{% url 'proyectos:guardar_anio' a.pk %}"
-                              hx-target="#presupuesto-anual-container"
-                              hx-swap="innerHTML"
-                              class="d-flex gap-2 px-2 py-1">
-                            {% csrf_token %}
-                            <input type="number" step="1" min="0" name="presupuesto_corriente"
-                                   value="{{ a.presupuesto_corriente|floatformat:0 }}"
-                                   class="form-control form-control-sm text-end"
-                                   aria-label="Presupuesto corriente {{ a.anio_calendario|unlocalize }}">
-                            <input type="number" step="1" min="0" name="presupuesto_capital"
-                                   value="{{ a.presupuesto_capital|floatformat:0 }}"
-                                   class="form-control form-control-sm text-end"
-                                   aria-label="Presupuesto capital {{ a.anio_calendario|unlocalize }}">
-                            <button type="submit" class="btn btn-sm btn-outline-primary">Guardar</button>
-                        </form>
+                    <td>
+                        <input type="text" name="corriente_{{ a.pk }}"
+                               value="{{ a.presupuesto_corriente|floatformat:0 }}"
+                               class="form-control form-control-sm text-end"
+                               aria-label="Presupuesto corriente {{ a.anio_calendario|unlocalize }}">
+                    </td>
+                    <td>
+                        <input type="text" name="capital_{{ a.pk }}"
+                               value="{{ a.presupuesto_capital|floatformat:0 }}"
+                               class="form-control form-control-sm text-end"
+                               aria-label="Presupuesto capital {{ a.anio_calendario|unlocalize }}">
                     </td>
                     {% else %}
                     <td class="text-end">${{ a.presupuesto_corriente|floatformat:0|intcomma }}</td>
@@ -104,6 +103,20 @@
             </tfoot>
         </table>
     </div>
+
+    {% if puede_editar %}
+    {% comment %}
+    Un solo boton para toda la tabla: el tope es la SUMA de los anios, asi que
+    mover plata de un ano a otro solo es valido si los dos cambios viajan
+    juntos. Guardar fila por fila obligaba a pasar por un estado que la
+    validacion rechaza, y por eso no se podia repartir nada.
+    {% endcomment %}
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <button type="submit" class="btn btn-sm btn-primary">Guardar reparto</button>
+        <span class="small text-muted">Se guardan todos los años juntos.</span>
+    </div>
+    {% endif %}
+    </form>
 
     {% comment %} El descuadre es la razón de ser de esta pantalla: mientras la suma de los
        años no calce con el presupuesto, la línea base del proyecto no sirve. {% endcomment %}
