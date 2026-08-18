@@ -31,7 +31,7 @@ Hay dos scripts que automatizan esto, en la raíz del proyecto:
 sudo systemctl stop eureka.service
 
 # Proyecto, variables de entorno y unidad systemd
-mv ~/Eureka ~/Prisma
+mv ~/Eureka ~/Eureka
 sudo mv /etc/eureka.env /etc/prisma.env
 sudo mv /etc/systemd/system/eureka.service /etc/systemd/system/prisma.service
 sudo sed -i 's|/Eureka|/Prisma|g; s|/etc/eureka\.env|/etc/prisma.env|; s|^Description=Eureka|Description=Prisma|' \
@@ -166,9 +166,9 @@ scp "$env:TEMP\prisma.tar.gz" dapei@172.16.31.160:~/
 En el **servidor**:
 
 ```bash
-mkdir -p ~/Prisma
-tar -xzf ~/prisma.tar.gz -C ~/Prisma
-cd ~/Prisma && ls -la
+mkdir -p ~/Eureka
+tar -xzf ~/prisma.tar.gz -C ~/Eureka
+cd ~/Eureka && ls -la
 ```
 
 Permiso de tránsito para que nginx (usuario `www-data`) pueda leer los estáticos:
@@ -182,7 +182,7 @@ chmod o+x /home/dapei          # permite atravesar, no listar
 ## Paso 4 — Entorno virtual y dependencias
 
 ```bash
-cd ~/Prisma
+cd ~/Eureka
 python3 -m venv venv           # o python3.12 -m venv venv si instalaste deadsnakes
 venv/bin/pip install --upgrade pip
 venv/bin/pip install -r requirements.txt
@@ -196,7 +196,7 @@ venv/bin/pip install gunicorn==23.0.0
 Genera la clave secreta:
 
 ```bash
-cd ~/Prisma
+cd ~/Eureka
 venv/bin/python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
 
@@ -241,7 +241,7 @@ datos hay un caso que hace fallar la migración a medio camino**, así que
 primero se revisa:
 
 ```bash
-cd ~/Prisma
+cd ~/Eureka
 venv/bin/python manage.py revisar_migracion_poa
 ```
 
@@ -274,7 +274,7 @@ cp db.sqlite3 db.sqlite3.bak-$(date +%Y%m%d-%H%M)
 ## Paso 6 — Migraciones, estáticos y superusuario
 
 ```bash
-cd ~/Prisma
+cd ~/Eureka
 # Cargar el entorno en esta sesión de shell (línea por línea, por los caracteres especiales)
 set -a
 while IFS= read -r line; do
@@ -308,9 +308,9 @@ After=network.target
 [Service]
 User=dapei
 Group=dapei
-WorkingDirectory=/home/dapei/Prisma
+WorkingDirectory=/home/dapei/Eureka
 EnvironmentFile=/etc/prisma.env
-ExecStart=/home/dapei/Prisma/venv/bin/gunicorn sistema.wsgi:application \
+ExecStart=/home/dapei/Eureka/venv/bin/gunicorn sistema.wsgi:application \
     --workers 3 \
     --bind 127.0.0.1:8000 \
     --timeout 60 \
@@ -346,13 +346,13 @@ server {
     client_max_body_size 25M;
 
     location /static/ {
-        alias /home/dapei/Prisma/staticfiles/;
+        alias /home/dapei/Eureka/staticfiles/;
         access_log off;
         expires 30d;
     }
 
     location /media/ {
-        alias /home/dapei/Prisma/media/;
+        alias /home/dapei/Eureka/media/;
         access_log off;
         expires 7d;
     }
@@ -413,9 +413,9 @@ comprime, empaqueta `media/` y aplica retención (30 días la base, 7 días medi
 Instalar el cron (una sola vez, sin abrir el editor):
 
 ```bash
-chmod +x ~/Prisma/scripts/backup.sh
+chmod +x ~/Eureka/scripts/backup.sh
 ( crontab -l 2>/dev/null | grep -Fv 'Prisma/scripts/backup.sh'; \
-  echo '0 2 * * * /home/dapei/Prisma/scripts/backup.sh >> /home/dapei/Prisma/backups/backup.log 2>&1' \
+  echo '0 2 * * * /home/dapei/Eureka/scripts/backup.sh >> /home/dapei/Eureka/backups/backup.log 2>&1' \
 ) | crontab -
 crontab -l
 ```
@@ -426,16 +426,16 @@ crontab -l
 Probar y revisar:
 
 ```bash
-bash ~/Prisma/scripts/backup.sh     # ejecución manual
-ls -lh ~/Prisma/backups/
-tail -n 5 ~/Prisma/backups/backup.log
+bash ~/Eureka/scripts/backup.sh     # ejecución manual
+ls -lh ~/Eureka/backups/
+tail -n 5 ~/Eureka/backups/backup.log
 ```
 
 ### Restaurar
 
 ```bash
 sudo systemctl stop prisma.service
-cd ~/Prisma
+cd ~/Eureka
 mv db.sqlite3 db.sqlite3.antes-de-restaurar
 gunzip -c backups/db_2026-08-03_0200.sqlite3.gz > db.sqlite3
 tar -xzf backups/media_2026-08-03_0200.tar.gz -C .   # solo si también hay que recuperar archivos
@@ -445,7 +445,7 @@ sudo systemctl start prisma.service
 ### Bajar un respaldo a Windows
 
 ```powershell
-scp dapei@172.16.31.160:~/Prisma/backups/db_2026-08-03_0200.sqlite3.gz "$env:USERPROFILE\Desktop\"
+scp dapei@172.16.31.160:~/Eureka/backups/db_2026-08-03_0200.sqlite3.gz "$env:USERPROFILE\Desktop\"
 ```
 
 > `/etc/prisma.env` **no** se respalda (el script corre como `dapei` y el archivo es solo
@@ -455,6 +455,22 @@ scp dapei@172.16.31.160:~/Prisma/backups/db_2026-08-03_0200.sqlite3.gz "$env:USE
 ---
 
 ## Paso 12 — Redespliegues futuros (solo código)
+
+### Antes de nada: confirma los nombres reales
+
+Tres cosas pueden llamarse `eureka` o `prisma` y no tienen por qué coincidir
+entre sí — la carpeta, el servicio de systemd y el archivo de entorno. Este
+documento asume carpeta `~/Eureka`, servicio `prisma.service` y entorno
+`/etc/prisma.env`. Compruébalo antes de copiar comandos:
+
+```bash
+ls -d ~/Eureka ~/Prisma 2>/dev/null
+systemctl list-units --type=service --all | grep -iE 'eureka|prisma'
+ls /etc/*.env
+```
+
+Si alguno no calza, cambia ese nombre en los comandos de más abajo.
+
 
 **Regla de oro:** nunca sobrescribas en el servidor `db.sqlite3`, `media/`, `venv/`,
 `staticfiles/`, `backups/` ni `/etc/prisma.env`.
@@ -470,9 +486,9 @@ scp "$env:TEMP\prisma.tar.gz" dapei@172.16.31.160:~/
 En el servidor:
 
 ```bash
-cd ~/Prisma
+cd ~/Eureka
 cp db.sqlite3 backups/db_pre_deploy_$(date +%F_%H%M).sqlite3
-tar -xzf ~/prisma.tar.gz -C ~/Prisma
+tar -xzf ~/prisma.tar.gz -C ~/Eureka
 venv/bin/pip install -r requirements.txt
 
 set -a
@@ -529,7 +545,7 @@ sudo systemctl restart prisma.service nginx
 
 # Espacio en disco
 df -h /
-du -sh ~/Prisma/*
+du -sh ~/Eureka/*
 ```
 
 ## Problemas frecuentes
