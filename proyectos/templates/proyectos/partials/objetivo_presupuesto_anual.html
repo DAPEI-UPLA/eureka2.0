@@ -1,4 +1,4 @@
-{% load humanize l10n %}
+{% load humanize l10n montos %}
 
 {% comment %}
 Reparto del presupuesto de un objetivo, año por año. Reemplaza al editor del
@@ -40,8 +40,8 @@ si los dos cambios viajan juntos.
                         <span class="obj-anual-cal">{{ fila.anio.anio_calendario|unlocalize }}</span>
                     </td>
                     <td>
-                        <input type="text" name="corriente_{{ fila.anio.pk }}"
-                               value="{{ fila.corriente|floatformat:0 }}"
+                        <input type="text" name="corriente_{{ fila.anio.pk }}" inputmode="numeric" data-monto="1"
+                               value="{{ fila.corriente|miles }}"
                                class="form-control form-control-sm text-end"
                                aria-label="Corriente {{ fila.anio.anio_calendario|unlocalize }}">
                         <div class="obj-anual-tope">
@@ -49,8 +49,8 @@ si los dos cambios viajan juntos.
                         </div>
                     </td>
                     <td>
-                        <input type="text" name="capital_{{ fila.anio.pk }}"
-                               value="{{ fila.capital|floatformat:0 }}"
+                        <input type="text" name="capital_{{ fila.anio.pk }}" inputmode="numeric" data-monto="1"
+                               value="{{ fila.capital|miles }}"
                                class="form-control form-control-sm text-end"
                                aria-label="Capital {{ fila.anio.anio_calendario|unlocalize }}">
                         <div class="obj-anual-tope">

@@ -311,3 +311,52 @@ window.toggleSeccion = toggleSeccion;
         if (!e.target.closest(".proy-buscador")) cerrar();
     });
 })();
+
+/* ===== MONTOS CON PUNTO DE MILES =====
+ *
+ * Las cajas del reparto por año llegan formateadas desde el servidor, pero en
+ * cuanto alguien teclea vuelven a ser un número corrido: "25000000" no hay
+ * quien lo lea de un vistazo. Esto reagrupa mientras se escribe.
+ *
+ * Sólo se toca lo que se ve. El servidor recibe el texto tal cual y lo limpia
+ * con `numeros.limpiar_monto`, que ya descarta puntos, espacios duros y
+ * símbolos, así que da igual en qué formato viaje.
+ */
+(function () {
+    function agrupar(digitos) {
+        return digitos.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    function formatear(input) {
+        // Cuántos dígitos hay a la izquierda del cursor: los puntos se mueven
+        // al reagrupar, así que la posición sólo se puede conservar contando
+        // dígitos. Sin esto, escribir en medio de la cifra manda el cursor al
+        // final en cada tecla.
+        var cursor = input.selectionStart;
+        var digitosAntes = (input.value.slice(0, cursor).match(/\d/g) || []).length;
+
+        var digitos = input.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+        input.value = digitos ? agrupar(digitos) : "";
+
+        var pos = 0, vistos = 0;
+        while (pos < input.value.length && vistos < digitosAntes) {
+            if (/\d/.test(input.value[pos])) vistos++;
+            pos++;
+        }
+        input.setSelectionRange(pos, pos);
+    }
+
+    function esMonto(el) {
+        return el && el.matches && el.matches('input[data-monto="1"]');
+    }
+
+    document.addEventListener("input", function (e) {
+        if (esMonto(e.target)) formatear(e.target);
+    });
+
+    // Al salir, una caja vacía queda en "0": mandar vacío se lee como cero de
+    // todas formas, y verlo explícito evita creer que quedó sin guardar.
+    document.addEventListener("focusout", function (e) {
+        if (esMonto(e.target) && e.target.value.trim() === "") e.target.value = "0";
+    });
+})();
