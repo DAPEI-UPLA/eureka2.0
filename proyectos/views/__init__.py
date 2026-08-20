@@ -24,7 +24,8 @@ from .objetivos import (
     meta_objetivo,
 )
 from .orden import mover_actividad, mover_objetivo, mover_resultado
-from .graficos import graficos_proyecto, graficos_proyectos
+from .gantt import gantt_proyecto
+from .graficos import graficos_proyecto, graficos_proyectos, valor_ganado
 from .exportar import (
     exportar_cartera_excel,
     exportar_proyecto_excel,
@@ -41,6 +42,8 @@ from .presupuesto_objetivo import (
 )
 from .presupuesto_anual import (
     crear_anio,
+    crear_anios_del_proyecto,
+    realinear_anios,
     eliminar_anio,
     guardar_anio,
     guardar_anios,
@@ -80,7 +83,9 @@ from .proyectos import (
     tablero_proyecto,
 )
 from .resultados import (
+    avance_resultado_form,
     crear_resultado,
+    guardar_avance_resultado,
     detalle_presupuesto_resultado,
     editar_resultado_form,
     eliminar_resultado,

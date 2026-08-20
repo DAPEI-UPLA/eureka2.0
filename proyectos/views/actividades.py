@@ -34,6 +34,7 @@ def _contexto_form(resultado, excluir=None, **extra):
     if "datos" not in contexto:
         contexto["datos"] = {
             "nombre": excluir.nombre if excluir else "",
+            "fecha_inicio": _iso(excluir.fecha_inicio) if excluir else "",
             "fecha_limite": _iso(excluir.fecha_limite) if excluir else "",
             "fecha_efectiva": _iso(excluir.fecha_efectiva) if excluir else "",
         }
@@ -56,6 +57,7 @@ def _iso(fecha):
 def _datos_enviados(request):
     return {
         "nombre": request.POST.get("nombre", "").strip(),
+        "fecha_inicio": request.POST.get("fecha_inicio") or "",
         "fecha_limite": request.POST.get("fecha_limite") or "",
         "fecha_efectiva": request.POST.get("fecha_efectiva") or "",
         # Opcional: si viene, queda anotado en el historial de reprogramaciones.
@@ -103,6 +105,7 @@ def editar_actividad(request, actividad_id):
     datos = _datos_enviados(request)
     try:
         actividad.nombre = datos["nombre"]
+        actividad.fecha_inicio = datos["fecha_inicio"] or None
         actividad.fecha_limite = datos["fecha_limite"] or None
         actividad.fecha_efectiva = datos["fecha_efectiva"] or None
         actividad.actualizado_por = request.user
@@ -145,6 +148,7 @@ def crear_actividad(request, resultado_id):
         actividad = Actividad(
             resultado=resultado,
             nombre=datos["nombre"],
+            fecha_inicio=datos["fecha_inicio"] or None,
             fecha_limite=datos["fecha_limite"] or None,
             fecha_efectiva=datos["fecha_efectiva"] or None,
             orden=siguiente,

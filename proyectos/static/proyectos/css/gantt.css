@@ -1,0 +1,418 @@
+/* Carta Gantt del proyecto.
+ *
+ * Un acento (azul) + neutros. El color con significado se guarda para el
+ * estado: rojo = atrasado, verde = cerrado. Las barras no se colorean por
+ * objetivo ni por resultado —serían doce familias de color compitiendo— sino
+ * que se distinguen por su etiqueta y su posición.
+ *
+ * Toda la geometría llega en porcentajes calculados en el servidor
+ * (`views/gantt.py`), así que aquí no hay ningún cálculo de fechas.
+ */
+
+.gantt-wrap {
+    --g-label: 300px;
+    --g-fila: 34px;
+    background: var(--proy-surface, #fff);
+    border: 1px solid var(--proy-border, #e6e8eb);
+    border-radius: var(--proy-radius, 14px);
+    box-shadow: var(--proy-shadow-sm, 0 1px 3px rgba(15, 23, 42, .05));
+    overflow: hidden;
+}
+
+/* El scroll horizontal vive acá dentro: la página nunca se desplaza a lo
+   ancho, por larga que sea la línea de tiempo. */
+.gantt-scroll {
+    overflow-x: auto;
+    overflow-y: visible;
+}
+
+.gantt-tabla {
+    min-width: 100%;
+    width: max-content;
+}
+
+/* ---------------------------------------------------------------- cabecera */
+
+.gantt-cabecera {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--proy-surface, #fff);
+    border-bottom: 1px solid var(--proy-border, #e6e8eb);
+}
+
+.gantt-cab-fila {
+    display: flex;
+    align-items: stretch;
+}
+
+.gantt-cab-esquina {
+    flex: 0 0 var(--g-label);
+    width: var(--g-label);
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--proy-surface, #fff);
+    border-right: 1px solid var(--proy-border, #e6e8eb);
+    display: flex;
+    align-items: center;
+    padding: .35rem .75rem;
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--proy-text-muted, #6b7280);
+}
+
+.gantt-cab-pista {
+    flex: 1 1 auto;
+    display: flex;
+    min-width: var(--g-pista, 640px);
+}
+
+.gantt-cab-anio,
+.gantt-cab-mes {
+    text-align: center;
+    padding: .3rem 0;
+    font-size: .72rem;
+    border-left: 1px solid var(--proy-border-soft, #eef0f3);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.gantt-cab-anio {
+    font-weight: 700;
+    color: var(--proy-text, #111827);
+    background: var(--proy-bg, #f6f8fa);
+}
+
+.gantt-cab-mes {
+    font-weight: 500;
+    color: var(--proy-text-muted, #6b7280);
+}
+
+.gantt-cab-mes.inicio-anio {
+    border-left-color: var(--proy-border, #e6e8eb);
+}
+
+/* ------------------------------------------------------------------ filas */
+
+.gantt-cuerpo {
+    position: relative;
+    /* La barra de desplazamiento horizontal se apoya justo bajo la última
+       fila. Sin este aire, la barra de la última actividad queda pegada a
+       ella y parece cortada. */
+    padding-bottom: 6px;
+}
+
+.gantt-fila {
+    display: flex;
+    align-items: stretch;
+    min-height: var(--g-fila);
+    border-bottom: 1px solid var(--proy-border-soft, #eef0f3);
+}
+
+.gantt-fila:last-child { border-bottom: 0; }
+.gantt-fila:hover .gantt-etiqueta,
+.gantt-fila:hover .gantt-pista { background: var(--proy-primary-soft, #eff6ff); }
+
+.gantt-etiqueta {
+    flex: 0 0 var(--g-label);
+    width: var(--g-label);
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--proy-surface, #fff);
+    border-right: 1px solid var(--proy-border, #e6e8eb);
+    padding: .35rem .75rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-width: 0;
+}
+
+.gantt-codigo {
+    flex: 0 0 auto;
+    font-size: .65rem;
+    font-weight: 700;
+    color: var(--proy-text-muted, #6b7280);
+    font-variant-numeric: tabular-nums;
+}
+
+.gantt-nombre {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: .8rem;
+    color: var(--proy-text, #111827);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gantt-pista {
+    flex: 1 1 auto;
+    position: relative;
+    min-width: var(--g-pista, 640px);
+}
+
+/* Rejilla de meses: se pinta como fondo de la pista para que las barras se
+   apoyen visualmente en las divisiones y no floten sobre un vacío. */
+.gantt-rejilla {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    pointer-events: none;
+}
+
+.gantt-rejilla span {
+    border-left: 1px solid var(--proy-border-soft, #eef0f3);
+}
+
+.gantt-rejilla span.inicio-anio {
+    border-left-color: var(--proy-border, #e6e8eb);
+}
+
+/* ------------------------------------------------------------------ barras */
+
+.gantt-barra {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 16px;
+    border-radius: 5px;
+    background: #dbeafe;
+    border: 1px solid #93c5fd;
+    overflow: hidden;
+    cursor: default;
+}
+
+.gantt-avance {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--proy-primary, #3b82f6);
+    border-radius: 4px 0 0 4px;
+}
+
+.gantt-fila[data-estado="atrasada"] .gantt-barra {
+    background: var(--proy-danger-soft, #fee2e2);
+    border-color: #fca5a5;
+}
+.gantt-fila[data-estado="atrasada"] .gantt-avance { background: var(--proy-danger, #dc2626); }
+
+.gantt-fila[data-estado="cerrada"] .gantt-barra,
+.gantt-fila[data-estado="completada"] .gantt-barra {
+    background: var(--proy-success-soft, #dcfce7);
+    border-color: #86efac;
+}
+.gantt-fila[data-estado="cerrada"] .gantt-avance,
+.gantt-fila[data-estado="completada"] .gantt-avance { background: var(--proy-success, #16a34a); }
+
+/* Una actividad planificada y aún sin empezar tiene que verse.
+   Con el gris más claro la barra desaparecía sobre el blanco de la fila y se
+   leía como «no hay nada», que es justo lo contrario de lo que dice. */
+.gantt-fila[data-estado="pendiente"] .gantt-barra {
+    background: #e9edf2;
+    border-color: #b9c1cc;
+}
+
+/* Flecha de «esto sigue más allá del filtro»: sin ella una barra recortada se
+   lee como una actividad que empieza o termina justo en el borde. */
+.gantt-barra.recorte-izq { border-left: 0; border-radius: 0 5px 5px 0; }
+.gantt-barra.recorte-der { border-right: 0; border-radius: 5px 0 0 5px; }
+.gantt-barra.recorte-izq.recorte-der { border-radius: 0; }
+
+/* -------------------------------------------------------------------- hito */
+
+.gantt-hito {
+    position: absolute;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    margin-left: -6px;
+    transform: translateY(-50%) rotate(45deg);
+    background: var(--proy-surface, #fff);
+    border: 2px solid var(--proy-primary, #3b82f6);
+    border-radius: 2px;
+}
+
+.gantt-fila[data-estado="atrasada"] .gantt-hito { border-color: var(--proy-danger, #dc2626); }
+.gantt-fila[data-estado="cerrada"] .gantt-hito,
+.gantt-fila[data-estado="completada"] .gantt-hito {
+    border-color: var(--proy-success, #16a34a);
+    background: var(--proy-success, #16a34a);
+}
+.gantt-fila[data-estado="pendiente"] .gantt-hito { border-color: #9ca3af; }
+
+/* Relleno del hito según avance: un rombo no admite barra de progreso, así
+   que el avance se insinúa con la mitad inferior pintada. */
+.gantt-hito.con-avance { background: var(--proy-primary-soft, #eff6ff); }
+
+/* ---------------------------------------------------------------- arrastre */
+
+/* El tramo entre la fecha comprometida y la vigente. Va detrás de la barra,
+   en gris rayado: es tiempo que se perdió, no trabajo planificado. */
+.gantt-arrastre {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 8px;
+    border-radius: 4px;
+    background: repeating-linear-gradient(
+        135deg,
+        #f3f4f6, #f3f4f6 4px,
+        #d1d5db 4px, #d1d5db 8px
+    );
+    border: 1px solid #e5e7eb;
+}
+
+.gantt-arrastre::after {
+    content: "";
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-left: 6px solid #9ca3af;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+}
+
+
+/* --------------------------------------------------------------------- hoy */
+
+.gantt-hoy {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    border-left: 2px dashed var(--proy-warning, #d97706);
+    z-index: 1;
+    pointer-events: none;
+}
+
+
+/* ----------------------------------------------------------------- filtros */
+
+.gantt-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: .75rem;
+    margin-bottom: 1rem;
+}
+
+.gantt-anios {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    background: var(--proy-bg, #f6f8fa);
+    border: 1px solid var(--proy-border-soft, #eef0f3);
+    border-radius: 999px;
+    padding: 4px;
+}
+
+.gantt-anios a {
+    text-decoration: none;
+    padding: .35rem 1rem;
+    font-size: .82rem;
+    font-weight: 500;
+    color: var(--proy-text-muted, #6b7280);
+    border-radius: 999px;
+    transition: background .15s ease, color .15s ease;
+    font-variant-numeric: tabular-nums;
+}
+
+.gantt-anios a:hover { color: var(--proy-primary, #3b82f6); }
+
+.gantt-anios a.activo {
+    background: var(--proy-primary, #3b82f6);
+    color: #fff;
+}
+
+/* ---------------------------------------------------------------- leyenda */
+
+.gantt-leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.1rem;
+    margin-top: .85rem;
+    font-size: .75rem;
+    color: var(--proy-text-muted, #6b7280);
+}
+
+.gantt-leyenda span {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+}
+
+.gantt-muestra {
+    display: inline-block;
+    width: 24px;
+    height: 10px;
+    border-radius: 3px;
+    background: #dbeafe;
+    border: 1px solid #93c5fd;
+}
+
+.gantt-muestra.hito {
+    width: 10px;
+    height: 10px;
+    transform: rotate(45deg);
+    border-radius: 2px;
+    background: #fff;
+    border: 2px solid var(--proy-primary, #3b82f6);
+}
+
+.gantt-muestra.arrastre {
+    background: repeating-linear-gradient(
+        135deg, #f3f4f6, #f3f4f6 4px, #d1d5db 4px, #d1d5db 8px
+    );
+    border-color: #e5e7eb;
+    height: 8px;
+}
+
+.gantt-muestra.atraso {
+    background: var(--proy-danger-soft, #fee2e2);
+    border-color: #fca5a5;
+}
+
+.gantt-muestra.cerrada {
+    background: var(--proy-success-soft, #dcfce7);
+    border-color: #86efac;
+}
+
+/* ------------------------------------------------------------------ avisos */
+
+.gantt-nota {
+    margin-top: 1rem;
+    padding: .85rem 1rem;
+    background: var(--proy-bg, #f6f8fa);
+    border: 1px solid var(--proy-border-soft, #eef0f3);
+    border-radius: var(--proy-radius-sm, 10px);
+    font-size: .8rem;
+    color: var(--proy-text-soft, #4b5563);
+}
+
+.gantt-nota strong { color: var(--proy-text, #111827); }
+
+.gantt-nota ul {
+    margin: .5rem 0 0;
+    padding-left: 1.1rem;
+}
+
+.gantt-vacia {
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--proy-text-muted, #6b7280);
+}
+
+@media (max-width: 768px) {
+    .gantt-wrap { --g-label: 170px; }
+    .gantt-nombre { font-size: .74rem; }
+}
+
+@media print {
+    .gantt-filtros, .gantt-no-imprimir { display: none !important; }
+    .gantt-scroll { overflow: visible; }
+    .gantt-wrap { box-shadow: none; }
+}

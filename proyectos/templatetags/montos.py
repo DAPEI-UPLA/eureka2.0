@@ -37,3 +37,39 @@ def miles(valor):
         return f"{valor:,.0f}".replace(",", ".")
     except (TypeError, ValueError):
         return str(valor)
+
+
+@register.filter
+def miles_abs(valor):
+    """Como `miles`, pero sin el signo.
+
+    Las desviaciones se guardan con signo (un VAC negativo es plata que falta),
+    y en la pantalla el signo ya lo pone la frase: «faltarían $25.000.000» con
+    un menos delante se leería como si sobraran.
+    """
+    try:
+        return miles(abs(Decimal(valor)))
+    except (TypeError, ValueError, InvalidOperation):
+        return miles(valor)
+
+
+@register.filter
+def escala_indice(indice):
+    """Un índice de valor ganado (0..∞) como porcentaje de una barra 0..100.
+
+    La marca del 1,00 —la meta— va al 60% del ancho, no al 100%: un índice
+    puede pasar de 1 y con la meta en el extremo derecho no habría dónde
+    dibujar el excedente, así que todo lo bueno se vería idéntico. Por encima
+    de 1,67 la barra se llena y deja de crecer; a esa altura el número exacto
+    ya no cambia ninguna decisión.
+    """
+    try:
+        valor = Decimal(indice)
+    except (TypeError, ValueError, InvalidOperation):
+        return "0"
+    if valor < 0:
+        valor = Decimal("0")
+    porcentaje = valor * Decimal("60")
+    if porcentaje > 100:
+        porcentaje = Decimal("100")
+    return f"{porcentaje:.1f}"

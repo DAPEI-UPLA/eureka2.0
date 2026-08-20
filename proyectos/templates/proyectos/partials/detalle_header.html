@@ -69,6 +69,11 @@
         </div>
 
         <div class="d-flex gap-2 align-items-center flex-shrink-0">
+            <a class="btn btn-outline-secondary btn-sm px-3"
+               href="{% url 'proyectos:gantt_proyecto' proyecto.pk %}">
+                📅 Carta Gantt
+            </a>
+
             <div class="dropdown">
                 <button class="btn btn-outline-secondary btn-sm px-3 dropdown-toggle"
                         type="button" data-bs-toggle="dropdown" aria-expanded="false">

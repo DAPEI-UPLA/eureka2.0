@@ -29,10 +29,21 @@ decide a qué endpoint se envía y qué valores se muestran precargados.
 
     <div class="row g-2 mb-2">
         <div class="col-6">
+            <label class="form-label">Fecha de inicio</label>
+            <input type="date" name="fecha_inicio" class="form-control"
+                   value="{{ datos.fecha_inicio }}">
+            <div class="form-text">
+                Con inicio la carta Gantt dibuja una barra; sin él, un hito en la fecha límite.
+            </div>
+        </div>
+        <div class="col-6">
             <label class="form-label">Fecha límite</label>
             <input type="date" name="fecha_limite" class="form-control"
                    value="{{ datos.fecha_limite }}">
         </div>
+    </div>
+
+    <div class="row g-2 mb-2">
         <div class="col-6">
             <label class="form-label">Fecha efectiva de término</label>
             <input type="date" name="fecha_efectiva" class="form-control"

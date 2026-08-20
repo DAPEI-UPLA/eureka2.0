@@ -1,9 +1,10 @@
 {% extends "core/base.html" %}
-{% load humanize %}
+{% load humanize static %}
 
 {% block title %}Proyectos{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="{% static 'proyectos/css/evm.css' %}">
 
 <style>
 .proyecto-card {
@@ -262,7 +263,10 @@
                             {% endif %}
                         </td>
                         <td><span class="badge badge-tipo">{{ proyecto.get_tipo_display }}</span></td>
-                        <td><span class="badge estado-{{ proyecto.estado }}">{{ proyecto.get_estado_display }}</span></td>
+                        <td>
+                            <span class="badge estado-{{ proyecto.estado }}">{{ proyecto.get_estado_display }}</span>
+                            {% include "proyectos/partials/evm_chip.html" %}
+                        </td>
                         <td class="small">
                             {{ proyecto.responsable|default:"—" }}
                             {% if proyecto.responsable_id == request.user.id %}
@@ -342,6 +346,7 @@
                         </div>
 
                         <div class="d-flex gap-1 align-items-center">
+                            {% include "proyectos/partials/evm_chip.html" %}
                             {% if proyecto.atrasado %}
                             <span class="badge badge-atrasado rounded-pill px-3 py-2"
                                   title="Fecha fin: {{ proyecto.fecha_fin|date:'d-m-Y' }}">
@@ -557,6 +562,32 @@
                             <label class="form-label small text-muted">Prioridad</label>
                             {{ form.prioridad }}
                         </div>
+
+                        {# Sin estas dos fechas el proyecto nunca puede salir «Atrasado» ni medir valor ganado: ambas cosas preguntan por fecha_fin y devuelven «no» cuando está vacía. #}
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Fecha de inicio</label>
+                            {{ form.fecha_inicio }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Fecha de término</label>
+                            {{ form.fecha_fin }}
+                        </div>
+                        {# El Año 1 se declara, no se deduce de la fecha: un proyecto que llega en octubre no alcanza a ejecutar ese año y su Año 1 es el siguiente. Esa regla la sabe el equipo, no el sistema. #}
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Año 1 del presupuesto</label>
+                            {{ form.anio_inicial }}
+                            <div class="form-text">
+                                El año calendario en que empieza a ejecutarse. Puede
+                                no ser el de la fecha de inicio.
+                            </div>
+                        </div>
+                        <div class="col-md-8 d-flex align-items-start">
+                            <p class="small text-muted mb-2 mt-4">
+                                Las fechas activan el aviso de proyecto atrasado y los
+                                indicadores de valor ganado. El Año 1 define desde qué
+                                año se numera el reparto del presupuesto.
+                            </p>
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label small text-muted">Estado</label>
                             {{ form.estado }}
@@ -666,6 +697,32 @@
                         <div class="col-md-4">
                             <label class="form-label small text-muted">Prioridad</label>
                             {{ edit_form.prioridad }}
+                        </div>
+
+                        {# Sin estas dos fechas el proyecto nunca puede salir «Atrasado» ni medir valor ganado: ambas cosas preguntan por fecha_fin y devuelven «no» cuando está vacía. #}
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Fecha de inicio</label>
+                            {{ edit_form.fecha_inicio }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Fecha de término</label>
+                            {{ edit_form.fecha_fin }}
+                        </div>
+                        {# El Año 1 se declara, no se deduce de la fecha: un proyecto que llega en octubre no alcanza a ejecutar ese año y su Año 1 es el siguiente. Esa regla la sabe el equipo, no el sistema. #}
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Año 1 del presupuesto</label>
+                            {{ edit_form.anio_inicial }}
+                            <div class="form-text">
+                                El año calendario en que empieza a ejecutarse. Puede
+                                no ser el de la fecha de inicio.
+                            </div>
+                        </div>
+                        <div class="col-md-8 d-flex align-items-start">
+                            <p class="small text-muted mb-2 mt-4">
+                                Las fechas activan el aviso de proyecto atrasado y los
+                                indicadores de valor ganado. El Año 1 define desde qué
+                                año se numera el reparto del presupuesto.
+                            </p>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small text-muted">Estado</label>
@@ -784,6 +841,9 @@ function toggleModoEdit() {
         setVal('edit_id_tipo', d.tipo || '');
         setVal('edit_id_responsable', d.responsable || '');
         setVal('edit_id_duracion_meses', d.duracion || '');
+        setVal('edit_id_fecha_inicio', d.inicio || '');
+        setVal('edit_id_fecha_fin', d.fin || '');
+        setVal('edit_id_anio_inicial', d.anioInicial || '');
         setVal('edit_id_prioridad', d.prioridad || '');
         setVal('edit_id_estado', d.estado || '');
         // El presupuesto es opcional al editar: dejamos los campos vacíos y

@@ -1,4 +1,11 @@
-{% load humanize l10n %}
+{% load humanize l10n montos %}
+
+{% comment %}
+Los montos van con el filtro `miles` y no con `intcomma`: en es-CL el módulo de
+formato del locale manda sobre `THOUSAND_SEPARATOR` y agrupa con espacio duro
+(«$600 000»), que es lo que hacía esta caja mientras el resto de la app usa
+punto. Con el número nuevo quedaban dos separadores distintos en la misma caja.
+{% endcomment %}
 
 <div id="presupuesto-obj-{{ objetivo.pk }}" class="presupuesto-mini">
 
@@ -10,7 +17,7 @@
               hx-target="#presupuesto-obj-{{ objetivo.pk }}"
               hx-swap="outerHTML"
               title="Click para editar">
-            ${{ objetivo.montos.presupuesto_corriente|default_if_none:objetivo.presupuesto_corriente|floatformat:0|intcomma }}
+            ${{ objetivo.montos.presupuesto_corriente|default_if_none:objetivo.presupuesto_corriente|miles }}
         </span>
     </div>
 
@@ -22,15 +29,30 @@
               hx-target="#presupuesto-obj-{{ objetivo.pk }}"
               hx-swap="outerHTML"
               title="Click para editar">
-            ${{ objetivo.montos.presupuesto_capital|default_if_none:objetivo.presupuesto_capital|floatformat:0|intcomma }}
+            ${{ objetivo.montos.presupuesto_capital|default_if_none:objetivo.presupuesto_capital|miles }}
         </span>
+    </div>
+
+    {% comment %}
+    Repartido y sin repartir, no sólo el saldo.
+
+    Antes se mostraba únicamente el disponible, que es el resto: un objetivo en
+    $0 disponible podía tener todo repartido a sus resultados o no tener
+    presupuesto, y los dos casos se veían igual. Los dos números salen de
+    `objetivo.montos`, que es el objetivo completo o su fila del año según lo
+    que esté en pantalla — por eso ambos objetos exponen los mismos nombres.
+    {% endcomment %}
+    <div class="pm-row reparto">
+        <span>En resultados:</span>
+        <span class="v">${{ objetivo.montos.presupuesto_distribuido|default_if_none:objetivo.presupuesto_distribuido|miles }}</span>
     </div>
 
     <span class="pm-disponible">
         {% if anio_sel %}
-        de {{ anio_sel.etiqueta }} ({{ anio_sel.anio_calendario|unlocalize }})
+        Sin repartir ${{ objetivo.montos.presupuesto_sin_repartir|miles }}
+        <span class="pm-anio">en {{ anio_sel.etiqueta }} ({{ anio_sel.anio_calendario|unlocalize }})</span>
         {% else %}
-        Disponible ${{ objetivo.presupuesto_disponible|floatformat:0|intcomma }}
+        Sin repartir ${{ objetivo.presupuesto_sin_repartir|miles }}
         {% endif %}
     </span>
 

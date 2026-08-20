@@ -1187,3 +1187,66 @@
     padding-top: .4rem;
     border-top: 1px dashed #e2e8f0;
 }
+
+/* ------------------------------------------------- avance del resultado */
+
+/* De dónde sale el porcentaje. Va en gris pequeño bajo la barra: es contexto
+   para interpretar el número, no un dato que compita con él. */
+.avance-origen {
+    font-size: .62rem;
+    color: var(--proy-text-muted, #6b7280);
+    margin-top: .15rem;
+    line-height: 1.2;
+}
+
+/* Los que nadie definió se marcan, pero sin color de alarma: no es un error
+   del equipo, es una tarea pendiente. */
+.avance-sin-definir {
+    font-style: italic;
+    color: #9ca3af;
+}
+
+.celda-avance:hover .avance-origen { color: var(--proy-primary, #3b82f6); }
+
+.avance-opciones { display: grid; gap: .5rem; }
+
+.avance-opcion {
+    display: flex;
+    gap: .6rem;
+    align-items: flex-start;
+    padding: .7rem .9rem;
+    border: 1px solid var(--proy-border, #e6e8eb);
+    border-radius: var(--proy-radius-sm, 10px);
+    cursor: pointer;
+}
+
+.avance-opcion:hover { border-color: var(--proy-primary, #3b82f6); }
+.avance-opcion:has(input:checked) {
+    border-color: var(--proy-primary, #3b82f6);
+    background: var(--proy-primary-soft, #eff6ff);
+}
+
+.avance-bloque {
+    display: none;
+    padding: .75rem .9rem;
+    margin: -.25rem 0 .25rem 1.5rem;
+    border-left: 2px solid var(--proy-primary, #3b82f6);
+    background: var(--proy-bg, #f6f8fa);
+    border-radius: 0 var(--proy-radius-sm, 10px) var(--proy-radius-sm, 10px) 0;
+}
+
+.avance-tramo {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    padding: .3rem 0;
+    font-size: .85rem;
+    cursor: pointer;
+}
+
+/* Lo repartido a los resultados, en la cabecera del objetivo. Va en la misma
+   rejilla que corriente y capital pero sin su color de bolsa: no es una bolsa
+   más, es cuánto de las dos ya bajó a los resultados. */
+.presupuesto-mini .pm-row.reparto span:first-child { color: var(--proy-text-muted, #6b7280); }
+.presupuesto-mini .pm-row.reparto .v { cursor: default; }
+.presupuesto-mini .pm-anio { opacity: .75; }

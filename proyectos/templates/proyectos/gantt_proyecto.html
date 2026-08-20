@@ -1,0 +1,235 @@
+{% extends "core/base.html" %}
+{% load static l10n %}
+
+{% block title %}Carta Gantt · {{ proyecto.nombre }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'proyectos/css/detalle_proyecto.css' %}">
+<link rel="stylesheet" href="{% static 'proyectos/css/gantt.css' %}">
+
+{% comment %}
+Todo el dibujo va dentro de `{% localize off %}`.
+
+Los porcentajes salen del servidor como float y la app corre en es-CL: sin esto
+Django los escribiría con coma decimal («left: 12,5%»), que el navegador
+descarta en silencio y deja todas las barras pegadas al borde izquierdo. Es el
+mismo tropiezo que ya costó el «?anio=2 026» del selector de años.
+{% endcomment %}
+{% localize off %}
+
+<div class="proyecto-detalle">
+<div class="container-fluid">
+
+    {% comment %}
+    Dice «Volver» y no el nombre del proyecto: los nombres reales son largos
+    («Fortalecimiento de la vinculación con el medio en la Facultad de…») y el
+    enlace se estiraba media pantalla. El nombre igual está dos líneas más
+    abajo, en el título, así que no se pierde de dónde se viene.
+    {% endcomment %}
+    <a href="{% url 'proyectos:detalle_proyecto' proyecto.pk %}"
+       class="btn-volver mb-3" title="Volver a {{ proyecto.nombre }}">
+        <span class="arrow">←</span> Volver
+    </a>
+
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+        {% comment %}
+        `min-width: 0` va en línea porque la clase `min-width-0` que usa el
+        detalle no existe en ninguna hoja: sin ella, un hijo de flex no baja de
+        su ancho intrínseco y `text-truncate` no recorta nada.
+        {% endcomment %}
+        <div style="min-width: 0">
+            <div class="text-muted small text-truncate">{{ proyecto.nombre }}</div>
+            <h2 class="mb-1">Carta Gantt</h2>
+            <p class="text-muted small mb-0">
+                {% if vacia %}
+                    Ninguna actividad tiene fechas todavía.
+                {% else %}
+                    {{ filas|length }} de {{ total_actividades }} actividades
+                    entre {{ ventana_ini|date:"F Y" }} y {{ ventana_fin|date:"F Y" }}.
+                {% endif %}
+            </p>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm px-3 gantt-no-imprimir"
+                onclick="window.print()">
+            🖨 Imprimir
+        </button>
+    </div>
+
+    {% if anios %}
+    <div class="gantt-filtros gantt-no-imprimir">
+        <div>
+            <label class="form-label small text-muted mb-1 d-block">Año</label>
+            <div class="gantt-anios" role="group" aria-label="Año de la carta">
+                <a href="{% url 'proyectos:gantt_proyecto' proyecto.pk %}"
+                   class="{% if not anio_sel %}activo{% endif %}">Todo el proyecto</a>
+                {% for a in anios %}
+                <a href="?anio={{ a|unlocalize }}"
+                   class="{% if anio_sel == a %}activo{% endif %}">{{ a|unlocalize }}</a>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% comment %}
+        Los meses sólo se ofrecen con un año elegido: «marzo a junio» sobre un
+        proyecto de tres años no dice de cuál marzo se habla.
+        {% endcomment %}
+        {% if anio_sel %}
+        <form method="get" class="d-flex align-items-end gap-2 flex-wrap">
+            <input type="hidden" name="anio" value="{{ anio_sel|unlocalize }}">
+            <div>
+                <label class="form-label small text-muted mb-1" for="gantt-desde">Desde</label>
+                <select id="gantt-desde" name="mes_desde" class="form-select form-select-sm">
+                    {% for n, nombre in meses_opciones %}
+                    <option value="{{ n|unlocalize }}" {% if n == mes_desde %}selected{% endif %}>{{ nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label small text-muted mb-1" for="gantt-hasta">Hasta</label>
+                <select id="gantt-hasta" name="mes_hasta" class="form-select form-select-sm">
+                    {% for n, nombre in meses_opciones %}
+                    <option value="{{ n|unlocalize }}" {% if n == mes_hasta %}selected{% endif %}>{{ nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button class="btn btn-sm btn-primary px-3">Aplicar</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if vacia %}
+    <div class="gantt-wrap">
+        <div class="gantt-vacia">
+            <p class="mb-2">No hay nada que dibujar todavía.</p>
+            <p class="small mb-0">
+                Una actividad aparece en la carta cuando tiene al menos una fecha.
+                Cárgalas desde el detalle del proyecto.
+            </p>
+        </div>
+    </div>
+
+    {% else %}
+
+    <div class="gantt-wrap" style="--g-pista: {{ ancho_minimo }}px">
+        <div class="gantt-scroll">
+            <div class="gantt-tabla">
+
+                <div class="gantt-cabecera">
+                    <div class="gantt-cab-fila">
+                        <div class="gantt-cab-esquina">Actividad</div>
+                        <div class="gantt-cab-pista">
+                            {% for a in anios_cabecera %}
+                            <div class="gantt-cab-anio" style="width: {{ a.ancho }}%">{{ a.anio|unlocalize }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="gantt-cab-fila">
+                        <div class="gantt-cab-esquina"></div>
+                        <div class="gantt-cab-pista">
+                            {% for m in meses %}
+                            <div class="gantt-cab-mes {% if m.inicio_de_anio %}inicio-anio{% endif %}"
+                                 style="width: {{ m.ancho }}%">{{ m.nombre }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="gantt-cuerpo">
+                    {% for fila in filas %}
+                    <div class="gantt-fila" data-estado="{{ fila.estado }}">
+
+                        <div class="gantt-etiqueta">
+                            <span class="gantt-codigo">{{ fila.etiqueta }}</span>
+                            <span class="gantt-nombre" title="{{ fila.actividad.nombre }}&#10;{{ fila.resultado.descripcion }}">
+                                {{ fila.actividad.nombre }}
+                            </span>
+                        </div>
+
+                        <div class="gantt-pista">
+                            <div class="gantt-rejilla" aria-hidden="true">
+                                {% for m in meses %}
+                                <span class="{% if m.inicio_de_anio %}inicio-anio{% endif %}"
+                                      style="width: {{ m.ancho }}%"></span>
+                                {% endfor %}
+                            </div>
+
+                            {% if hoy is not None %}
+                            <div class="gantt-hoy" style="left: {{ hoy }}%" aria-hidden="true"></div>
+                            {% endif %}
+
+                            {% if fila.arrastre %}
+                            <div class="gantt-arrastre"
+                                 style="left: {{ fila.arrastre.izquierda }}%; width: {{ fila.arrastre.ancho }}%"
+                                 title="Se corrió {{ fila.arrastre_dias }} días: comprometida para el {{ fila.actividad.fecha_limite_original|date:'d M Y' }}, hoy va al {{ fila.actividad.fecha_limite|date:'d M Y' }}."></div>
+                            {% endif %}
+
+                            {% if fila.barra %}
+                            <div class="gantt-barra {% if fila.barra.recorte_izq %}recorte-izq{% endif %} {% if fila.barra.recorte_der %}recorte-der{% endif %}"
+                                 style="left: {{ fila.barra.izquierda }}%; width: {{ fila.barra.ancho }}%"
+                                 title="{{ fila.actividad.fecha_inicio|date:'d M Y' }} → {{ fila.actividad.fecha_termino_dibujada|date:'d M Y' }} · {{ fila.avance|floatformat:0 }}% de avance">
+                                {% if fila.avance %}
+                                <div class="gantt-avance" style="width: {{ fila.avance|unlocalize }}%"></div>
+                                {% endif %}
+                            </div>
+                            {% elif fila.hito is not None %}
+                            <div class="gantt-hito {% if fila.avance %}con-avance{% endif %}"
+                                 style="left: {{ fila.hito }}%"
+                                 title="Sin fecha de inicio. Límite: {{ fila.actividad.fecha_termino_dibujada|date:'d M Y' }} · {{ fila.avance|floatformat:0 }}% de avance"></div>
+                            {% endif %}
+                        </div>
+
+                    </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    {% if hoy is not None %}
+    <p class="small text-muted mt-2 mb-0">La línea punteada naranja marca el día de hoy.</p>
+    {% endif %}
+
+    <div class="gantt-leyenda">
+        <span><i class="gantt-muestra"></i> Barra: hay fecha de inicio</span>
+        <span><i class="gantt-muestra hito"></i> Hito: sólo se conoce la fecha límite</span>
+        <span><i class="gantt-muestra arrastre"></i> Tramo arrastrado desde el compromiso original</span>
+        <span><i class="gantt-muestra atraso"></i> Vencida sin completar</span>
+        <span><i class="gantt-muestra cerrada"></i> Cerrada o al 100%</span>
+    </div>
+
+    {% if fuera_de_ventana %}
+    <div class="gantt-nota">
+        <strong>{{ fuera_de_ventana }} actividad{{ fuera_de_ventana|pluralize:"es" }}</strong>
+        queda{{ fuera_de_ventana|pluralize:"n" }} fuera del rango elegido.
+        Amplía el filtro o vuelve a «Todo el proyecto» para verlas.
+    </div>
+    {% endif %}
+
+    {% endif %}
+
+    {% comment %}
+    Va fuera del `if vacia` a propósito: cuando NINGUNA actividad tiene fechas,
+    la carta está vacía y son justo éstas las que hay que nombrar. Adentro de la
+    rama, un proyecto entero sin fechas mostraba «no hay nada que dibujar» y sus
+    actividades no aparecían por ninguna parte.
+    {% endcomment %}
+    {% if sin_fecha %}
+    <div class="gantt-nota">
+        <strong>{{ sin_fecha|length }} actividad{{ sin_fecha|length|pluralize:"es" }}</strong>
+        sin ninguna fecha cargada. No se pueden ubicar en el tiempo, así que no
+        {% if vacia %}hay nada que dibujar{% else %}aparecen arriba{% endif %}:
+        <ul>
+            {% for actividad, etiqueta, resultado in sin_fecha %}
+            <li><span class="gantt-codigo">{{ etiqueta }}</span> {{ actividad.nombre }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+</div>
+</div>
+
+{% endlocalize %}
+{% endblock %}

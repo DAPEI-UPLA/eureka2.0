@@ -55,6 +55,9 @@ class ProyectoForm(forms.ModelForm):
             'tipo',
             'responsable',
             'duracion_meses',
+            'fecha_inicio',
+            'fecha_fin',
+            'anio_inicial',
             'prioridad',
             'estado',
             'presupuesto_total',
@@ -69,6 +72,17 @@ class ProyectoForm(forms.ModelForm):
             'tipo': forms.Select(attrs={'class': 'form-select'}),
             'responsable': forms.Select(attrs={'class': 'form-select'}),
             'duracion_meses': forms.NumberInput(attrs={'class': 'form-control'}),
+            # `type="date"` para que el navegador muestre su calendario. El
+            # formato ISO del value es el único que ese control acepta, así que
+            # las plantillas lo escriben con `|date:"Y-m-d"` y no localizado.
+            'fecha_inicio': forms.DateInput(
+                attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
+            'fecha_fin': forms.DateInput(
+                attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
+            'anio_inicial': forms.NumberInput(attrs={
+                'class': 'form-control', 'placeholder': 'Ej: 2026',
+                'min': 2000, 'max': 2100, 'step': 1,
+            }),
             'prioridad': forms.Select(attrs={'class': 'form-select'}),
             'estado': forms.Select(attrs={'class': 'form-select'}),
             'presupuesto_total': forms.NumberInput(attrs={'class': 'form-control'}),

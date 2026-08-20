@@ -1,0 +1,25 @@
+{% comment %}
+El chip de valor ganado de la lista.
+
+Sólo aparece en ámbar o rojo. Un proyecto sano no lleva insignia: si todas las
+tarjetas tuvieran una, ninguna destacaría, que es justo lo contrario de lo que
+se pide de una alerta. El texto dice el problema —«atraso», «sobrecosto»— y no
+la sigla, porque en la lista se lee de paso.
+{% endcomment %}
+{% with e=proyecto.evm %}
+{% if e.estado == "critico" or e.estado == "atencion" %}
+<span class="evm-chip evm-{{ e.estado }}"
+      title="{% for a in e.alertas %}{{ a.titulo }}. {{ a.detalle }} {% endfor %}">
+    <span class="evm-chip-punto" aria-hidden="true"></span>
+    {% if e.estado_spi == "critico" or e.estado_spi == "atencion" %}
+        {% if e.estado_cpi == "critico" or e.estado_cpi == "atencion" %}
+            Atraso y sobrecosto
+        {% else %}
+            Atraso
+        {% endif %}
+    {% else %}
+        Sobrecosto
+    {% endif %}
+</span>
+{% endif %}
+{% endwith %}

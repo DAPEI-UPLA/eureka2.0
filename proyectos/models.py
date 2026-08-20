@@ -135,6 +135,8 @@ class SinAsignacionAnual:
     presupuesto_capital = Decimal("0")
     presupuesto_asignado = Decimal("0")
     presupuesto_total = Decimal("0")
+    presupuesto_distribuido = Decimal("0")
+    presupuesto_sin_repartir = Decimal("0")
 
     def __bool__(self):
         return False
@@ -256,6 +258,21 @@ class Proyecto(models.Model):
 
     fecha_inicio = models.DateField(null=True, blank=True)
     fecha_fin = models.DateField(null=True, blank=True)
+
+    # El año calendario que corresponde al «Año 1» del presupuesto.
+    #
+    # Lo declara quien crea el proyecto en vez de deducirse de `fecha_inicio`,
+    # porque no son lo mismo: un proyecto que llega en octubre no alcanza a
+    # ejecutar ese año y su Año 1 es el siguiente. Cuándo se corre al año
+    # siguiente depende de la resolución y de cuándo se transfiere, y es una
+    # regla que el equipo conoce caso a caso. Deducirla acertaría a veces y
+    # fallaría en silencio el resto.
+    anio_inicial = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="Año 1 del presupuesto",
+        help_text="El año calendario en que empieza a ejecutarse.",
+        validators=[MinValueValidator(2000), MaxValueValidator(2100)],
+    )
 
     prioridad = models.CharField(max_length=10, choices=PRIORIDADES, default='MEDIA')
     estado = models.CharField(max_length=20, choices=ESTADOS, default='PLANIFICADO')
@@ -492,20 +509,82 @@ class Proyecto(models.Model):
         parte en julio y dura 36 meses toca cuatro años calendario y no tres.
         Si no hay fechas se cae a la duración, que es lo único que queda.
         """
+        # Con el Año 1 declarado manda la duración, no el rango de fechas: un
+        # proyecto que llega en octubre de 2025 y dura 36 meses toca cuatro
+        # años calendario pero tiene tres años de presupuesto, porque el 2025
+        # no se ejecuta. Contar por fechas le agregaría un año de más.
+        if self.anio_inicial and self.duracion_meses:
+            return -(-self.duracion_meses // 12)  # techo de la división
         if self.fecha_inicio and self.fecha_fin:
             return self.fecha_fin.year - self.fecha_inicio.year + 1
         if self.duracion_meses:
-            return -(-self.duracion_meses // 12)  # techo de la división
+            return -(-self.duracion_meses // 12)
         return 1
 
     @property
     def anio_calendario_inicial(self):
-        if self.fecha_inicio:
-            return self.fecha_inicio.year
+        """El año calendario del Año 1.
+
+        Manda lo que declaró quien creó el proyecto. Los respaldos son cada vez
+        peores y están sólo para que los proyectos viejos sigan funcionando:
+        `fecha_inicio` puede errar por uno —el año de llegada no siempre es el
+        primero de ejecución— y el año en curso es puro relleno.
+        """
+        if self.anio_inicial:
+            return self.anio_inicial
         primero = self.presupuestos_anuales.first()
         if primero:
             return primero.anio_calendario
+        if self.fecha_inicio:
+            return self.fecha_inicio.year
         return date.today().year
+
+    @property
+    def anios_calendario_esperados(self):
+        """Los años que el proyecto debería tener, contados desde el Año 1.
+
+        Lista vacía cuando nadie declaró el año inicial. Es a propósito: no se
+        deduce de `fecha_inicio` porque el año en que llega el proyecto no es
+        necesariamente su primer año de ejecución —uno que llega en octubre no
+        alcanza a ejecutar y su Año 1 es el siguiente—, y esa regla varía de un
+        proyecto a otro. Vale más no proponer nada que proponer mal.
+        """
+        if not self.anio_inicial:
+            return []
+        return list(range(
+            self.anio_inicial, self.anio_inicial + self.cantidad_anios_sugerida
+        ))
+
+    @property
+    def anios_calendario_cargados(self):
+        return [a.anio_calendario for a in self.presupuestos_anuales.all()]
+
+    @property
+    def anios_faltantes(self):
+        cargados = set(self.anios_calendario_cargados)
+        return [a for a in self.anios_calendario_esperados if a not in cargados]
+
+    @property
+    def anios_desalineados(self):
+        """True si los años cargados no son los que corresponden al Año 1.
+
+        Pasa en todos los proyectos creados antes de que el formulario pidiera
+        el año inicial: sin ese dato, el primer año se creaba con el año en
+        curso, así que un proyecto de 2024 quedó con «Año 1 → 2026».
+        """
+        esperados = self.anios_calendario_esperados
+        if not esperados:
+            return False
+        return sorted(self.anios_calendario_cargados) != esperados
+
+    @property
+    def anios_con_poa(self):
+        """Los años cargados que ya tienen planes de gasto colgando.
+
+        Cambiarle el año calendario a uno de ellos cambia a qué año pertenece
+        su POA, así que la realineación se niega a tocarlos.
+        """
+        return [a for a in self.presupuestos_anuales.all() if a.planificado]
 
     def presupuesto_del_anio(self, numero_anio):
         return self.presupuestos_anuales.filter(numero_anio=numero_anio).first()
@@ -914,8 +993,41 @@ class ObjetivoEspecifico(AuditableModel):
         return self.presupuesto_capital - self.capital_distribuido
 
     @property
+    def presupuesto_distribuido(self):
+        """Lo que ya está repartido entre sus resultados.
+
+        Faltaba en la cabecera del objetivo: sólo se veía el disponible, que es
+        el resto. Con el saldo solo, un objetivo en $0 disponible puede tener
+        todo repartido o no tener presupuesto, y los dos casos se ven igual.
+        """
+        return self.corriente_distribuido + self.capital_distribuido
+
+    @property
     def presupuesto_disponible(self):
         return self.corriente_disponible + self.capital_disponible
+
+    # La cabecera lee siempre estos dos nombres, mire el proyecto completo o un
+    # año: así la plantilla no tiene que saber cuál de los dos objetos le tocó.
+    @property
+    def presupuesto_sin_repartir(self):
+        return self.presupuesto_disponible
+
+    def distribuido_en(self, anio_calendario, naturaleza=None):
+        """Lo repartido a sus resultados en un año calendario concreto.
+
+        El total de toda la vida del objetivo no sirve cuando la pantalla mira
+        un año: diría una cifra que no corresponde a lo que se está viendo.
+        """
+        filas = PresupuestoResultadoAnual.objects.filter(
+            resultado__objetivo=self,
+            resultado__eliminado=False,
+            anio__anio_calendario=anio_calendario,
+        )
+        if naturaleza == CORRIENTE:
+            return filas.aggregate(t=Sum("presupuesto_corriente"))["t"] or Decimal("0")
+        if naturaleza == CAPITAL:
+            return filas.aggregate(t=Sum("presupuesto_capital"))["t"] or Decimal("0")
+        return sum((f.presupuesto_total for f in filas), Decimal("0"))
 
     def soft_delete(self):
         self.eliminado = True
@@ -1086,6 +1198,32 @@ class PresupuestoObjetivoAnual(AuditableModel):
     def disponible(self):
         return self.presupuesto_total - self.planificado
 
+    @property
+    def distribuido(self):
+        """Lo repartido a los resultados dentro de este año."""
+        return self.objetivo.distribuido_en(self.anio.anio_calendario)
+
+    @property
+    def distribuido_corriente(self):
+        return self.objetivo.distribuido_en(self.anio.anio_calendario, CORRIENTE)
+
+    @property
+    def distribuido_capital(self):
+        return self.objetivo.distribuido_en(self.anio.anio_calendario, CAPITAL)
+
+    @property
+    def sin_distribuir(self):
+        return self.presupuesto_total - self.distribuido
+
+    # Mismos nombres que en el objetivo completo (ver allá el porqué).
+    @property
+    def presupuesto_distribuido(self):
+        return self.distribuido
+
+    @property
+    def presupuesto_sin_repartir(self):
+        return self.sin_distribuir
+
     def clean(self):
         if self.objetivo_id and self.anio_id:
             if self.anio.proyecto_id != self.objetivo.proyecto_id:
@@ -1173,6 +1311,68 @@ class Resultado(AuditableModel):
     descripcion = models.TextField(blank=True, default="")
     duracion_meses = models.PositiveIntegerField(default=0)
 
+    # CÓMO SE MIDE EL AVANCE DE ESTE RESULTADO
+    #
+    # El problema que resuelve: si cada equipo pone «como un 60%», los números
+    # no se pueden comparar ni auditar. La institución ya estandariza en la app
+    # de planificación midiendo contra una meta —`Indicador` lleva la fórmula
+    # «(Cantidad lograda / Meta) * 100»— y esto traslada esa idea al resultado.
+    #
+    # Con meta el número no se opina, se cuenta, y en una rendición se pueden
+    # mostrar las siete unidades logradas. Para lo que no es contable —«sistema
+    # implementado» no es 12 de nada— queda una escala de tramos con criterio
+    # escrito, donde se elige de una lista y no se escribe un porcentaje libre.
+    #
+    # Queda vacío a propósito en los resultados que ya existían: así se
+    # distingue «nadie ha definido cómo se mide» de «se eligió medir por
+    # actividades», y ningún número se mueve solo al desplegar.
+
+    METODO_META = "META"
+    METODO_TRAMOS = "TRAMOS"
+    METODO_ACTIVIDADES = "ACTIVIDADES"
+
+    METODOS_AVANCE = [
+        (METODO_META, "Meta contable"),
+        (METODO_TRAMOS, "Escala de tramos"),
+        (METODO_ACTIVIDADES, "Promedio de sus actividades"),
+    ]
+
+    # Los tramos y su criterio. Se elige de esta lista, no se escribe un número:
+    # que todos usen los mismos cinco escalones es lo que hace comparables los
+    # resultados que no se pueden contar.
+    TRAMOS = [
+        (0, "0% — No iniciado"),
+        (25, "25% — Diseñado o planificado"),
+        (50, "50% — En ejecución, primera mitad"),
+        (75, "75% — En ejecución, por cerrar"),
+        (100, "100% — Terminado y verificado"),
+    ]
+
+    metodo_avance = models.CharField(
+        max_length=12, choices=METODOS_AVANCE, blank=True, default="",
+        verbose_name="Cómo se mide el avance",
+        help_text="Vacío: todavía no se define y se calcula desde las actividades.",
+    )
+
+    unidad_meta = models.CharField(
+        max_length=60, blank=True, default="",
+        verbose_name="Unidad de la meta",
+        help_text="Qué se cuenta: convenios, talleres, informes…",
+    )
+    meta = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="Meta comprometida",
+    )
+    alcanzado = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Alcanzado a la fecha",
+    )
+
+    tramo = models.PositiveSmallIntegerField(
+        choices=TRAMOS, default=0,
+        verbose_name="Tramo de avance",
+    )
+
     presupuesto_corriente = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     presupuesto_capital = models.DecimalField(max_digits=15, decimal_places=2, default=0)
 
@@ -1232,14 +1432,42 @@ class Resultado(AuditableModel):
     # CUMPLIMIENTO DERIVADO
     @property
     def cumplimiento(self):
-        """Promedio simple del avance de sus actividades.
+        """El avance del resultado, según el método que declaró el equipo.
 
-        Antes se ponderaba por el presupuesto de cada actividad. Ahora las
-        actividades no llevan monto, así que no hay con qué ponderar: todas
-        pesan igual. Es defendible —lo que se mide es cuánto del trabajo
-        comprometido está hecho, y el trabajo ya no tiene precio propio— pero
-        conviene saberlo: dos actividades muy desiguales en esfuerzo cuentan lo
-        mismo.
+        De acá sale el valor ganado del proyecto entero
+        —EV = Σ(presupuesto del resultado × su avance)—, así que el método
+        elegido mueve el SPI de todo el sistema. Por eso cada resultado guarda
+        con qué regla se midió: un 58% contado contra una meta y un 50% elegido
+        en una escala no son el mismo dato, y la pantalla lo dice.
+        """
+        if self.metodo_avance == self.METODO_META:
+            return self._avance_por_meta()
+        if self.metodo_avance == self.METODO_TRAMOS:
+            return Decimal(self.tramo or 0)
+        return self._avance_por_actividades()
+
+    def _avance_por_meta(self):
+        """Alcanzado sobre meta, topado en 100%.
+
+        El tope no es cosmético: sin él, un resultado que superó su meta
+        aportaría al valor ganado más presupuesto del que tiene asignado, y el
+        EV del proyecto podría pasarse del BAC. Haber hecho quince convenios de
+        doce es una buena noticia, no un 125% de trabajo pagado.
+        """
+        if not self.meta:
+            return Decimal("0")
+        avance = Decimal(self.alcanzado or 0) / Decimal(self.meta) * 100
+        return min(avance, Decimal("100")).quantize(Decimal("0.01"))
+
+    def _avance_por_actividades(self):
+        """Promedio simple de sus actividades. Es el método de los resultados
+        que todavía no declaran cómo se miden.
+
+        Todas las actividades pesan igual: desde que dejaron de llevar
+        presupuesto no hay con qué ponderarlas. Dos actividades muy desiguales
+        en esfuerzo cuentan lo mismo, y un resultado sin actividades lee 0%
+        —que es indistinguible de «no ha empezado»—. Ésa es justamente la razón
+        de que exista `metodo_avance`.
         """
         actividades = list(self.actividades.all())
         if not actividades:
@@ -1248,6 +1476,24 @@ class Resultado(AuditableModel):
             sum((Decimal(a.cumplimiento) for a in actividades), Decimal("0"))
             / len(actividades)
         ).quantize(Decimal("0.01"))
+
+    @property
+    def avance_definido(self):
+        """¿Alguien declaró cómo se mide este resultado?"""
+        return bool(self.metodo_avance)
+
+    @property
+    def avance_explicacion(self):
+        """Una línea que dice de dónde sale el número. Va en la fila."""
+        if self.metodo_avance == self.METODO_META:
+            unidad = self.unidad_meta or "unidades"
+            return f"{self.alcanzado or 0} de {self.meta or 0} {unidad}"
+        if self.metodo_avance == self.METODO_TRAMOS:
+            return dict(self.TRAMOS).get(self.tramo, "").split("—")[-1].strip()
+        cuantas = self.actividades.count()
+        if not cuantas:
+            return "sin actividades ni método definido"
+        return f"promedio de {cuantas} actividad{'es' if cuantas != 1 else ''}"
 
     @property
     def estado(self):
@@ -1585,6 +1831,19 @@ class Actividad(AuditableModel):
         blank=True,
     )
 
+    # Cuándo se planifica empezarla. Opcional a propósito.
+    #
+    # Sin ella una actividad no es una barra en el tiempo sino un punto: sólo
+    # se sabe cuándo hay que tenerla lista. La carta Gantt lo respeta —dibuja
+    # barra cuando hay inicio y un hito cuando no— en vez de inventar un
+    # comienzo, porque una duración supuesta se ve tan legítima como una real
+    # y nadie la vuelve a corregir.
+    fecha_inicio = models.DateField(
+        null=True, blank=True,
+        verbose_name="Fecha de inicio",
+        help_text="Cuándo parte la actividad. Déjala vacía si aún no se define.",
+    )
+
     fecha_limite = models.DateField(null=True, blank=True)
 
     # La primera fecha límite que tuvo, y que ya no se mueve nunca.
@@ -1629,6 +1888,31 @@ class Actividad(AuditableModel):
 
     class Meta:
         ordering = ["orden", "id"]
+
+    def clean(self):
+        super().clean()
+        if self.fecha_inicio and self.fecha_limite and self.fecha_inicio > self.fecha_limite:
+            raise ValidationError(
+                {"fecha_inicio": "La fecha de inicio no puede ser posterior a la fecha límite."}
+            )
+
+    # LO QUE NECESITA LA CARTA GANTT
+    #
+    # Una actividad puede tener hasta cuatro fechas y no todas significan lo
+    # mismo: `fecha_limite_original` es lo que se prometió, `fecha_limite` lo
+    # que se sostiene hoy, `fecha_efectiva` lo que pasó. Lo de abajo resuelve
+    # cuál manda para dibujar, en un solo lugar, para que la plantilla no tenga
+    # que decidirlo con encadenados de `{% if %}`.
+
+    @property
+    def tiene_barra(self):
+        """True si se sabe cuándo parte y cuándo termina."""
+        return bool(self.fecha_inicio and self.fecha_limite)
+
+    @property
+    def fecha_termino_dibujada(self):
+        """El extremo derecho de la barra: lo real si cerró, si no lo vigente."""
+        return self.fecha_efectiva or self.fecha_limite
 
     @property
     def planificado(self):

@@ -66,7 +66,19 @@
         {% include "proyectos/partials/monto_bolsas.html" with total=resultado.saldo corriente=resultado.saldo_corriente capital=resultado.saldo_capital %}
     </td>
 
-    <td class="text-center">
+    {% comment %}
+    El avance abre el editor de método. Debajo del porcentaje va de dónde sale
+    el número: un 58% contado contra una meta y un 50% elegido en una escala no
+    son el mismo dato, y sin decirlo la columna los muestra idénticos.
+    {% endcomment %}
+    <td class="text-center celda-avance"
+        style="cursor:pointer;"
+        hx-get="{% url 'proyectos:avance_resultado_form' resultado.pk %}"
+        hx-target="#modal-body"
+        hx-swap="innerHTML"
+        data-bs-toggle="modal"
+        data-bs-target="#modalPresupuesto"
+        title="Definir cómo se mide este resultado">
         <div class="d-flex align-items-center justify-content-center gap-2">
             <small class="text-muted" style="width:30px; text-align:right;">{{ resultado.cumplimiento|floatformat:0 }}%</small>
             <div class="progress-mini">
@@ -76,6 +88,13 @@
                     {% elif resultado.cumplimiento > 0 %}background:#ffc107;
                     {% else %}background:#adb5bd;{% endif %}"></div>
             </div>
+        </div>
+        <div class="avance-origen">
+            {% if resultado.avance_definido %}
+                {{ resultado.avance_explicacion }}
+            {% else %}
+                <span class="avance-sin-definir">sin método definido</span>
+            {% endif %}
         </div>
     </td>
 

@@ -8,6 +8,7 @@ from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from .. import evm
 from ..forms import ProyectoForm
 from ..models import Proyecto
 from .permisos import es_jefe, usuario_es_responsable
@@ -64,7 +65,10 @@ def lista_proyectos(request):
     # paginada: ordenar después de paginar dejaría proyectos propios en la
     # página 3.
     qs = Proyecto.objects.with_resumen().prefetch_related(
-        'objetivos__resultados__actividades'
+        'objetivos__resultados__actividades',
+        # Para el chip de valor ganado: sin esto, calcular el SPI de cada
+        # tarjeta consultaría el reparto anual proyecto por proyecto.
+        'objetivos__resultados__presupuestos_anuales__anio',
     ).annotate(
         _es_mio=Case(
             When(responsable=user, then=Value(0)),
@@ -91,6 +95,14 @@ def lista_proyectos(request):
 
     vista = request.GET.get('vista', 'tarjetas')
     page_obj = Paginator(qs, 12).get_page(request.GET.get('page'))
+
+    # El semáforo de valor ganado, sólo para los doce de esta página.
+    #
+    # Se cuelga del objeto en vez de calcularse en la plantilla porque el
+    # cálculo lee la base: hacerlo dentro de un `{% for %}` lo dejaría fuera de
+    # cualquier control de consultas y sin forma de probarlo.
+    for proyecto in page_obj.object_list:
+        proyecto.evm = evm.calcular(proyecto)
 
     return render(request, 'proyectos/lista_proyectos.html', {
         'proyectos': page_obj.object_list,

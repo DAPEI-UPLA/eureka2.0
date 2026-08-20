@@ -1,4 +1,4 @@
-{% load humanize %}
+{% load humanize l10n %}
 <div class="dropdown d-inline-block">
     <button class="btn btn-sm btn-light border-0 px-2"
             type="button"
@@ -24,6 +24,14 @@
                     data-tipo="{{ proyecto.tipo }}"
                     data-responsable="{{ proyecto.responsable_id|default_if_none:'' }}"
                     data-duracion="{{ proyecto.duracion_meses }}"
+                    {# ISO obligatorio: es el único formato que acepta un <input type="date">. #}
+                    data-inicio="{{ proyecto.fecha_inicio|date:'Y-m-d' }}"
+                    data-fin="{{ proyecto.fecha_fin|date:'Y-m-d' }}"
+                    {# El JS lo lee como `d.anioInicial`: los data-* con guion se camel-casean.
+                       `unlocalize` es obligatorio: en es-CL un entero se escribe «2.026» y el
+                       campo del modal lo descartaría, dejándolo vacío. Mismo tropiezo que el
+                       «?anio=2 026» del selector de años. #}
+                    data-anio-inicial="{{ proyecto.anio_inicial|default_if_none:''|unlocalize }}"
                     data-prioridad="{{ proyecto.prioridad }}"
                     data-estado="{{ proyecto.estado }}"
                     data-total="{{ proyecto.presupuesto_total|floatformat:0 }}"

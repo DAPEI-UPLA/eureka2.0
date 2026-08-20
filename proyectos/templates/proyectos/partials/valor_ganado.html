@@ -1,0 +1,189 @@
+{% load l10n %}
+{% load montos %}
+
+{% comment %}
+Panel de valor ganado.
+
+El orden es deliberado: primero la alerta en castellano, después los índices,
+y sólo al final los tres montos de los que salen. Quien abre esta pantalla
+necesita saber si hay un problema, no repasar la fórmula; el que quiera
+verificarla tiene los números abajo.
+
+Los porcentajes de las barras van dentro de `{% localize off %}` porque en
+es-CL Django los escribiría con coma y el navegador descartaría la regla.
+{% endcomment %}
+
+{% if not v.medible %}
+<div class="evm-vacio">
+    <strong>Todavía no hay con qué medir el valor ganado.</strong>
+    <p class="mb-0 mt-1">
+        Hacen falta tres cosas: presupuesto repartido en objetivos y resultados,
+        avance cargado en las actividades, y
+        {% if v.origen_pv == "sin_base" %}
+            una línea base con fechas — el reparto por año, o al menos las fechas
+            de inicio y fin del proyecto.
+        {% else %}
+            gastos registrados.
+        {% endif %}
+    </p>
+</div>
+
+{% else %}
+
+{% if v.alertas %}
+<div class="evm-alertas">
+    {% for alerta in v.alertas %}
+    <div class="evm-alerta evm-{{ alerta.nivel }}">
+        <span class="evm-alerta-indice">{{ alerta.indice }}</span>
+        <div>
+            <strong>{{ alerta.titulo }}</strong>
+            <div class="evm-alerta-detalle">{{ alerta.detalle }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% localize off %}
+<div class="evm-indices">
+
+    <div class="evm-indice evm-{{ v.estado_spi }}">
+        <div class="evm-indice-cab">
+            <span class="evm-sigla">SPI</span>
+            <span class="evm-indice-nombre">Índice de desempeño del cronograma</span>
+        </div>
+        {% comment %}
+        Sin avance cargado el SPI vale cero por construcción —el EV no puede
+        ser otra cosa— así que se muestra «—». Un 0,00 en cuerpo grande se lee
+        como un veredicto sobre el proyecto y no lo es.
+        {% endcomment %}
+        <div class="evm-valor">
+            {% if v.spi is None or not v.avance_cargado %}—{% else %}{{ v.spi|floatformat:2 }}{% endif %}
+        </div>
+        <div class="evm-escala" aria-hidden="true">
+            <span class="evm-escala-meta"></span>
+            {% if v.spi is not None and v.avance_cargado %}
+            <span class="evm-escala-relleno" style="width: {{ v.spi|escala_indice }}%"></span>
+            {% endif %}
+        </div>
+        <p class="evm-lectura">
+            {% if v.spi is None %}
+                Sin línea base con fechas todavía.
+            {% elif not v.avance_cargado %}
+                {% if v.actividades %}
+                    Ningún resultado registra avance y las {{ v.actividades }}
+                    actividades están en 0%. A esta fecha se esperaban
+                    <strong>${{ v.pv|miles }}</strong> de trabajo hecho.
+                {% else %}
+                    Ningún resultado registra avance todavía.
+                {% endif %}
+            {% elif v.spi >= 1 %}
+                Va al día o adelantado: el trabajo hecho vale
+                <strong>${{ v.ev|miles }}</strong> y a esta fecha se esperaban
+                ${{ v.pv|miles }}.
+            {% else %}
+                Por cada peso de trabajo que debería estar hecho hay
+                <strong>{{ v.spi|floatformat:2 }}</strong>.
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="evm-indice evm-{{ v.estado_cpi }}">
+        <div class="evm-indice-cab">
+            <span class="evm-sigla">CPI</span>
+            <span class="evm-indice-nombre">Índice de desempeño del costo</span>
+        </div>
+        <div class="evm-valor">
+            {% if v.cpi is None %}—{% else %}{{ v.cpi|floatformat:2 }}{% endif %}
+        </div>
+        <div class="evm-escala" aria-hidden="true">
+            <span class="evm-escala-meta"></span>
+            {% if v.cpi is not None %}
+            <span class="evm-escala-relleno" style="width: {{ v.cpi|escala_indice }}%"></span>
+            {% endif %}
+        </div>
+        <p class="evm-lectura">
+            {% if v.cpi is None %}
+                Aún no hay gastos registrados.
+            {% elif v.cpi >= 1 %}
+                Cada peso gastado produjo <strong>{{ v.cpi|floatformat:2 }}</strong>
+                de trabajo.
+            {% else %}
+                Cada peso gastado produjo sólo
+                <strong>{{ v.cpi|floatformat:2 }}</strong> de trabajo.
+            {% endif %}
+        </p>
+    </div>
+
+</div>
+{% endlocalize %}
+
+<div class="evm-montos">
+    <div class="evm-monto">
+        <span class="evm-monto-label">Valor planificado <abbr title="Planned Value">PV</abbr></span>
+        <span class="evm-monto-valor">
+            {% if v.pv is None %}—{% else %}${{ v.pv|miles }}{% endif %}
+        </span>
+        <span class="evm-monto-pie">lo que debería llevar hecho hoy</span>
+    </div>
+    <div class="evm-monto">
+        <span class="evm-monto-label">Valor ganado <abbr title="Earned Value">EV</abbr></span>
+        <span class="evm-monto-valor">${{ v.ev|miles }}</span>
+        <span class="evm-monto-pie">lo que lleva hecho</span>
+    </div>
+    <div class="evm-monto">
+        <span class="evm-monto-label">Costo real <abbr title="Actual Cost">AC</abbr></span>
+        <span class="evm-monto-valor">${{ v.ac|miles }}</span>
+        <span class="evm-monto-pie">pagado más comprometido</span>
+    </div>
+    <div class="evm-monto">
+        <span class="evm-monto-label">Presupuesto base <abbr title="Budget at Completion">BAC</abbr></span>
+        <span class="evm-monto-valor">${{ v.bac|miles }}</span>
+        <span class="evm-monto-pie">repartido en objetivos</span>
+    </div>
+    {% if v.eac %}
+    <div class="evm-monto {% if v.vac < 0 %}evm-monto-riesgo{% endif %}">
+        <span class="evm-monto-label">Costo final estimado <abbr title="Estimate at Completion">EAC</abbr></span>
+        <span class="evm-monto-valor">${{ v.eac|miles }}</span>
+        <span class="evm-monto-pie">
+            {% if v.vac < 0 %}faltarían ${{ v.vac|miles_abs }}{% else %}sobrarían ${{ v.vac|miles }}{% endif %}
+        </span>
+    </div>
+    {% endif %}
+</div>
+
+<div class="evm-nota">
+    La marca vertical de cada barra es el <strong>1,00</strong>: llegar ahí es
+    ir exactamente al día y en presupuesto.
+    <br>
+    {% comment %}
+    Decir con qué regla se calculó el PV no es un detalle: con reparto anual es
+    la línea base que declaró el equipo; sin él es un supuesto de gasto parejo
+    mes a mes que casi nunca se cumple, y quien lea el SPI tiene que saber
+    cuál de las dos está mirando.
+    {% endcomment %}
+    {% if v.origen_pv == "reparto_anual" %}
+        El valor planificado sale del <strong>reparto por año de cada
+        resultado</strong>: los años cerrados cuentan completos y
+        {{ v.hoy|date:"Y" }} cuenta la parte transcurrida.
+    {% elif v.origen_pv == "anios_declarados" %}
+        El valor planificado se estimó repartiendo el presupuesto en partes
+        iguales sobre los <strong>años declarados del proyecto</strong>
+        (desde {{ proyecto.anio_inicial|unlocalize }}), suponiendo gasto parejo
+        mes a mes. Cargando el reparto por año de cada resultado, el indicador
+        pasa a medir contra la línea base real.
+    {% else %}
+        El valor planificado se estimó con las <strong>fechas de inicio y
+        término</strong> del proyecto, suponiendo gasto parejo mes a mes.
+        Cargando el «Año 1 del presupuesto» y el reparto por año, el indicador
+        mide contra lo que el equipo se comprometió.
+    {% endif %}
+    {% if v.sin_repartir > 0 %}
+    <br>
+    Quedan <strong>${{ v.sin_repartir|miles }}</strong> del presupuesto sin
+    repartir en objetivos. No entran en el cálculo: no tienen trabajo asociado
+    que pueda ganarse.
+    {% endif %}
+</div>
+
+{% endif %}

@@ -9,6 +9,42 @@
     <div class="alert alert-danger py-2 px-3 small mb-3">{{ error }}</div>
     {% endif %}
 
+    {% comment %}
+    Los años cargados no coinciden con el Año 1 declarado. Pasa en todos los
+    proyectos creados antes de que el formulario lo pidiera: sin ese dato el
+    primer año se creaba con el año en curso, así que un proyecto de 2024
+    quedó con «Año 1 → 2026». Se avisa en vez de corregir solo, porque mover
+    un año cambia a qué año pertenece su POA.
+    {% endcomment %}
+    {% if anios and proyecto.anios_desalineados %}
+    <div class="alert alert-warning py-2 px-3 small mb-3">
+        <strong>Los años cargados no calzan con el Año 1 del proyecto.</strong>
+        Están como
+        {% for a in proyecto.anios_calendario_cargados %}{{ a|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        y deberían ser
+        {% for a in proyecto.anios_calendario_esperados %}{{ a|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+        {% if puede_editar %}
+        <div class="mt-2">
+            {% if proyecto.anios_con_poa %}
+            <span class="text-muted">
+                No se pueden corregir automáticamente: hay años con planes de
+                gasto cargados. Muévelos de año primero.
+            </span>
+            {% else %}
+            <button class="btn btn-sm btn-outline-warning"
+                    hx-post="{% url 'proyectos:realinear_anios' proyecto.pk %}"
+                    hx-target="#presupuesto-anual-container"
+                    hx-swap="innerHTML"
+                    hx-confirm="Se moverán los años a {% for a in proyecto.anios_calendario_esperados %}{{ a|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}. ¿Continuar?"
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                Corregir los años
+            </button>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
     {% if anios %}
     <form hx-post="{% url 'proyectos:guardar_anios' proyecto.pk %}"
           hx-target="#presupuesto-anual-container"
@@ -158,6 +194,27 @@
                 hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
             + Agregar año
         </button>
+
+        {% comment %}
+        Crea de una vez los que falten, numerados desde el Año 1 declarado. Sin
+        ese dato el botón no aparece: cualquier año de partida que el sistema
+        invente se vería tan legítimo como uno declarado.
+        {% endcomment %}
+        {% if proyecto.anios_faltantes %}
+        <button class="btn btn-sm btn-primary ms-1"
+                hx-post="{% url 'proyectos:crear_anios_del_proyecto' proyecto.pk %}"
+                hx-target="#presupuesto-anual-container"
+                hx-swap="innerHTML"
+                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+            Crear los {{ proyecto.anios_faltantes|length }} año{{ proyecto.anios_faltantes|length|pluralize:"s" }} que faltan
+            ({% for a in proyecto.anios_faltantes %}{{ a|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %})
+        </button>
+        {% elif not proyecto.anio_inicial %}
+        <span class="small text-muted ms-2">
+            Carga el <strong>Año 1 del presupuesto</strong> en el proyecto y los
+            años se pueden crear de una vez.
+        </span>
+        {% endif %}
         {% if anios %}
         <span class="small text-muted ms-2">
             {{ anios|length }} de {{ proyecto.cantidad_anios_sugerida }} año{{ proyecto.cantidad_anios_sugerida|pluralize:"s" }} sugerido{{ proyecto.cantidad_anios_sugerida|pluralize:"s" }}

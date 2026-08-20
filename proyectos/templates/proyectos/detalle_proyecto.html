@@ -4,6 +4,7 @@
 {% block content %}
 
 <link rel="stylesheet" href="{% static 'proyectos/css/detalle_proyecto.css' %}">
+<link rel="stylesheet" href="{% static 'proyectos/css/evm.css' %}">
 
 <div class="proyecto-detalle">
     <div class="container-fluid">
@@ -36,6 +37,40 @@
              hx-trigger="egresoUpdated from:body, planUpdated from:body, estructuraActualizada from:body"
              hx-swap="innerHTML">
             {% include "proyectos/partials/detalle_dashboard.html" %}
+        </div>
+
+        {% comment %}
+        VALOR GANADO
+
+        Va arriba y SIN plegar por defecto, a diferencia de los gráficos: es la
+        sección que puede decir «este proyecto no llega», y una alerta que hay
+        que ir a buscar desplegando una caja no es una alerta.
+
+        Se recarga con casi cualquier evento porque casi cualquier edición
+        mueve alguno de los tres montos: cargar un gasto, mover un avance o
+        repartir presupuesto cambian el semáforo. Sin esto, la alerta seguiría
+        en rojo después de haberla resuelto.
+        {% endcomment %}
+        <div class="section-title seccion-toggle" data-collapse="valor-ganado-container"
+             role="button" tabindex="0" onclick="toggleSeccion('valor-ganado-container')">
+            <div>
+                <h5>Valor ganado</h5>
+                <small class="small">
+                    Cruza avance, plazo y gasto en dos índices: SPI y CPI.
+                    Mide el proyecto completo, no el año en pantalla.
+                </small>
+            </div>
+            <span class="seccion-chevron" aria-hidden="true">▾</span>
+        </div>
+
+        <div id="valor-ganado-container"
+             hx-get="{% url 'proyectos:valor_ganado' proyecto.pk %}"
+             hx-trigger="load, egresoUpdated from:body, planUpdated from:body, estructuraActualizada from:body, actividadActualizada from:body, recargarSeccion"
+             hx-swap="innerHTML"
+             data-reload-event="recargarSeccion">
+            <div class="planes-card">
+                <div class="empty-state"><p class="text-muted mb-0">Cargando…</p></div>
+            </div>
         </div>
 
         <!-- SECCIÓN PRESUPUESTO ANUAL (plegable, plegada por defecto) -->

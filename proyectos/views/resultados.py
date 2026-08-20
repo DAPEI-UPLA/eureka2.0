@@ -191,3 +191,91 @@ def detalle_presupuesto_resultado(request, pk):
             request.user, resultado.objetivo.proyecto
         ),
     })
+
+
+# =========================
+# CÓMO SE MIDE EL AVANCE
+# =========================
+# Antes el avance salía siempre del promedio de las actividades, y un resultado
+# sin actividades leía 0% para siempre. Ahora cada resultado declara con qué
+# regla se mide, para que el número sea comparable entre equipos y verificable
+# en una rendición.
+
+@login_required
+def avance_resultado_form(request, pk):
+    resultado = get_object_or_404(Resultado, pk=pk)
+    if not usuario_es_responsable(request.user, resultado.objetivo.proyecto):
+        return HttpResponseForbidden("No autorizado")
+    return render(request, "proyectos/partials/avance_resultado_form.html", {
+        "resultado": resultado,
+        "tramos": Resultado.TRAMOS,
+    })
+
+
+@login_required
+@require_POST
+def guardar_avance_resultado(request, pk):
+    resultado = get_object_or_404(Resultado, pk=pk)
+    if not usuario_es_responsable(request.user, resultado.objetivo.proyecto):
+        return HttpResponseForbidden("No autorizado")
+
+    metodo = request.POST.get("metodo_avance", "")
+    validos = {clave for clave, _ in Resultado.METODOS_AVANCE}
+    resultado.metodo_avance = metodo if metodo in validos else ""
+
+    if resultado.metodo_avance == Resultado.METODO_META:
+        resultado.unidad_meta = request.POST.get("unidad_meta", "").strip()
+        resultado.meta = _entero(request.POST.get("meta")) or None
+        resultado.alcanzado = _entero(request.POST.get("alcanzado")) or 0
+    elif resultado.metodo_avance == Resultado.METODO_TRAMOS:
+        permitidos = {valor for valor, _ in Resultado.TRAMOS}
+        tramo = _entero(request.POST.get("tramo"))
+        resultado.tramo = tramo if tramo in permitidos else 0
+
+    error = _revisar_avance(resultado)
+    if error:
+        return render(request, "proyectos/partials/avance_resultado_form.html", {
+            "resultado": resultado,
+            "tramos": Resultado.TRAMOS,
+            "error": error,
+        }, status=400)
+
+    resultado.actualizado_por = request.user
+    resultado.save(update_fields=[
+        "metodo_avance", "unidad_meta", "meta", "alcanzado", "tramo",
+        "actualizado_por", "actualizado_en",
+    ])
+
+    response = render(request, "proyectos/partials/resultado_fila.html",
+                      {"resultado": resultado})
+    return disparar(
+        response,
+        resultadoActualizado=detalle_resultado(resultado),
+        objetivoActualizado={"objetivo_id": resultado.objetivo_id},
+        # El valor ganado del proyecto sale de estos números.
+        estructuraActualizada=True,
+        guardado="Avance del resultado guardado",
+    )
+
+
+def _entero(valor):
+    try:
+        return max(0, int(str(valor or "").strip() or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _revisar_avance(resultado):
+    """Lo que no se puede guardar, y por qué."""
+    if resultado.metodo_avance != Resultado.METODO_META:
+        return None
+    if not resultado.unidad_meta:
+        return "Di qué se cuenta: convenios, talleres, informes…"
+    if not resultado.meta:
+        return "La meta comprometida tiene que ser mayor que cero."
+    if resultado.alcanzado > resultado.meta:
+        # No se bloquea el sobrecumplimiento porque es real y hay que poder
+        # registrarlo; sólo se avisa de que el avance se topa en 100%, para que
+        # nadie espere ver un 125% en la fila.
+        return None
+    return None

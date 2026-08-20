@@ -1,0 +1,131 @@
+{% load l10n %}
+
+{% comment %}
+Cómo se mide el avance de un resultado.
+
+El orden de las opciones no es casual: primero la meta contable, que es la
+única que produce un número verificable, y después la escala. Poner la escala
+arriba haría que casi todos se quedaran en ella por ser más rápida de llenar.
+{% endcomment %}
+
+<form hx-post="{% url 'proyectos:guardar_avance_resultado' resultado.pk %}"
+      hx-target="#resultado-{{ resultado.pk }}"
+      hx-swap="outerHTML">
+
+    <h5 class="mb-1">Avance del resultado</h5>
+    <p class="text-muted small mb-3">
+        {{ resultado.descripcion|default:"Resultado sin descripción"|truncatechars:140 }}
+    </p>
+
+    {% if error %}
+    <div class="alert alert-danger small mb-3">{{ error }}</div>
+    {% endif %}
+
+    <div class="alert alert-light border small mb-3 py-2">
+        De este número sale el <strong>valor ganado</strong> del proyecto, así que
+        conviene que sea defendible. Con una meta contable no se opina: se cuenta.
+    </div>
+
+    <div class="avance-opciones">
+
+        <label class="avance-opcion">
+            <input type="radio" name="metodo_avance" value="META"
+                   {% if resultado.metodo_avance == "META" %}checked{% endif %}
+                   onchange="mostrarBloqueAvance()">
+            <span>
+                <strong>Meta contable</strong>
+                <span class="d-block small text-muted">
+                    El resultado se mide contando algo. El avance es alcanzado
+                    sobre meta, y en una rendición se pueden mostrar las unidades.
+                </span>
+            </span>
+        </label>
+
+        <div id="bloque-meta" class="avance-bloque">
+            <div class="row g-2">
+                <div class="col-md-5">
+                    <label class="form-label small text-muted">¿Qué se cuenta?</label>
+                    <input type="text" name="unidad_meta" class="form-control form-control-sm"
+                           placeholder="convenios, talleres, informes…"
+                           value="{{ resultado.unidad_meta }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Meta</label>
+                    <input type="number" name="meta" min="1" step="1"
+                           class="form-control form-control-sm"
+                           value="{{ resultado.meta|default_if_none:''|unlocalize }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">Alcanzado</label>
+                    <input type="number" name="alcanzado" min="0" step="1"
+                           class="form-control form-control-sm"
+                           value="{{ resultado.alcanzado|unlocalize }}">
+                    <div class="form-text">Superar la meta se registra, pero el avance se topa en 100%.</div>
+                </div>
+            </div>
+        </div>
+
+        <label class="avance-opcion">
+            <input type="radio" name="metodo_avance" value="TRAMOS"
+                   {% if resultado.metodo_avance == "TRAMOS" %}checked{% endif %}
+                   onchange="mostrarBloqueAvance()">
+            <span>
+                <strong>Escala de tramos</strong>
+                <span class="d-block small text-muted">
+                    Para lo que no se puede contar. Se elige de una lista fija,
+                    igual para todos los resultados, en vez de escribir un
+                    porcentaje libre.
+                </span>
+            </span>
+        </label>
+
+        <div id="bloque-tramos" class="avance-bloque">
+            {% for valor, etiqueta in tramos %}
+            <label class="avance-tramo">
+                <input type="radio" name="tramo" value="{{ valor|unlocalize }}"
+                       {% if resultado.tramo == valor %}checked{% endif %}>
+                <span>{{ etiqueta }}</span>
+            </label>
+            {% endfor %}
+        </div>
+
+        <label class="avance-opcion">
+            <input type="radio" name="metodo_avance" value="ACTIVIDADES"
+                   {% if resultado.metodo_avance == "ACTIVIDADES" %}checked{% endif %}
+                   onchange="mostrarBloqueAvance()">
+            <span>
+                <strong>Promedio de sus actividades</strong>
+                <span class="d-block small text-muted">
+                    {% with n=resultado.actividades.count %}
+                    {% if n == 1 %}
+                        Promedia el avance de su única actividad.
+                    {% elif n %}
+                        Promedia el avance de sus {{ n }} actividades.
+                        Todas pesan igual, sin importar su tamaño.
+                    {% else %}
+                        Este resultado no tiene actividades, así que quedaría en 0%.
+                    {% endif %}
+                    {% endwith %}
+                </span>
+            </span>
+        </label>
+
+    </div>
+
+    <div class="text-end mt-3">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-success">Guardar</button>
+    </div>
+</form>
+
+<script>
+    // Muestra sólo el bloque del método elegido. Los demás se ocultan en vez
+    // de deshabilitarse: un campo visible pero muerto invita a llenarlo.
+    function mostrarBloqueAvance() {
+        const elegido = document.querySelector('input[name="metodo_avance"]:checked');
+        const valor = elegido ? elegido.value : '';
+        document.getElementById('bloque-meta').style.display = valor === 'META' ? 'block' : 'none';
+        document.getElementById('bloque-tramos').style.display = valor === 'TRAMOS' ? 'block' : 'none';
+    }
+    mostrarBloqueAvance();
+</script>

@@ -15,6 +15,7 @@ from decimal import Decimal
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render
 
+from .. import evm
 from ..models import Egreso, Proyecto
 from .permisos import es_jefe
 from .utils import anio_seleccionado
@@ -319,4 +320,30 @@ def graficos_proyecto(request, pk):
         'gastos_transferencia': gastos_transferencia,
         'comprometido_pagado': comprometido_pagado,
         'hay_gastos': bool(trans_totales),
+    })
+
+
+# =========================
+# VALOR GANADO (EVM)
+# =========================
+
+@login_required
+def valor_ganado(request, pk):
+    """El panel de SPI/CPI del proyecto.
+
+    Va en su propio contenedor HTMX y escucha `estructuraActualizada` porque
+    los tres montos cambian con casi cualquier edición: mover un avance, cargar
+    un gasto o repartir presupuesto mueve el semáforo. Si fuera HTML fijo, la
+    alerta seguiría en rojo después de haberla resuelto.
+    """
+    proyecto = get_object_or_404(
+        Proyecto.objects.prefetch_related(
+            "objetivos__resultados__actividades",
+            "objetivos__resultados__presupuestos_anuales__anio",
+        ),
+        pk=pk,
+    )
+    return render(request, "proyectos/partials/valor_ganado.html", {
+        "proyecto": proyecto,
+        "v": evm.calcular(proyecto),
     })
